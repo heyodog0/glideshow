@@ -1,0 +1,222 @@
+/* Presenting keys as Google Slides, for every deck (copied into <script id="deck-present"> on save, like
+   shapes.js). B / W black or white screen, L laser pointer, a slide number then ⏎ to jump, ⏎ next, Esc to
+   leave (back to the editor when presenting from it), M a note for the AI (from the editor), F fullscreen and S speaker notes from reveal.js.
+   Turns off reveal.js defaults Slides doesn't have: O / Esc overview, V pause, ? help. */
+(function () {
+  if (!window.Reveal) return;
+
+  /* Morph (data-auto-animate on a slide): reveal's Auto-Animate from the slide before, which needs the attribute too.
+     Boxes pair by data-morph (Duplicate slide sets it to the original's id), else by their own id.
+     Builds by paragraph (data-build="paragraph" on an animated text box): each paragraph or list item is its own step,
+     with the box's effect, and the slide's later steps move back to make room. */
+  const prepare = () => {
+    const all = Reveal.getSlides();
+    all.forEach((sl, i) => { if (sl.hasAttribute('data-auto-animate') && all[i - 1] && !all[i - 1].hasAttribute('data-auto-animate')) all[i - 1].setAttribute('data-auto-animate', ''); });
+    document.querySelectorAll('.reveal .slides .box').forEach(b => { if (!b.dataset.id) b.dataset.id = b.dataset.morph || b.id; });
+    let changed = false;
+    all.forEach(sl => {
+      const frags = [...sl.querySelectorAll('.box.fragment[data-build="paragraph"]')].sort((a, b) => (+a.dataset.fragmentIndex || 0) - (+b.dataset.fragmentIndex || 0));
+      frags.reverse().forEach(box => {   // from the last, so each one's room doesn't move the ones before it
+        const parts = [...box.querySelectorAll(':scope > .content > :is(p, div, h1, h2, h3, h4, h5, h6), :scope > .content > :is(ul, ol) > li')];
+        if (parts.length < 2) return;
+        const at = +box.dataset.fragmentIndex || 0, cls = [...box.classList].filter(c => /^(appear|fade-[\w-]+|zoom-in|grow|shrink|strike|semi-fade-out|current-visible|highlight-[\w-]+)$/.test(c));   // its effect
+        sl.querySelectorAll('.fragment').forEach(f => { if (f !== box && +f.dataset.fragmentIndex > at) f.dataset.fragmentIndex = String(+f.dataset.fragmentIndex + parts.length - 1); });
+        box.classList.remove('fragment', ...cls); delete box.dataset.fragmentIndex;
+        parts.forEach((el, i) => { el.classList.add('fragment', ...cls); el.dataset.fragmentIndex = String(at + i); });
+        changed = true;
+      });
+    });
+    // a slide's own style (<style class="slide-css" media="not all"> in the slide): applied to that slide only
+    let n = 0;
+    all.forEach(sl => sl.querySelectorAll(':scope > style').forEach(st => {
+      st.media = 'not all'; sl.dataset.slideStyle = String(++n);
+      document.head.append(Object.assign(document.createElement('style'), { textContent: `.reveal .slides section[data-slide-style="${n}"] { ${st.textContent} }` }));
+    }));
+    if (changed) Reveal.sync();
+    if (new URLSearchParams(location.search).get('view') === 'scroll') Reveal.configure({ view: 'scroll' });   // read as a page (reveal's scroll view)
+  };
+  Reveal.isReady() ? prepare() : Reveal.on('ready', prepare);
+  const embedded = new URLSearchParams(location.search).has('embedded');
+  let typed = '', screen = null, laser = null;
+
+  const cover = color => {
+    if (screen) { screen.remove(); const was = screen.dataset.c; screen = null; if (was === color) return; }
+    screen = document.createElement('div'); screen.dataset.c = color;
+    screen.style.cssText = `position:fixed;inset:0;z-index:100;background:${color};cursor:none`;
+    document.body.append(screen);
+  };
+  const toggleLaser = () => {
+    if (laser) { laser.remove(); laser = null; document.documentElement.style.cursor = ''; return; }
+    laser = document.createElement('div');
+    laser.style.cssText = 'position:fixed;z-index:101;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:#e8173a;box-shadow:0 0 3px 1px rgba(232,23,58,.5);pointer-events:none;left:-20px;top:-20px';
+    document.body.append(laser); document.documentElement.style.cursor = 'none';
+  };
+  let ptr = { x: innerWidth / 2, y: innerHeight / 2 };
+  addEventListener('pointermove', e => { ptr = { x: e.clientX, y: e.clientY }; if (laser) { laser.style.left = e.clientX + 'px'; laser.style.top = e.clientY + 'px'; } });
+
+  /* M (presenting from the editor): a note for the AI at the pointer; ⏎ adds it to this slide as a .box.note, Esc drops it. */
+  let memo = null;
+  const openMemo = () => {
+    if (memo || !embedded) return;
+    memo = document.createElement('textarea'); memo.placeholder = 'Note for AI (⏎ to keep, Esc to drop)';
+    memo.style.cssText = `position:fixed;z-index:103;left:${Math.min(ptr.x, innerWidth - 300)}px;top:${Math.min(ptr.y, innerHeight - 140)}px;width:280px;height:120px;padding:10px;border:0;border-radius:4px;background:#fff3a8;color:#3c4043;font:15px Roboto,Arial,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.35);resize:none;outline:none`;
+    document.body.append(memo); memo.focus();
+    memo.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if (e.key === 'Escape') { e.preventDefault(); memo.remove(); memo = null; }
+      else if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const text = memo.value.trim(), r = document.querySelector('.reveal .slides').getBoundingClientRect(), k = Reveal.getScale();
+        const { h, v } = Reveal.getIndices();
+        if (text) parent.postMessage({ slides: 'note', h, v, x: (parseFloat(memo.style.left) - r.left) / k, y: (parseFloat(memo.style.top) - r.top) / k, text }, '*');
+        memo.remove(); memo = null;
+      }
+    });
+  };
+
+  const exit = () => {
+    if (document.fullscreenElement) { document.exitFullscreen(); return; }
+    if (embedded) parent.postMessage({ slides: 'exit', h: Reveal.getIndices().h, v: Reveal.getIndices().v }, '*');
+  };
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;   // typing in a field on the page (a comment box) is not a slideshow key
+    const k = e.key.toLowerCase();
+    if (screen && k !== 'b' && k !== 'w') { screen.remove(); screen = null; if (k !== 'escape') { e.preventDefault(); e.stopImmediatePropagation(); return; } }
+    if (memo) return;   // typing a note
+    if (/^[0-9]$/.test(e.key)) { typed += e.key; return; }
+    if (e.key === 'Enter') {
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (typed) Reveal.slide(Math.max(0, +typed - 1)); else Reveal.next();
+      typed = ''; return;
+    }
+    typed = '';
+    if (k === 'b' || k === 'w') { e.preventDefault(); e.stopImmediatePropagation(); cover(k === 'b' ? '#000' : '#fff'); }
+    else if (k === 'l') { e.preventDefault(); e.stopImmediatePropagation(); toggleLaser(); }
+    else if ((k === 'n' || k === 'p') && !e.shiftKey) { e.preventDefault(); e.stopImmediatePropagation(); k === 'n' ? Reveal.right() : Reveal.left(); }   // Slides: N / P = → / ←, past a stack
+    else if (k === 's' && Reveal.hasPlugin('notes')) { e.preventDefault(); e.stopImmediatePropagation(); Reveal.getPlugin('notes').open(); }
+
+    else if (k === 'm' && embedded) { e.preventDefault(); e.stopImmediatePropagation(); openMemo(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); exit(); }
+  }, true);   // capture: before reveal.js's own handler
+
+  Reveal.configure({ keyboard: { 79: null, 86: null, 191: null, 190: null, 27: null } });   // O, V, ?, ., Esc
+  if (embedded) Reveal.on('ready', () => window.focus());
+  if (/print-pdf/.test(location.search)) {   // PDF, as Slides prints it: one page per slide, edge to edge, no numbers, colours kept
+    Reveal.configure({ slideNumber: false, margin: 0, pdfSeparateFragments: false, pdfMaxPagesPerSlide: 1, showNotes: false });
+    const css = document.createElement('style');
+    css.textContent = `* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }   /* without the print dialog's "Background graphics" */
+      @page { margin: 0; } .reveal .slide-number, .sl-bar { display: none !important; }`;
+    document.head.append(css);
+    return;
+  }
+
+
+  /* Look: black letterbox, Slides' own hover toolbar instead of reveal's controls / progress / number. */
+  /* reveal.js pauses a slide's videos when it is left and, coming back, plays only those marked data-autoplay themselves;
+     a Glideshow deck marks their box (.box[data-autoplay]), so they came back still (2026-10-21). Play them again whenever
+     their slide or fragment is shown. */
+  const playShown = () => Reveal.getCurrentSlide()?.querySelectorAll('.box[data-autoplay] video, video[autoplay]').forEach(v => {
+    if (v.closest('.fragment:not(.visible)') || !v.paused) return;
+    v.play().catch(() => {});
+  });
+  Reveal.on('slidechanged', playShown); Reveal.on('fragmentshown', playShown);
+
+  Reveal.configure({ controls: false, progress: false, slideNumber: false, margin: 0 });   // edge to edge, as Slides
+  const css = document.createElement('style');
+  css.textContent = `
+    html, body, .reveal { background: #000 !important; }
+    .reveal .backgrounds { display: none; }
+    .sl-bar { position: fixed; left: 20px; bottom: 20px; z-index: 102; display: flex; align-items: center; height: 36px; padding: 0 4px;
+      background: #f8fafd; border-radius: 18px; color: #444746; font: 14px Roboto, -apple-system, Arial, sans-serif;
+      box-shadow: 0 1px 3px rgba(60, 64, 67, .3), 0 4px 8px 3px rgba(60, 64, 67, .15); transition: opacity .3s; }
+    .sl-bar.idle { opacity: 0; pointer-events: none; }
+    .sl-bar button { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; padding: 0;
+      border: 0; border-radius: 14px; background: none; color: inherit; font: inherit; cursor: pointer; }
+    .sl-bar button:hover { background: rgba(68, 71, 70, .08); }
+    .sl-bar .num { min-width: 40px; margin: 0 2px; background: #eef1f5; color: #1f1f1f; }
+    .sl-bar svg, .sl-pop svg { width: 20px; height: 20px; fill: currentColor; }
+    .sl-pop { position: fixed; z-index: 103; min-width: 220px; padding: 8px 0; background: #f8fafd; color: #1f1f1f; border-radius: 8px;
+      font: 14px Roboto, -apple-system, Arial, sans-serif; box-shadow: 0 1px 3px rgba(60, 64, 67, .3), 0 4px 8px 3px rgba(60, 64, 67, .15); }
+    .sl-pop button { display: flex; width: 100%; height: 35px; align-items: center; gap: 12px; padding: 0 16px 0 18px; border: 0; background: none;
+      font: inherit; color: inherit; text-align: left; cursor: pointer; white-space: nowrap; }
+    .sl-pop button:hover, .sl-pop button.open { background: #e9eef6; }
+    .sl-pop .ic { display: inline-flex; width: 20px; color: #444746; }
+    .sl-pop .on { font-weight: 600; }
+    .sl-pop button.indent { position: relative; padding-left: 40px; }
+    .sl-pop button.indent::before { content: ""; position: absolute; left: 27px; top: 0; bottom: 0; width: 2px; background: #c4c7c5; }
+
+
+    .sl-pop .k { margin-left: auto; padding-left: 24px; color: #444746; }
+    .sl-pop hr { margin: 8px 0 8px 40px; border: 0; border-top: 1px solid #c7c7c7; }`;
+  document.head.append(css);
+  // Each slide paints its own background colour, so the area around it stays black.
+  const paint = () => document.querySelectorAll('.reveal .slides section').forEach(s => {
+    s.style.background = s.dataset.backgroundColor || '#fff';
+    if (s.dataset.backgroundImage) Object.assign(s.style, { backgroundImage: `url("${s.dataset.backgroundImage}")`, backgroundSize: 'cover', backgroundPosition: 'center' });
+  });
+
+  const icon = d => `<svg viewBox="0 0 24 24"><path d="${d}"/></svg>`;
+  const I = { prev: 'M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z', next: 'M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z',
+    play: 'M8 5v14l11-7z', pause: 'M6 19h4V5H6zm8-14v14h4V5z', check: 'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z',
+    notes: 'M3 6h18v2H3zm0 5h18v2H3zm0 5h12v2H3z', laser: 'M7 2v11h3v9l7-12h-4l4-8z',
+    full: 'M5 16h3v3h2v-5H5zm3-8H5v2h5V5H8zm6 11h2v-3h3v-2h-5zm2-11V5h-2v5h5V8z', exit: 'M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z',
+    hidden: 'M12 7a5 5 0 0 1 4.6 7l2.9 2.9A11.8 11.8 0 0 0 23 12c-1.7-4.4-6-7.5-11-7.5-1.4 0-2.7.3-4 .7l2.2 2.2A5 5 0 0 1 12 7zM2 4.3l2.7 2.7A11.8 11.8 0 0 0 1 12c1.7 4.4 6 7.5 11 7.5 1.5 0 3-.3 4.4-.8l3.3 3.3 1.3-1.3L3.3 3z',
+    more: 'M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z', sub: 'M10 17l5-5-5-5z' };
+  const bar = document.createElement('div'); bar.className = 'sl-bar';
+  bar.innerHTML = `<button data-a="prev" title="Previous">${icon(I.prev)}</button><button class="num" data-a="num" title="Go to slide"></button>
+    <button data-a="next" title="Next">${icon(I.next)}</button><button data-a="more" title="Options">${icon(I.more)}</button>`;
+  const num = bar.querySelector('.num');
+  const showNum = () => { const { h, v } = Reveal.getIndices(); num.textContent = v ? `${h + 1}.${v}` : h + 1; };   // main slide 3, its sub-slides 3.1, 3.2
+  // Menus as Slides': [icon, label, run, {on, key, sub}] rows, '-' for a divider; a sub opens a second menu to the right.
+  let pop = null, sub = null, subTimer = 0;
+  const closePop = () => { pop?.remove(); sub?.remove(); pop = sub = null; };
+  const menu = (items, place) => {
+    const m = document.createElement('div'); m.className = 'sl-pop';
+    for (const it of items) {
+      if (it === '-') { m.append(document.createElement('hr')); continue; }
+      const [ic, label, run, o = {}] = it, b = document.createElement('button');
+      b.innerHTML = `<span class="ic">${o.on ? icon(I.check) : ic ? icon(ic) : ''}</span><span></span>${o.key ? `<span class="k">${o.key}</span>` : o.sub ? `<span class="k">${icon(I.sub)}</span>` : ''}`;
+      b.children[1].textContent = label; if (o.on) b.classList.add('on'); if (o.indent) b.classList.add('indent');
+      if (o.sub) b.onmouseenter = b.onclick = () => { sub?.remove(); m.querySelector('.open')?.classList.remove('open'); b.classList.add('open'); sub = menu(o.sub, mm => { const r = b.getBoundingClientRect(); mm.style.left = r.right + 'px'; mm.style.top = Math.max(8, r.bottom - mm.offsetHeight + 8) + 'px'; }); };
+      else { b.onmouseenter = () => { if (m === pop) subTimer = setTimeout(() => { sub?.remove(); sub = null; m.querySelector('.open')?.classList.remove('open'); }, 300); };
+             b.onmouseleave = () => clearTimeout(subTimer); b.onclick = () => { closePop(); run(); }; }
+      m.append(b);
+    }
+    m.onmouseenter = () => { if (m !== pop) clearTimeout(subTimer); };   // the pointer crossed the parent on its way into the submenu
+    document.body.append(m); place(m); return m;
+  };
+  const openPop = (btn, items) => { closePop(); pop = menu(items, m => { const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, r.right - m.offsetWidth) + 'px'; m.style.top = r.top - m.offsetHeight - 4 + 'px'; }); };
+  let autoMs = 0, loop = false;
+  const setAuto = (ms, lp = loop) => { autoMs = ms; loop = lp; Reveal.configure({ autoSlide: ms, loop: lp }); };
+  const isFull = () => !!document.fullscreenElement;
+  bar.addEventListener('mousedown', e => e.preventDefault());   // keep keyboard focus on the slides
+  bar.onclick = e => {
+    const btn = e.target.closest('button'), a = btn?.dataset.a;
+    if (a === 'prev') Reveal.prev(); if (a === 'next') Reveal.next();
+    if (a === 'num') { const at = Reveal.getIndices(); openPop(num, Reveal.getHorizontalSlides().flatMap((hs, h) => {   // the stacks as a tree, as the filmstrip
+      const leaves = hs.querySelector(':scope > section') ? [...hs.querySelectorAll(':scope > section')] : [hs];
+      return leaves.map((s, v) => [s.dataset.visibility === 'hidden' ? I.hidden : null, v ? `${h + 1}.${v}` : `Slide ${h + 1}`, () => Reveal.slide(h, v),
+        { on: h === at.h && v === (at.v || 0), indent: v > 0 }]);
+    })); }
+    if (a === 'more') openPop(btn, [
+      [I.notes, 'Open speaker notes', () => Reveal.getPlugin?.('notes')?.open(), { key: 'S' }],
+      [I.laser, laser ? 'Turn off the laser pointer' : 'Turn on the laser pointer', toggleLaser, { key: 'L' }],
+      [I.full, isFull() ? 'Exit full screen' : 'Full screen', () => isFull() ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(), { key: 'F' }],
+      [I.exit, 'Exit slideshow', exit, { key: 'Esc' }], '-',
+      [I.play, 'Auto-play', null, { sub: [
+        [autoMs ? I.pause : I.play, autoMs ? 'Stop' : 'Play', () => setAuto(autoMs ? 0 : 2000)], '-',
+        ...[1, 2, 3, 5, 10, 15, 30, 60].map(sec => [null, sec === 1 ? 'Every second' : sec < 60 ? `Every ${sec} seconds` : 'Every minute', () => setAuto(sec * 1000), { on: autoMs === sec * 1000 }]), '-',
+        [null, 'Loop', () => setAuto(autoMs, !loop), { on: loop }]] }]]);
+  };
+  // Toolbar and cursor fade after 3 s without the mouse moving, as Slides.
+  let idleTimer = 0;
+  const wake = () => {
+    bar.classList.remove('idle'); if (!laser) document.documentElement.style.cursor = '';
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => { if (pop) return; bar.classList.add('idle'); if (!laser) document.documentElement.style.cursor = 'none'; }, 3000);
+  };
+  addEventListener('pointermove', wake); addEventListener('pointerdown', e => { if (pop && !e.target.closest?.('.sl-pop')) closePop(); });
+  Reveal.on('ready', () => { document.body.append(bar); paint(); showNum(); wake(); });
+  Reveal.on('slidechanged', showNum);
+})();

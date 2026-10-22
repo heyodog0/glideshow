@@ -1,0 +1,6 @@
+{
+  // Type-checks the editor's plain JavaScript (no build step): `npx -p typescript@5.6.3 tsc -p editor`.
+  // The editor's files are classic scripts sharing one global scope, so they are checked together, as the page loads them.
+  "compilerOptions": { "allowJs": true, "checkJs": true, "noEmit": true, "target": "es2022", "module": "es2022", "moduleResolution": "bundler", "lib": ["es2023", "dom", "dom.iterable"], "strict": false, "skipLibCheck": true },
+  "include": ["globals.d.ts", "data/*.js", "deck/shapes.js", "js/*.js", "share/*.js", "lib/*.js"]
+}

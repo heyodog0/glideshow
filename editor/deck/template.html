@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Untitled deck</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<style id="deck-base">
+{{BASE}}
+</style>
+<style id="deck-theme">
+/* slides-theme {"name":"Simple Light","font":"Arial, Helvetica, sans-serif","titleSize":28,"bodySize":18,"title":"#000000","text":"#595959","bg":"#ffffff"} */
+.slides { --th-title-size: 74.67px; --th-body-size: 48px; }
+.box > .content { font-family: Arial, Helvetica, sans-serif; color: #595959; }
+.box[data-role="title"] > .content { color: #000000; }
+/* end slides-theme */
+
+/* Styles for this deck only. Safe to edit, e.g. .box > .content { font-family: Georgia, serif; } */
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+<section data-background-color="#ffffff" data-layout="title">
+  <div class="box" id="title" data-placeholder="Click to add title" data-role="title" data-valign="bottom" style="left: 65px; top: 152px; width: 1790px; height: 431px;"><div class="content" style="font-size: calc(var(--th-title-size, 74.67px) * 1.857); text-align: center;"></div></div>
+  <div class="box" id="subtitle" data-placeholder="Click to add subtitle" data-role="sub" data-valign="top" style="left: 65px; top: 590px; width: 1790px; height: 166px;"><div class="content" style="font-size: calc(var(--th-body-size, 48px) * 1.556); text-align: center;"></div></div>
+</section>
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script id="deck-shapes">
+{{SHAPES}}
+</script>
+<script>Reveal.initialize({ width: 1920, height: 1080, margin: 0.02, center: false, hash: true, transition: 'none', slideNumber: 'c/t' });</script>
+<script id="deck-present">
+{{PRESENT}}
+</script>
+</body>
+</html>

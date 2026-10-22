@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en" data-phone-viewport>
+<head>
+<meta charset="utf-8">
+<script src="/editor/js/phone-mode.js"></script>
+<title>Glideshow</title>
+<link rel="icon" href="/editor/glideshow.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/editor/apple-touch-icon.png">
+<link rel="manifest" href="/editor/manifest.json"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Glideshow">   <!-- Add to Home Screen: opens with no browser bars -->
+<base href="/deck/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400,0..1,0&display=block">
+<link rel="stylesheet" href="/editor/deck/base.css">
+<link rel="stylesheet" href="/editor/editor.css">
+<link rel="stylesheet" href="/editor/phone.css">
+<script>/* the look of Glideshow's own screens (editor/looks/): Thermal, on a computer and on a phone;
+   ?look=google gives Google Slides' look and ?look=thermal brings Thermal back, each remembered in this browser */
+{ const q = new URLSearchParams(location.search); let l = 'thermal';
+  try { if (q.has('look')) localStorage.setItem('glideshow-look', q.get('look') || 'google'); l = localStorage.getItem('glideshow-look') || l; } catch {}
+  if (q.has('look')) l = q.get('look') || 'google';
+  if (l !== 'google') document.documentElement.dataset.look = l; }</script>
+<link rel="stylesheet" href="/editor/looks/thermal.css">
+<link rel="stylesheet" href="/editor/looks/thermal-phone.css">
+<style id="ed-deck-theme-live"></style>
+</head>
+<body>
+<header id="ed-bar">
+  <div id="ed-top">
+    <a id="ed-app-icon" href="/" title="Glideshow home (alpha)"><img src="/editor/glideshow.svg" alt="Glideshow"><span class="stage">alpha</span></a>
+    <div id="ed-title-col">
+      <div id="ed-title-row"><input id="ed-title" spellcheck="false" aria-label="Deck title"><input type="date" id="ed-date" title="The deck's date (the talk's or meeting's)" aria-label="Deck date"><span id="ed-status"></span></div>
+
+      <nav id="ed-menubar">
+        <button data-menu="File">File</button><button data-menu="Edit">Edit</button><button data-menu="View">View</button>
+        <button data-menu="Insert">Insert</button><button data-menu="Format">Format</button><button data-menu="Slide">Slide</button>
+        <button data-menu="Arrange">Arrange</button><button data-menu="Tools">Tools</button><button data-menu="Help">Help</button>
+      </nav>
+    </div>
+    <button id="ed-comments-btn" class="icon-btn" title="Comments (⌘⌥M adds one)"><span class="icon">comment</span><b id="ed-comments-n"></b></button>
+    <div id="ed-slideshow" class="split">
+      <button id="ed-present" title="Present from this slide">Slideshow</button><button id="ed-present-menu" title="Slideshow options" aria-label="Slideshow options"><span class="icon">arrow_drop_down</span></button>
+    </div>
+    <div id="ed-people" hidden></div>
+    <button id="ed-share" title="Share"><span class="icon">lock</span>Share</button>
+  </div>
+  <div id="ed-toolbar">
+    <label id="ed-menus" title="Search the menus (⌥/)"><span class="icon">search</span><input placeholder="Menus" aria-label="Search the menus"></label>
+    <div class="grp" data-i="0">
+      <button id="ed-new-slide-btn" title="New slide (⌃M)"><span class="icon">add</span></button><button id="ed-new-slide-more" class="drop" title="New slide with layout"><span class="icon">arrow_drop_down</span></button>
+
+      <button id="ed-undo" title="Undo (⌘Z)"><span class="icon">undo</span></button>
+      <button id="ed-redo" title="Redo (⇧⌘Z)"><span class="icon">redo</span></button>
+      <button id="ed-print" title="Print (⌘P)"><span class="icon">print</span></button>
+      <button id="ed-paint-format" title="Paint format (double-click to keep it on)"><span class="icon">format_paint</span></button>
+      <button id="ed-zoom" class="zoom-pick" title="Zoom"><span class="icon zoom-glyph">zoom_in</span><span class="zoom-label">Fit</span><span class="icon">arrow_drop_down</span></button>
+    </div>
+    <div class="grp" data-i="1">
+      <button id="ed-select-tool" class="on" title="Select"><span class="icon">arrow_selector_tool</span></button>
+      <button id="ed-add-text" title="Text box"><span class="icon">text_fields</span></button>
+      <button id="ed-add-shape" title="Shape"><span class="icon">shapes</span></button>
+      <button id="ed-add-line" title="Line"><span class="icon">pen_size_2</span></button>
+      <input type="file" id="ed-pptx-file" accept=".pptx" hidden><input type="file" id="ed-file" accept="image/*" multiple hidden>
+      <input type="file" id="ed-video-file" accept="video/mp4,video/webm,video/quicktime,.mov" hidden>
+    </div>
+    <div class="grp sel-only" data-i="2">
+      <button class="swatch" data-for="fill" title="Fill color"><span class="icon">format_color_fill</span><i class="bar"></i></button><input type="color" class="color-input" id="ed-fill">
+      <button class="swatch" data-for="stroke" title="Border color"><span class="icon">border_color</span><i class="bar"></i></button><input type="color" class="color-input" id="ed-stroke">
+      <button id="ed-sw" title="Border weight"><span class="icon">line_weight</span></button>
+      <button id="ed-dash" title="Border dash"><span class="icon">line_style</span></button>
+      <button id="ed-lstart" class="line-only" title="Line start"><span class="icon">line_start</span></button>
+      <button id="ed-lend" class="line-only" title="Line end"><span class="icon">line_end_arrow</span></button>
+    </div>
+    <div class="grp sel-only" data-i="3">
+      <button id="ed-font" class="font-pick" title="Font"><span class="font-name">Default</span><span class="icon">arrow_drop_down</span></button>
+      <button id="ed-size-down" title="Decrease font size (⇧⌘,)"><span class="icon">remove</span></button>
+      <input type="number" id="ed-size" min="8" max="400" step="2" title="Font size">
+      <button id="ed-size-up" title="Increase font size (⇧⌘.)"><span class="icon">add</span></button>
+      <button id="ed-bold" title="Bold (⌘B)"><span class="icon">format_bold</span></button>
+      <button id="ed-italic" title="Italic (⌘I)"><span class="icon">format_italic</span></button>
+      <button id="ed-underline" title="Underline (⌘U)"><span class="icon">format_underlined</span></button>
+      <button class="swatch" data-for="color" title="Text color"><span class="icon">format_color_text</span><i class="bar"></i></button><input type="color" class="color-input" id="ed-color">
+      <button class="swatch" data-for="hilite" title="Highlight color"><span class="icon">ink_highlighter</span><i class="bar"></i></button><input type="color" class="color-input" id="ed-hilite" value="#ffff00">
+      <button id="ed-link" title="Insert link (⌘K)"><span class="icon">link</span></button>
+    </div>
+    <div class="grp sel-only" data-i="4">
+      <button id="ed-align" class="dropdown" title="Align"><span class="icon">format_align_left</span><span class="icon caret">arrow_drop_down</span></button>
+      <button id="ed-lh" title="Line spacing"><span class="icon">format_line_spacing</span></button>
+      <button id="ed-ul" title="Bulleted list (⇧⌘8)"><span class="icon">format_list_bulleted</span></button>
+      <button id="ed-ol" title="Numbered list (⇧⌘7)"><span class="icon">format_list_numbered</span></button>
+      <button id="ed-indent-less" title="Decrease indent (⌘[)"><span class="icon">format_indent_decrease</span></button>
+      <button id="ed-indent-more" title="Increase indent (⌘])"><span class="icon">format_indent_increase</span></button>
+    </div>
+    <div class="grp sel-only" data-i="5">
+      <button id="ed-clear-fmt" title="Clear formatting (⌘\)"><span class="icon">format_clear</span></button>
+      <button id="ed-crop" class="image-only" title="Crop image"><span class="icon">crop</span></button>
+      <button id="ed-replace-image" class="text image-only" title="Replace image">Replace image</button><input type="file" id="ed-replace-file" accept="image/*" hidden>
+      <button id="ed-format-options" class="text" title="Format options">Format options</button>
+      <button id="ed-animate" class="text" title="Animate">Animate</button>
+    </div>
+    <div class="grp nosel-only" data-i="6">
+      <button id="ed-background" class="text" data-for="bg" title="Background">Background</button><input type="color" class="color-input" id="ed-bg">
+      <button id="ed-layout-btn" class="text" title="Layout">Layout</button>
+      <button id="ed-theme-btn" class="text" title="Theme">Theme</button>
+      <button id="ed-transition" class="text" title="Transition">Transition</button>
+    </div>
+    <div id="ed-more-wrap">
+      <button id="ed-more" title="More" aria-label="More"><span class="icon">more_vert</span></button>
+      <div id="ed-more-pop"></div>
+    </div>
+    <button id="ed-collapse" title="Hide the menus (⌃⇧F)"><span class="icon">keyboard_arrow_up</span></button>
+  </div>
+</header>
+<main>
+  <aside id="ed-side">
+    <div id="ed-thumbs"></div>
+    <div id="ed-film-foot"><button id="ed-grid-toggle" title="Grid view (⌘⌥1)"><span class="icon">grid_view</span></button><button id="ed-film-toggle" title="Hide the filmstrip"><span class="icon">chevron_left</span></button>
+      <span id="ed-grid-zoom"><button id="ed-grid-out" title="Smaller"><span class="icon">remove</span></button><span class="icon">zoom_in</span><button id="ed-grid-in" title="Larger"><span class="icon">add</span></button></span></div>
+    <div id="ed-slide-ops" hidden>
+      <button id="ed-new-slide" title="New slide">+ Slide</button>
+      <button id="ed-dup-slide" title="Duplicate slide">Dup</button>
+      <button id="ed-up-slide" title="Move up">↑</button>
+      <button id="ed-down-slide" title="Move down">↓</button>
+      <button id="ed-del-slide" title="Delete slide">Delete</button>
+    </div>
+  </aside>
+  <div id="ed-work">
+    <div id="ed-load-bar" hidden><span class="icon">speed</span><span id="ed-load-what"></span><button id="ed-load-close" title="Dismiss"><span class="icon">close</span></button></div>
+    <div id="ed-merge-bar" hidden><span class="icon">call_merge</span><span id="ed-merge-what"></span><button id="ed-merge-history" class="tonal">Version history</button><button id="ed-merge-close" title="Dismiss"><span class="icon">close</span></button></div>
+    <div id="ed-theme-bar" hidden><span id="ed-theme-what"></span><button id="ed-theme-reapply" class="tonal">Reapply to all</button><button id="ed-theme-done" title="Close"><span class="icon">close</span></button></div>
+    <div id="ed-stage-wrap">
+      <canvas id="ed-ruler-h" class="ruler"></canvas><canvas id="ed-ruler-v" class="ruler"></canvas>
+      <div id="ed-stage">
+        <div id="ed-frame" class="reveal">
+          <div id="ed-canvas" class="slides"><div id="ed-rules"></div><div id="ed-pins"></div><div id="ed-flash"></div><div id="ed-people-on"></div><div id="ed-ui"></div><div id="ed-guides"></div></div>
+        </div>
+      </div>
+    </div>
+    <div id="ed-dock" role="toolbar" aria-label="Insert">
+      <button data-do="select" class="on" title="Select"><span class="icon">arrow_selector_tool</span></button>
+      <button data-do="text" title="Text box"><span class="icon">text_fields</span></button>
+      <button data-do="shape" title="Shape"><span class="icon">shapes</span></button>
+      <button data-do="line" title="Line"><span class="icon">pen_size_2</span></button>
+      <button data-do="image" title="Image"><span class="icon">image</span></button>
+      <i class="sep"></i>
+      <button data-do="table" title="Table"><span class="icon">table_chart</span></button>
+      <button data-do="code" title="Code block"><span class="icon">code</span></button>
+      <button data-do="equation" title="Equation"><span class="icon">function</span></button>
+      <i class="sep"></i>
+      <button data-do="note" title="Note for AI"><span class="icon">sticky_note_2</span></button>
+    </div>
+    <div id="ed-splitter" title="Drag to resize speaker notes"></div>
+    <div id="ed-ai-notes" hidden></div>
+    <div id="ed-notes" contenteditable="true" spellcheck="true" data-placeholder="Click to add speaker notes" aria-label="Speaker notes"></div>
+  </div>
+  <aside id="ed-comments" class="panel" hidden>
+    <header><span class="icon head-icon">comment</span><span>Comments</span><button id="ed-cm-close" title="Close"><span class="icon">close</span></button></header>
+    <div class="cm-tools"><button id="ed-cm-add" class="tonal"><span class="icon">add_comment</span>Comment</button><label class="cm-res"><input type="checkbox" id="ed-cm-resolved"> Show resolved</label></div>
+    <div id="ed-cm-list"></div>
+  </aside>
+  <aside id="ed-history" class="panel" hidden>
+    <header><span class="icon head-icon">history</span><span>Version history</span><button id="ed-hist-close" title="Close"><span class="icon">close</span></button></header>
+    <select id="ed-hist-scope" aria-label="Which versions"><option value="">All versions</option><option value="slide">This slide</option></select>
+    <div id="ed-hist-list"></div>
+    <div class="hist-foot"><button id="ed-hist-restore" class="tonal" hidden>Restore this version</button><label class="hist-hl"><input type="checkbox" id="ed-hist-highlight" checked> Highlight changes</label></div>
+  </aside>
+  <aside id="ed-theme" class="panel" hidden>
+    <header><span class="icon head-icon">palette</span><span>Themes</span><button id="ed-theme-close" title="Close"><span class="icon">close</span></button></header>
+    <div id="ed-theme-list"></div>
+    <details open><summary>Customize</summary>
+      <label>Font<select id="ed-th-font"></select></label>
+      <div class="row"><label>Title size<span class="unit"><input type="number" id="ed-th-title-size" min="8" max="200" class="short"> pt</span></label><label>Body size<span class="unit"><input type="number" id="ed-th-body-size" min="6" max="200" class="short"> pt</span></label></div>
+      <div class="row between"><span class="lbl">Title color</span><input type="color" id="ed-th-title" class="color-chip"></div>
+      <div class="row between"><span class="lbl">Text color</span><input type="color" id="ed-th-text" class="color-chip"></div>
+      <div class="row between"><span class="lbl">Background</span><input type="color" id="ed-th-bg" class="color-chip"></div>
+    </details>
+  </aside>
+  <aside id="ed-trans" class="panel" hidden>
+    <header><span class="icon head-icon motion">animation</span><span>Motion</span><button id="ed-trans-close" title="Close"><span class="icon">close</span></button></header>
+    <h3>Slide Transition</h3>
+    <details class="item"><summary><span class="thumbmark"></span><span id="ed-t-name">None</span></summary>
+      <label>Type<select id="ed-t-kind"></select></label>
+      <div class="range">Slow<input type="range" id="ed-t-speed" min="0" max="2" step="1" value="1">Fast</div>
+      <div class="actions"><button id="ed-t-all">Apply to all slides</button></div>
+    </details>
+    <h3>Object Animations</h3>
+    <div id="ed-anim-list"></div>
+    <div class="actions pad"><button id="ed-anim-add" class="add"><span class="icon">add</span>Add animation</button></div>
+    <div class="actions pad"><button id="ed-anim-play" class="play">Play</button></div>
+  </aside>
+  <aside id="ed-fmt" class="panel" hidden>
+    <header><span class="icon head-icon fmt">format_paint</span><span>Format options</span><button id="ed-fmt-close" title="Close"><span class="icon">close</span></button></header>
+    <details><summary>Size &amp; Rotation</summary>
+      <h4>Size</h4>
+      <div class="row"><label>Width<span class="unit"><input type="number" id="ed-f-w" min="0.01" step="0.01"> in</span></label><label>Height<span class="unit"><input type="number" id="ed-f-h" min="0" step="0.01"> in</span></label></div>
+      <label class="chk"><input type="checkbox" id="ed-f-lock"> Lock aspect ratio</label>
+      <h4>Rotate</h4>
+      <div class="row"><label>Angle<span class="unit"><input type="number" id="ed-f-rot" step="1" class="short"> °</span></label>
+        <label>90°<button id="ed-f-rotr" title="Rotate 90°"><span class="icon">rotate_90_degrees_cw</span></button></label>
+        <label>Flip<span><button id="ed-f-fliph" title="Flip horizontally"><span class="icon">flip</span></button><button id="ed-f-flipv" title="Flip vertically"><span class="icon" style="rotate: 90deg">flip</span></button></span></label></div>
+    </details>
+    <details><summary>Position</summary>
+      <label>From<select id="ed-f-from"><option value="tl">Top left</option><option value="c">Center</option></select></label>
+      <div class="row"><label>X<span class="unit"><input type="number" id="ed-f-x" step="0.01"> in</span></label><label>Y<span class="unit"><input type="number" id="ed-f-y" step="0.01"> in</span></label></div>
+    </details>
+    <details class="text-only"><summary>Text fitting</summary>
+      <h4>Resize</h4>
+      <div id="ed-f-fit" class="radios"><label class="chk"><input type="radio" name="ed-f-fit" value="none"> Don't resize</label>
+        <label class="chk"><input type="radio" name="ed-f-fit" value="shrink"> Shrink text to fit the shape</label>
+        <label class="chk"><input type="radio" name="ed-f-fit" value="resize"> Resize the shape to fit text</label></div>
+      <h4>Padding</h4>
+      <div class="row"><label>Top<span class="unit"><input type="number" id="ed-f-pt" min="0" step="0.01"> in</span></label><label>Bottom<span class="unit"><input type="number" id="ed-f-pb" min="0" step="0.01"> in</span></label></div>
+      <div class="row"><label>Left<span class="unit"><input type="number" id="ed-f-pl" min="0" step="0.01"> in</span></label><label>Right<span class="unit"><input type="number" id="ed-f-pr" min="0" step="0.01"> in</span></label></div>
+    </details>
+    <details class="img-only"><summary>Adjustments</summary>
+      <label>Opacity<span class="unit slider"><input type="range" id="ed-f-opacity" min="0" max="100" step="1"><input type="number" id="ed-f-opacity-n" min="0" max="100" class="short"> %</span></label>
+      <div class="row"><button id="ed-f-adj-reset" class="outlined">Reset</button></div>
+    </details>
+    <details><summary>Drop shadow<input type="checkbox" id="ed-f-shadow" title="Drop shadow"></summary>
+      <div class="row between"><span class="lbl">Color</span><input type="color" id="ed-f-sh-color" class="color-chip"></div>
+      <label>Opacity<span class="unit slider"><input type="range" id="ed-f-sh-opacity" min="0" max="100" step="1"><input type="number" id="ed-f-sh-opacity-n" min="0" max="100" class="short"> %</span></label>
+      <label>Angle<span class="unit slider"><input type="range" id="ed-f-sh-angle" min="0" max="359" step="1"><input type="number" id="ed-f-sh-angle-n" min="0" max="359" class="short"> °</span></label>
+      <label>Distance<span class="unit slider"><input type="range" id="ed-f-sh-distance" min="0" max="100" step="1"><input type="number" id="ed-f-sh-distance-n" min="0" max="100" class="short"> px</span></label>
+      <label>Blur radius<span class="unit slider"><input type="range" id="ed-f-sh-blur" min="0" max="100" step="1"><input type="number" id="ed-f-sh-blur-n" min="0" max="100" class="short"> px</span></label>
+    </details>
+    <details class="video-only"><summary>Video playback</summary>
+      <label class="chk"><input type="checkbox" id="ed-f-v-auto"> Play automatically when the slide appears</label>
+      <label class="chk"><input type="checkbox" id="ed-f-v-mute"> Mute audio</label>
+      <label class="chk"><input type="checkbox" id="ed-f-v-loop"> Loop</label>
+      <div class="row"><label>Start at<input id="ed-f-v-start" class="short" placeholder="0:00"></label><label>End at<input id="ed-f-v-end" class="short" placeholder="end"></label></div>
+    </details>
+    <details><summary>Alt Text</summary>
+      <label>Description<textarea id="ed-f-alt" rows="3" placeholder="Describe the object for screen readers"></textarea></label>
+    </details>
+  </aside>
+</main>
+<div id="ed-show" hidden></div>
+<div id="ed-find" class="find" hidden role="dialog" aria-label="Find and replace">
+  <header><h2>Find and replace</h2><button class="find-close" title="Close"><span class="icon">close</span></button></header>
+  <div class="find-row"><input id="ed-find-q" placeholder="Find" aria-label="Find"><span class="find-count"></span></div>
+  <input id="ed-find-r" placeholder="Replace with" aria-label="Replace with">
+  <label class="chk"><input type="checkbox" id="ed-find-case"> Match case</label>
+  <label class="chk"><input type="checkbox" id="ed-find-re"> Use regular expressions (e.g. \n for newline, \t for tab)</label>
+  <label class="chk"><input type="checkbox" id="ed-find-dia" checked> Ignore diacritics (e.g. ä = a, E = É)</label>
+  <div class="find-actions"><button id="ed-find-one">Replace</button><button id="ed-find-all">Replace all</button>
+    <button id="ed-find-prev">Previous</button><button id="ed-find-next" class="tonal">Next</button></div>
+</div>
+<div id="ed-shortcuts" class="backdrop" hidden>
+  <div class="dialog" role="dialog" aria-label="Keyboard shortcuts">
+    <header><h2>Keyboard shortcuts</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <label class="sc-search"><span class="icon">search</span><input type="search" placeholder="Search" aria-label="Search keyboard shortcuts"></label>
+    <div class="sc-body"></div>
+  </div>
+</div>
+<div id="ed-bgdlg" class="backdrop" hidden>
+  <div class="dialog bg-dialog" role="dialog" aria-label="Background">
+    <header><h2>Background</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <div class="bg-row"><span>Color</span><button id="ed-bg-color" class="bg-swatch" data-for="bg" title="Color"><span class="chip"></span><span class="icon">arrow_drop_down</span></button></div>
+    <div class="bg-row"><span>Image</span><button id="ed-bg-image" class="outlined">Choose image</button><input type="file" id="ed-bg-file" accept="image/*" hidden></div>
+    <div class="bg-row"><span>Video</span><button id="ed-bg-video" class="outlined">Choose video</button><input type="file" id="ed-bg-vfile" accept="video/mp4,video/webm,video/quicktime,.mov" hidden></div>
+    <div class="bg-row"><span>Web page</span><button id="ed-bg-page" class="outlined">Choose page</button></div>
+    <div class="bg-row"><span>Reset to theme</span><button id="ed-bg-reset" class="outlined">Reset</button></div>
+    <footer><button id="ed-bg-theme" class="outlined">Add to theme</button><button id="ed-bg-done" class="done">Done</button></footer>
+  </div>
+</div>
+<div id="ed-spacedlg" class="backdrop" hidden>
+  <div class="dialog bg-dialog" role="dialog" aria-label="Custom spacing">
+    <header><h2>Custom spacing</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <div class="dlg-sub">Paragraph spacing</div>
+    <div class="bg-row"><span>Before</span><input type="number" id="ed-sp-before" min="0" step="1"></div>
+    <div class="bg-row"><span>After</span><input type="number" id="ed-sp-after" min="0" step="1"></div>
+    <div class="dlg-sub">Line spacing</div>
+    <div class="bg-row"><span>Line spacing</span><input type="number" id="ed-sp-line" min="0.5" max="5" step="0.05"></div>
+    <footer><button id="ed-sp-cancel" class="outlined">Cancel</button><button id="ed-sp-apply" class="done">Apply</button></footer>
+  </div>
+</div>
+<div id="ed-chars" class="backdrop" hidden>
+  <div class="dialog chars-dialog" role="dialog" aria-label="Insert special characters">
+    <header><h2>Insert special characters</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <div class="chars-body">
+      <div class="chars-left"><select id="ed-chars-cat" aria-label="Category"></select><div id="ed-chars-grid" class="chars-grid"></div></div>
+      <div class="chars-right">
+        <label class="chars-search"><span class="icon">search</span><input type="search" id="ed-chars-q" placeholder="Search: arrow, \alpha or 2192" aria-label="Search characters"></label>
+        <div id="ed-chars-pick" class="chars-pick"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="ed-icons" class="backdrop" hidden>
+  <div class="dialog icons-dialog" role="dialog" aria-label="Insert icon">
+    <header><h2>Insert icon</h2><label class="chars-search"><span class="icon">search</span><input type="search" id="ed-icons-q" placeholder="Search icons" aria-label="Search icons"></label><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <div id="ed-icons-grid" class="icons-grid"></div>
+  </div>
+</div>
+<div id="ed-draftdlg" class="backdrop" hidden>
+  <div class="dialog bg-dialog" role="dialog" aria-label="Not saved">
+    <header><h2>This presentation won't be saved</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <div class="bg-row"><span>It has no title. Give it one to keep it in your library; otherwise it is discarded when you leave.</span></div>
+    <footer><button id="ed-draft-discard" class="outlined">Discard</button><button id="ed-draft-name" class="primary">Add a title</button></footer>
+  </div>
+</div>
+<div id="ed-sharedlg" class="backdrop" hidden>
+
+  <div class="dialog bg-dialog share-dialog" role="dialog" aria-label="Share">
+    <header><h2>Share “<span id="ed-share-title"></span>”</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <label class="bg-row"><span><b>Share a link</b><small id="ed-share-hint">The link always shows the latest version of the deck. It isn't listed anywhere, and search engines and AI crawlers are asked to stay out.</small></span>
+      <input type="checkbox" id="ed-share-on" class="switch"></label>
+    <div class="bg-row share-link" id="ed-share-linkrow" hidden><input id="ed-share-url" class="url-in" readonly aria-label="Link"><button id="ed-share-copy" class="outlined"><span class="icon">link</span>Copy link</button></div>
+    <div class="share-access" id="ed-share-accessrow" hidden>
+      <label class="bg-row"><span>Who can open it</span><select id="ed-share-access"><option value="link">Anyone with the link</option><option value="people">Only people I add</option></select></label>
+      <div class="bg-row share-people" id="ed-share-peoplerow" hidden><div class="people-box" id="ed-share-chips"><input id="ed-share-people" type="text" autocomplete="off" spellcheck="false" placeholder="Emails, @harvard.edu for everyone there, or GitHub usernames" aria-label="People"></div>
+        <small>They sign in with Google or GitHub to open it.</small></div>
+      <div class="bg-row share-people share-editors" id="ed-share-editrow"><span>Can edit</span><div class="people-box" id="ed-share-echips"><input id="ed-share-editors" type="text" autocomplete="off" spellcheck="false" placeholder="Emails, @domain or GitHub usernames of people who can edit" aria-label="Can edit"></div>
+        <small>They open the deck from the same link and edit it with you, live. They can't add scripts or change the theme.</small></div>
+      <label class="bg-row"><span>Link expires</span><span class="share-exp"><input type="date" id="ed-share-expires" aria-label="Expires"><button id="ed-share-noexp" class="icon" title="Never expires">close</button></span></label>
+    </div>
+    <div class="bg-row share-status" id="ed-share-status"></div>
+    <footer><button id="ed-share-done" class="done">Done</button></footer>
+  </div>
+</div>
+<div id="ed-livedlg" class="backdrop" hidden>
+
+  <div class="dialog bg-dialog live-dialog" role="dialog" aria-label="Code">
+    <header><h2 id="ed-code-title">Live box</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <div class="bg-row"><small id="ed-code-help"></small></div>
+    <div class="bg-row live-code"><textarea id="ed-live-code" spellcheck="false" aria-label="Code"></textarea></div>
+    <footer><button id="ed-live-cancel" class="outlined">Cancel</button><button id="ed-live-ok" class="done">Save</button></footer>
+  </div>
+</div>
+<div id="ed-urldlg" class="backdrop" hidden>
+
+  <div class="dialog bg-dialog" role="dialog" aria-label="Insert by URL">
+    <header><h2 id="ed-url-title">Embed a web page</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <div class="bg-row"><input type="url" id="ed-url-in" class="url-in" placeholder="Paste a URL" aria-label="URL"></div>
+    <footer><button id="ed-url-cancel" class="outlined">Cancel</button><button id="ed-url-ok" class="done">Insert</button></footer>
+  </div>
+</div>
+<script src="/editor/data/themes.js"></script>
+<script src="/editor/data/symbols.js"></script>
+<script src="/editor/deck/shapes.js"></script>
+<!-- the editor, in load order (classic scripts sharing one global scope) -->
+<script src="/editor/js/state.js"></script>
+<script src="/editor/js/geometry.js"></script>
+<script src="/editor/lib/merge.js"></script>
+<script src="/editor/js/storage.js"></script>
+<script src="/editor/js/render.js"></script>
+<script src="/editor/js/boxes.js"></script>
+<script src="/editor/js/theme.js"></script>
+<script src="/editor/js/objects.js"></script>
+<script src="/editor/js/text.js"></script>
+<script src="/editor/js/pointer.js"></script>
+<script src="/editor/js/keyboard.js"></script>
+<script src="/editor/js/slides.js"></script>
+<script src="/editor/js/toolbar.js"></script>
+<script src="/editor/js/arrange.js"></script>
+<script src="/editor/js/format-panel.js"></script>
+<script src="/editor/js/motion.js"></script>
+<script src="/editor/js/notes.js"></script>
+<script src="/editor/js/find.js"></script>
+<script src="/editor/js/file.js"></script>
+<script src="/editor/js/comments.js"></script>
+<script src="/editor/js/live.js"></script>
+<script src="/editor/js/people.js"></script>
+<script src="/editor/js/shortcuts.js"></script>
+<script src="/editor/js/dialogs.js"></script>
+<script src="/editor/js/insert.js"></script>
+<script src="/editor/js/menus.js"></script>
+<script src="/editor/js/context-menus.js"></script>
+<script src="/editor/js/guides.js"></script>
+<script src="/editor/js/spacing.js"></script>
+<script src="/editor/js/draw.js"></script>
+<script src="/editor/js/menubar.js"></script>
+<script src="/editor/js/dock.js"></script>
+<script src="/editor/js/toolbar-groups.js"></script>
+<script src="/editor/js/theme-toggle.js"></script>
+<script src="/editor/js/phone-view.js"></script>
+<script src="/editor/js/phone-edit.js"></script>
+<script src="/editor/js/phone-sheets.js"></script>
+<script src="/editor/js/phone-comments.js"></script>
+<script src="/editor/js/phone-touch.js"></script>
+<script src="/editor/js/boot.js"></script>
+
+
+</body>
+</html>

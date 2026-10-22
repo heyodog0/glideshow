@@ -1,0 +1,5 @@
+{
+  // Type-checks the Worker's JavaScript: `npx -p typescript@5.6.3 tsc -p cloud`.
+  "compilerOptions": { "allowJs": true, "checkJs": true, "noEmit": true, "target": "es2022", "module": "es2022", "moduleResolution": "bundler", "lib": ["es2023", "dom", "dom.iterable"], "strict": false, "skipLibCheck": true },
+  "include": ["env.d.ts", "*.js"]
+}

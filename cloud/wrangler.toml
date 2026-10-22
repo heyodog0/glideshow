@@ -1,0 +1,89 @@
+# glideshow.org: the editor online (docs/self-hosting.md). Deploy with `npx wrangler deploy` here.
+name = "slides-edit"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+# www, the first address (edit.ryanvt.com) and the old share links (slides.ryanvt.com) redirect to glideshow.org
+routes = [{ pattern = "glideshow.org", custom_domain = true }, { pattern = "www.glideshow.org", custom_domain = true }, { pattern = "edit.ryanvt.com", custom_domain = true }, { pattern = "slides.ryanvt.com", custom_domain = true }]
+
+[vars]
+ALLOWED_USERS = "*"   # GitHub logins who may keep a library here, in a repo ("*" = anyone); others can only open what is shared with them
+ALLOWED_GOOGLE = "*"   # Google accounts who may keep a library here, in their Drive ("*" = anyone)
+OLD_SHARE_OWNER = "heyodog0"   # slides.ryanvt.com/<slug>/ links redirect to glideshow.org/p/<this>/<slug>/
+ADMINS = "heyodog0"   # GitHub logins who see reports and can take shared decks down or suspend accounts (/admin)
+LIB_SLOW = "100000"   # a library's requests a day past which its editors check for changes once a minute (cloud/library.js meter; Workers Paid plan)
+LIB_PAUSE = "200000"   # … and past which its background traffic is paused until 00:00 UTC
+
+[assets]
+directory = "../editor"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "none"
+
+[[durable_objects.bindings]]
+name = "LIB"
+class_name = "Library"
+
+[[durable_objects.bindings]]
+name = "DIR"
+class_name = "Directory"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Library"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Directory"]
+
+# Writes (POSTs) per person or address, and reports per address (worker.js `limited`). period is 10 or 60 seconds.
+[[ratelimits]]
+name = "WRITES"
+namespace_id = "1001"
+simple = { limit = 300, period = 60 }
+
+[[ratelimits]]
+name = "REPORTS"
+namespace_id = "1002"
+simple = { limit = 5, period = 60 }
+
+# Workers Logs: requests, errors and console output, kept a few days (dashboard → Workers → slides-edit → Logs)
+[observability]
+enabled = true
+
+# Staging: dev.glideshow.org, a second Worker with Durable Objects of its own, for trying changes before glideshow.org
+# (`npx wrangler deploy --env dev`; its secrets: `cloud/setup.sh dev`). Libraries there keep the test branch of the
+# decks repo, never main, and only the owner may sign in. GitHub's push webhook goes to glideshow.org only, so editors
+# here check for changes every 8 s.
+[env.dev]
+name = "slides-edit-dev"
+workers_dev = false
+routes = [{ pattern = "dev.glideshow.org", custom_domain = true }]
+
+[env.dev.vars]
+ALLOWED_USERS = "heyodog0"
+ALLOWED_GOOGLE = ""
+ADMINS = "heyodog0"
+DEV_REPO = "heyodog0/decks"
+DEV_BRANCH = "cloud-test"
+LIB_SLOW = "100000"
+LIB_PAUSE = "200000"
+
+[[env.dev.durable_objects.bindings]]
+name = "LIB"
+class_name = "Library"
+
+[[env.dev.durable_objects.bindings]]
+name = "DIR"
+class_name = "Directory"
+
+[[env.dev.ratelimits]]
+name = "WRITES"
+namespace_id = "1001"
+simple = { limit = 300, period = 60 }
+
+[[env.dev.ratelimits]]
+name = "REPORTS"
+namespace_id = "1002"
+simple = { limit = 5, period = 60 }

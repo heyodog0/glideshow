@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Speaker notes · Glideshow</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<!-- Speaker view for a shared deck (glideshow.org/p/…). The deck runs sandboxed, with no origin of its own, so reveal.js's
+     notes plugin can't write its speaker window; share.js opens this page instead (?deck=<the link's address>) and keeps
+     it in step with postMessage: the slide, its step and its notes come from the deck, and Next / Previous go back to it.
+     The two pictures are the shared deck itself in frames, moved with reveal.js's own postMessage API. -->
+<style>
+  :root { color-scheme: dark; --bg: #1f1f1f; --panel: #2a2a2a; --ink: #e8eaed; --muted: #9aa0a6; --accent: #8ab4f8; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { display: grid; grid-template: auto 1fr / minmax(0, 3fr) minmax(0, 2fr); gap: 12px; padding: 12px; }
+  header { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; }
+  header .n { font-weight: 600; } header .clock, header .timer { font-variant-numeric: tabular-nums; color: var(--muted); }
+  header .timer { color: var(--ink); font-size: 18px; } header .grow { flex: 1; }
+  button { height: 34px; padding: 0 14px; border: 0; border-radius: 17px; background: var(--panel); color: var(--ink); font: inherit; cursor: pointer; }
+  button:hover { background: #3c4043; } button.primary { background: var(--accent); color: #202124; }
+  .stage { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 6px; min-height: 0; }
+  .side { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); gap: 6px; min-height: 0; }
+  .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .frame { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 8px; overflow: hidden; max-height: 100%; }
+  .frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+  .frame.end::after { content: 'End of the deck'; position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); background: #000; }
+  .notes { overflow: auto; background: var(--panel); border-radius: 8px; padding: 14px 16px; font-size: 22px; line-height: 1.45; white-space: pre-wrap; }
+  .notes:empty::before { content: 'No speaker notes on this slide.'; color: var(--muted); font-size: 16px; }
+  .gone { grid-column: 1 / -1; display: grid; place-items: center; color: var(--muted); }
+  @media (max-width: 760px) { body { grid-template: auto auto 1fr / 1fr; } .side { grid-template-rows: auto auto auto minmax(160px, 1fr); } }
+</style>
+</head>
+<body>
+<header>
+  <span class="n" id="n">Slide –</span>
+  <button id="prev" title="Previous (←)">Previous</button><button id="next" class="primary" title="Next (→ or space)">Next</button>
+  <span class="grow"></span>
+  <span class="timer" id="timer" title="Time since this window opened (click to restart)">0:00</span><span class="clock" id="clock"></span>
+</header>
+<section class="stage"><span class="label">Now</span><div class="frame" id="cur"></div></section>
+<section class="side"><span class="label">Next</span><div class="frame" id="nxt"></div><span class="label">Notes</span><div class="notes" id="notes"></div></section>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const deck = new URLSearchParams(location.search).get('deck') || '';
+  if (!/^\/(p|e)\/[^/]+\/[^/]+\/(~[\w.-]+\/)?$/.test(deck) || !window.opener) {   // only a shared deck's own address, opened by that deck
+    document.body.innerHTML = '<p class="gone">Open speaker notes from a shared deck (press S while it is shown).</p>'; return;
+  }
+  const frame = (host) => { const f = document.createElement('iframe'); f.src = deck + '?speaker#/0'; f.setAttribute('tabindex', '-1'); host.append(f); return f; };
+  const cur = frame($('cur')), nxt = frame($('nxt'));
+  const tell = (f, method, args = []) => f.contentWindow?.postMessage(JSON.stringify({ method, args }), '*');   // reveal.js's postMessage API
+  let state = null;
+  const show = () => {
+    if (!state) return;
+    $('n').textContent = `Slide ${state.n} of ${state.total}`;
+    $('notes').textContent = state.notes || '';
+    tell(cur, 'slide', [state.h, state.v, state.f]);
+    tell(nxt, 'slide', [state.h, state.v, state.f]); tell(nxt, 'next');
+    $('nxt').classList.toggle('end', !!state.last);
+  };
+  [cur, nxt].forEach(f => f.addEventListener('load', () => setTimeout(show, 300)));
+  addEventListener('message', e => {
+    if (e.source !== window.opener) return;
+    let m = e.data; if (typeof m === 'string') { try { m = JSON.parse(m); } catch { return; } }
+    if (m?.gs === 'speaker' && m.state) { state = m.state; show(); }
+  });
+  const go = dir => window.opener?.postMessage({ gs: 'speaker-nav', dir }, '*');
+  $('prev').onclick = () => go('prev'); $('next').onclick = () => go('next');
+  addEventListener('keydown', e => {
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); go('next'); }
+    if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); go('prev'); }
+  });
+  let t0 = Date.now();
+  $('timer').onclick = () => { t0 = Date.now(); };
+  const pad = n => String(n).padStart(2, '0');
+  setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000), h = Math.floor(s / 3600);
+    $('timer').textContent = (h ? `${h}:${pad(Math.floor(s / 60) % 60)}` : `${Math.floor(s / 60)}`) + ':' + pad(s % 60);
+    $('clock').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }, 1000);
+  window.opener.postMessage({ gs: 'speaker-ready' }, '*');
+  setInterval(() => { if (!window.opener || window.opener.closed) document.body.innerHTML = '<p class="gone">The deck was closed.</p>'; }, 2000);
+})();
+</script>
+</body>
+</html>

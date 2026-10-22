@@ -1,0 +1,5 @@
+# not served: type-checking files (tsc -p editor)
+tsconfig.json
+globals.d.ts
+.DS_Store
+**/.DS_Store

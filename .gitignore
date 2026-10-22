@@ -1,0 +1,24 @@
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+# local only: Google Slides screenshots used as the visual reference, and generated test output
+reference/
+test/shots/*.png
+test/*.png
+replicate/
+dist/
+# secrets for `wrangler dev` (cloud/)
+cloud/.dev.vars
+cloud/.wrangler/
+
+# fidelity study: the images are re-made from the code and from Google (summary.json and report.md are kept)
+fidelity/results/*/google/
+fidelity/results/*/ours/
+
+# mobile study: captures of Google Slides' iPhone app stay on this Mac (only the checklist is kept)
+mobile/reference/*
+!mobile/reference/CAPTURE.md
+test/shots/mobile/
+test/shots/media/
+test/shots/share/

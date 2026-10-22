@@ -1,0 +1,1229 @@
+{
+ "presentationId": "FIXTURE",
+ "title": "Fixture deck",
+ "pageSize": {
+  "width": {
+   "magnitude": 9144000,
+   "unit": "EMU"
+  },
+  "height": {
+   "magnitude": 5143500,
+   "unit": "EMU"
+  }
+ },
+ "masters": [
+  {
+   "objectId": "m1",
+   "pageType": "MASTER",
+   "pageProperties": {
+    "pageBackgroundFill": {
+     "solidFill": {
+      "color": {
+       "rgbColor": {
+        "red": 1,
+        "green": 1,
+        "blue": 1
+       }
+      }
+     }
+    },
+    "colorScheme": {
+     "colors": [
+      {
+       "type": "DARK1",
+       "color": {}
+      },
+      {
+       "type": "LIGHT1",
+       "color": {
+        "red": 1,
+        "green": 1,
+        "blue": 1
+       }
+      },
+      {
+       "type": "DARK2",
+       "color": {
+        "red": 0.349,
+        "green": 0.349,
+        "blue": 0.349
+       }
+      },
+      {
+       "type": "ACCENT1",
+       "color": {
+        "red": 0.259,
+        "green": 0.522,
+        "blue": 0.957
+       }
+      },
+      {
+       "type": "TEXT1",
+       "color": {}
+      },
+      {
+       "type": "BACKGROUND1",
+       "color": {
+        "red": 1,
+        "green": 1,
+        "blue": 1
+       }
+      }
+     ]
+    }
+   },
+   "pageElements": [
+    {
+     "objectId": "m1-title",
+     "size": {
+      "width": {
+       "magnitude": 8229600,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 1200000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 457200,
+      "translateY": 1200000,
+      "unit": "EMU"
+     },
+     "shape": {
+      "shapeType": "TEXT_BOX",
+      "placeholder": {
+       "type": "TITLE"
+      },
+      "shapeProperties": {
+       "shapeBackgroundFill": {
+        "propertyState": "NOT_RENDERED"
+       },
+       "outline": {
+        "propertyState": "NOT_RENDERED"
+       },
+       "contentAlignment": "BOTTOM"
+      },
+      "text": {
+       "textElements": [
+        {
+         "paragraphMarker": {
+          "style": {
+           "alignment": "CENTER"
+          }
+         }
+        },
+        {
+         "textRun": {
+          "content": "Click to add title\n",
+          "style": {
+           "fontSize": {
+            "magnitude": 52,
+            "unit": "PT"
+           },
+           "fontFamily": "Arial",
+           "foregroundColor": {
+            "opaqueColor": {
+             "themeColor": "DARK1"
+            }
+           },
+           "weightedFontFamily": {
+            "fontFamily": "Arial",
+            "weight": 400
+           }
+          }
+         }
+        }
+       ]
+      }
+     }
+    },
+    {
+     "objectId": "m1-body",
+     "size": {
+      "width": {
+       "magnitude": 8229600,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 3000000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 457200,
+      "translateY": 1600000,
+      "unit": "EMU"
+     },
+     "shape": {
+      "shapeType": "TEXT_BOX",
+      "placeholder": {
+       "type": "BODY"
+      },
+      "shapeProperties": {
+       "shapeBackgroundFill": {
+        "propertyState": "NOT_RENDERED"
+       },
+       "outline": {
+        "propertyState": "NOT_RENDERED"
+       },
+       "contentAlignment": "TOP"
+      },
+      "text": {
+       "textElements": [
+        {
+         "paragraphMarker": {
+          "style": {
+           "alignment": "START",
+           "lineSpacing": 115
+          },
+          "bullet": {
+           "nestingLevel": 0,
+           "glyph": "\u25cf"
+          }
+         }
+        },
+        {
+         "textRun": {
+          "content": "Click to add text\n",
+          "style": {
+           "fontSize": {
+            "magnitude": 18,
+            "unit": "PT"
+           },
+           "fontFamily": "Arial",
+           "foregroundColor": {
+            "opaqueColor": {
+             "themeColor": "DARK2"
+            }
+           }
+          }
+         }
+        }
+       ]
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "layouts": [
+  {
+   "objectId": "l1",
+   "pageType": "LAYOUT",
+   "layoutProperties": {
+    "masterObjectId": "m1",
+    "name": "TITLE_AND_BODY"
+   },
+   "pageProperties": {
+    "pageBackgroundFill": {
+     "propertyState": "INHERIT"
+    }
+   },
+   "pageElements": [
+    {
+     "objectId": "l1-title",
+     "size": {
+      "width": {
+       "magnitude": 8229600,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 850000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 457200,
+      "translateY": 300000,
+      "unit": "EMU"
+     },
+     "shape": {
+      "shapeType": "TEXT_BOX",
+      "placeholder": {
+       "type": "TITLE",
+       "parentObjectId": "m1-title"
+      },
+      "shapeProperties": {
+       "shapeBackgroundFill": {
+        "propertyState": "INHERIT"
+       },
+       "outline": {
+        "propertyState": "INHERIT"
+       },
+       "contentAlignment": "MIDDLE"
+      },
+      "text": {
+       "textElements": [
+        {
+         "paragraphMarker": {
+          "style": {
+           "alignment": "START"
+          }
+         }
+        },
+        {
+         "textRun": {
+          "content": "Click to add title\n",
+          "style": {
+           "fontSize": {
+            "magnitude": 28,
+            "unit": "PT"
+           }
+          }
+         }
+        }
+       ]
+      }
+     }
+    },
+    {
+     "objectId": "l1-body",
+     "size": {
+      "width": {
+       "magnitude": 8229600,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 3500000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 457200,
+      "translateY": 1250000,
+      "unit": "EMU"
+     },
+     "shape": {
+      "shapeType": "TEXT_BOX",
+      "placeholder": {
+       "type": "BODY",
+       "parentObjectId": "m1-body"
+      },
+      "shapeProperties": {
+       "shapeBackgroundFill": {
+        "propertyState": "INHERIT"
+       },
+       "outline": {
+        "propertyState": "INHERIT"
+       }
+      },
+      "text": {
+       "textElements": [
+        {
+         "paragraphMarker": {
+          "style": {},
+          "bullet": {
+           "nestingLevel": 0,
+           "glyph": "\u25cf"
+          }
+         }
+        },
+        {
+         "textRun": {
+          "content": "Click to add text\n",
+          "style": {}
+         }
+        }
+       ]
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "slides": [
+  {
+   "objectId": "s1",
+   "slideProperties": {
+    "layoutObjectId": "l1",
+    "masterObjectId": "m1",
+    "notesPage": {
+     "pageElements": [
+      {
+       "objectId": "n1",
+       "shape": {
+        "shapeType": "TEXT_BOX",
+        "placeholder": {
+         "type": "BODY"
+        },
+        "text": {
+         "textElements": [
+          {
+           "paragraphMarker": {
+            "style": {}
+           }
+          },
+          {
+           "textRun": {
+            "content": "Say hello first\n",
+            "style": {}
+           }
+          },
+          {
+           "paragraphMarker": {
+            "style": {}
+           }
+          },
+          {
+           "textRun": {
+            "content": "then the plot\n",
+            "style": {}
+           }
+          }
+         ]
+        }
+       }
+      }
+     ]
+    }
+   },
+   "pageProperties": {
+    "pageBackgroundFill": {
+     "propertyState": "INHERIT"
+    }
+   },
+   "pageElements": [
+    {
+     "objectId": "s1-title",
+     "size": {
+      "width": {
+       "magnitude": 8229600,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 850000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 457200,
+      "translateY": 300000,
+      "unit": "EMU"
+     },
+     "shape": {
+      "shapeType": "TEXT_BOX",
+      "placeholder": {
+       "type": "TITLE",
+       "parentObjectId": "l1-title"
+      },
+      "shapeProperties": {
+       "shapeBackgroundFill": {
+        "propertyState": "INHERIT"
+       },
+       "outline": {
+        "propertyState": "INHERIT"
+       }
+      },
+      "text": {
+       "textElements": [
+        {
+         "paragraphMarker": {
+          "style": {}
+         }
+        },
+        {
+         "textRun": {
+          "content": "Results so far\n",
+          "style": {}
+         }
+        }
+       ]
+      }
+     }
+    },
+    {
+     "objectId": "s1-body",
+     "size": {
+      "width": {
+       "magnitude": 8229600,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 3500000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 457200,
+      "translateY": 1250000,
+      "unit": "EMU"
+     },
+     "shape": {
+      "shapeType": "TEXT_BOX",
+      "placeholder": {
+       "type": "BODY",
+       "parentObjectId": "l1-body"
+      },
+      "shapeProperties": {
+       "shapeBackgroundFill": {
+        "propertyState": "INHERIT"
+       },
+       "outline": {
+        "propertyState": "INHERIT"
+       },
+       "autofit": {
+        "autofitType": "TEXT_AUTOFIT",
+        "fontScale": 0.9
+       }
+      },
+      "text": {
+       "textElements": [
+        {
+         "paragraphMarker": {
+          "style": {},
+          "bullet": {
+           "nestingLevel": 0,
+           "glyph": "\u25cf"
+          }
+         }
+        },
+        {
+         "textRun": {
+          "content": "Agents learn the task in ",
+          "style": {}
+         }
+        },
+        {
+         "textRun": {
+          "content": "2 k",
+          "style": {
+           "bold": true
+          }
+         }
+        },
+        {
+         "textRun": {
+          "content": " steps\n",
+          "style": {}
+         }
+        },
+        {
+         "paragraphMarker": {
+          "style": {},
+          "bullet": {
+           "nestingLevel": 0,
+           "glyph": "\u25cf"
+          }
+         }
+        },
+        {
+         "textRun": {
+          "content": "Transfer holds across seeds\n",
+          "style": {
+           "italic": true
+          }
+         }
+        },
+        {
+         "paragraphMarker": {
+          "style": {},
+          "bullet": {
+           "nestingLevel": 1,
+           "glyph": "\u25cb"
+          }
+         }
+        },
+        {
+         "textRun": {
+          "content": "even with ",
+          "style": {}
+         }
+        },
+        {
+         "textRun": {
+          "content": "\u03b2 > 0.5\n",
+          "style": {
+           "foregroundColor": {
+            "opaqueColor": {
+             "rgbColor": {
+              "red": 0.851,
+              "green": 0.188,
+              "blue": 0.145
+             }
+            }
+           }
+          }
+         }
+        }
+       ]
+      }
+     }
+    },
+    {
+     "objectId": "s1-empty",
+     "size": {
+      "width": {
+       "magnitude": 1000000,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 400000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 7000000,
+      "translateY": 4500000,
+      "unit": "EMU"
+     },
+     "shape": {
+      "shapeType": "TEXT_BOX",
+      "placeholder": {
+       "type": "SUBTITLE"
+      },
+      "shapeProperties": {},
+      "text": {
+       "textElements": [
+        {
+         "paragraphMarker": {}
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "objectId": "s2",
+   "slideProperties": {
+    "layoutObjectId": "l1",
+    "masterObjectId": "m1"
+   },
+   "pageProperties": {
+    "pageBackgroundFill": {
+     "solidFill": {
+      "color": {
+       "rgbColor": {
+        "red": 0.95,
+        "green": 0.96,
+        "blue": 0.98
+       }
+      }
+     }
+    }
+   },
+   "pageElements": [
+    {
+     "objectId": "env",
+     "size": {
+      "width": {
+       "magnitude": 1828800,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 914400,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 685800,
+      "translateY": 2057400,
+      "unit": "EMU"
+     },
+     "shape": {
+      "shapeType": "ROUND_RECTANGLE",
+      "shapeProperties": {
+       "shapeBackgroundFill": {
+        "solidFill": {
+         "color": {
+          "rgbColor": {
+           "red": 0.909,
+           "green": 0.941,
+           "blue": 0.996
+          }
+         }
+        }
+       },
+       "outline": {
+        "outlineFill": {
+         "solidFill": {
+          "color": {
+           "opaqueColor": {
+            "themeColor": "ACCENT1"
+           }
+          }
+         }
+        },
+        "weight": {
+         "magnitude": 28575,
+         "unit": "EMU"
+        },
+        "dashStyle": "SOLID"
+       },
+       "contentAlignment": "MIDDLE"
+      },
+      "text": {
+       "textElements": [
+        {
+         "paragraphMarker": {
+          "style": {
+           "alignment": "CENTER"
+          }
+         }
+        },
+        {
+         "textRun": {
+          "content": "Environment\n",
+          "style": {
+           "fontSize": {
+            "magnitude": 20,
+            "unit": "PT"
+           }
+          }
+         }
+        }
+       ]
+      }
+     }
+    },
+    {
+     "objectId": "agent",
+     "size": {
+      "width": {
+       "magnitude": 1828800,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 914400,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 6400800,
+      "translateY": 2057400,
+      "unit": "EMU"
+     },
+     "shape": {
+      "shapeType": "ROUND_RECTANGLE",
+      "shapeProperties": {
+       "shapeBackgroundFill": {
+        "solidFill": {
+         "color": {
+          "rgbColor": {
+           "red": 0.988,
+           "green": 0.909,
+           "blue": 0.902
+          }
+         }
+        }
+       },
+       "outline": {
+        "outlineFill": {
+         "solidFill": {
+          "color": {
+           "rgbColor": {
+            "red": 0.851,
+            "green": 0.188,
+            "blue": 0.145
+           }
+          }
+         }
+        },
+        "weight": {
+         "magnitude": 28575,
+         "unit": "EMU"
+        },
+        "dashStyle": "DASH"
+       }
+      },
+      "text": {
+       "textElements": [
+        {
+         "paragraphMarker": {
+          "style": {
+           "alignment": "CENTER"
+          }
+         }
+        },
+        {
+         "textRun": {
+          "content": "Agent\n",
+          "style": {
+           "fontSize": {
+            "magnitude": 20,
+            "unit": "PT"
+           }
+          }
+         }
+        }
+       ]
+      }
+     }
+    },
+    {
+     "objectId": "conn",
+     "size": {
+      "width": {
+       "magnitude": 3886200,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 0,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 2514600,
+      "translateY": 2514600,
+      "unit": "EMU"
+     },
+     "line": {
+      "lineType": "STRAIGHT_CONNECTOR_1",
+      "lineProperties": {
+       "lineFill": {
+        "solidFill": {
+         "color": {
+          "rgbColor": {
+           "red": 0.373,
+           "green": 0.388,
+           "blue": 0.408
+          }
+         }
+        }
+       },
+       "weight": {
+        "magnitude": 38100,
+        "unit": "EMU"
+       },
+       "dashStyle": "SOLID",
+       "startArrow": "NONE",
+       "endArrow": "FILL_ARROW",
+       "startConnection": {
+        "connectedObjectId": "env",
+        "connectionSiteIndex": 3
+       },
+       "endConnection": {
+        "connectedObjectId": "agent",
+        "connectionSiteIndex": 1
+       }
+      }
+     }
+    },
+    {
+     "objectId": "up",
+     "size": {
+      "width": {
+       "magnitude": 1500000,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 800000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 3700000,
+      "translateY": 500000,
+      "unit": "EMU"
+     },
+     "shape": {
+      "shapeType": "RIGHT_ARROW",
+      "shapeProperties": {
+       "shapeBackgroundFill": {
+        "solidFill": {
+         "color": {
+          "rgbColor": {
+           "red": 0.976,
+           "green": 0.671,
+           "blue": 0
+          }
+         }
+        }
+       },
+       "outline": {
+        "propertyState": "NOT_RENDERED"
+       }
+      }
+     }
+    },
+    {
+     "objectId": "tilt",
+     "size": {
+      "width": {
+       "magnitude": 1200000,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 600000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 0.8660254,
+      "scaleY": 0.8660254,
+      "shearX": -0.5,
+      "shearY": 0.5,
+      "translateX": 1500000,
+      "translateY": 3800000,
+      "unit": "EMU"
+     },
+     "shape": {
+      "shapeType": "RECTANGLE",
+      "shapeProperties": {
+       "shapeBackgroundFill": {
+        "solidFill": {
+         "color": {
+          "rgbColor": {
+           "red": 0.094,
+           "green": 0.502,
+           "blue": 0.22
+          }
+         },
+         "alpha": 0.5
+        }
+       },
+       "outline": {
+        "propertyState": "NOT_RENDERED"
+       }
+      }
+     }
+    },
+    {
+     "objectId": "pic",
+     "size": {
+      "width": {
+       "magnitude": 1600000,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 1200000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 6800000,
+      "translateY": 3500000,
+      "unit": "EMU"
+     },
+     "image": {
+      "contentUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGO4aaAKRwzEcQD2QxLh3ATLOQAAAABJRU5ErkJggg==",
+      "imageProperties": {
+       "cropProperties": {
+        "leftOffset": 0.1,
+        "topOffset": 0.05
+       }
+      }
+     },
+     "description": "A red square"
+    },
+    {
+     "objectId": "grp",
+     "size": {
+      "width": {
+       "magnitude": 2000000,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 1000000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 3500000,
+      "translateY": 3600000,
+      "unit": "EMU"
+     },
+     "elementGroup": {
+      "children": [
+       {
+        "objectId": "g-a",
+        "size": {
+         "width": {
+          "magnitude": 800000,
+          "unit": "EMU"
+         },
+         "height": {
+          "magnitude": 800000,
+          "unit": "EMU"
+         }
+        },
+        "transform": {
+         "scaleX": 1,
+         "scaleY": 1,
+         "shearX": 0,
+         "shearY": 0,
+         "translateX": 0,
+         "translateY": 0,
+         "unit": "EMU"
+        },
+        "shape": {
+         "shapeType": "ELLIPSE",
+         "shapeProperties": {
+          "shapeBackgroundFill": {
+           "solidFill": {
+            "color": {
+             "rgbColor": {
+              "red": 0.2,
+              "green": 0.2,
+              "blue": 0.2
+             }
+            }
+           }
+          },
+          "outline": {
+           "propertyState": "NOT_RENDERED"
+          }
+         }
+        }
+       },
+       {
+        "objectId": "g-b",
+        "size": {
+         "width": {
+          "magnitude": 800000,
+          "unit": "EMU"
+         },
+         "height": {
+          "magnitude": 800000,
+          "unit": "EMU"
+         }
+        },
+        "transform": {
+         "scaleX": 1,
+         "scaleY": 1,
+         "shearX": 0,
+         "shearY": 0,
+         "translateX": 1200000,
+         "translateY": 0,
+         "unit": "EMU"
+        },
+        "shape": {
+         "shapeType": "DIAMOND",
+         "shapeProperties": {
+          "shapeBackgroundFill": {
+           "solidFill": {
+            "color": {
+             "rgbColor": {
+              "red": 0.6,
+              "green": 0.6,
+              "blue": 0.6
+             }
+            }
+           }
+          },
+          "outline": {
+           "propertyState": "NOT_RENDERED"
+          }
+         }
+        }
+       },
+       {
+        "objectId": "g-l",
+        "size": {
+         "width": {
+          "magnitude": 400000,
+          "unit": "EMU"
+         },
+         "height": {
+          "magnitude": 0,
+          "unit": "EMU"
+         }
+        },
+        "transform": {
+         "scaleX": 1,
+         "scaleY": 1,
+         "shearX": 0,
+         "shearY": 0,
+         "translateX": 800000,
+         "translateY": 400000,
+         "unit": "EMU"
+        },
+        "line": {
+         "lineType": "STRAIGHT_LINE",
+         "lineProperties": {
+          "lineFill": {
+           "solidFill": {
+            "color": {
+             "rgbColor": {}
+            }
+           }
+          },
+          "weight": {
+           "magnitude": 12700,
+           "unit": "EMU"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "objectId": "tbl",
+     "size": {
+      "width": {
+       "magnitude": 3000000,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 900000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 500000,
+      "translateY": 500000,
+      "unit": "EMU"
+     },
+     "table": {
+      "rows": 2,
+      "columns": 2,
+      "tableRows": [
+       {
+        "tableCells": [
+         {
+          "text": {
+           "textElements": [
+            {
+             "paragraphMarker": {
+              "style": {}
+             }
+            },
+            {
+             "textRun": {
+              "content": "seed\n",
+              "style": {
+               "bold": true
+              }
+             }
+            }
+           ]
+          }
+         },
+         {
+          "text": {
+           "textElements": [
+            {
+             "paragraphMarker": {
+              "style": {}
+             }
+            },
+            {
+             "textRun": {
+              "content": "return\n",
+              "style": {
+               "bold": true
+              }
+             }
+            }
+           ]
+          },
+          "tableCellProperties": {
+           "tableCellBackgroundFill": {
+            "solidFill": {
+             "color": {
+              "rgbColor": {
+               "red": 0.9,
+               "green": 0.9,
+               "blue": 0.9
+              }
+             }
+            }
+           }
+          }
+         }
+        ]
+       },
+       {
+        "tableCells": [
+         {
+          "text": {
+           "textElements": [
+            {
+             "paragraphMarker": {
+              "style": {}
+             }
+            },
+            {
+             "textRun": {
+              "content": "1\n",
+              "style": {}
+             }
+            }
+           ]
+          }
+         },
+         {
+          "text": {
+           "textElements": [
+            {
+             "paragraphMarker": {
+              "style": {}
+             }
+            },
+            {
+             "textRun": {
+              "content": "0.93\n",
+              "style": {}
+             }
+            }
+           ]
+          }
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "locale": "en"
+}

@@ -1,0 +1,55 @@
+[project]
+name = "glideshow"
+version = "0.1.0"
+description = "Slides you own: a Google Slides-style editor whose decks are plain HTML folders that AI agents can edit"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []   # the server is the standard library only
+
+[project.urls]
+Homepage = "https://glideshow.org"
+Source = "https://github.com/heyodog0/glideshow"
+
+[project.optional-dependencies]
+pptx = ["python-pptx>=0.6.23"]   # PowerPoint import / export (without it, uv fetches it per run)
+
+[project.scripts]
+glideshow = "glideshow.cli:run"
+
+[dependency-groups]
+dev = ["playwright>=1.44"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["glideshow"]
+
+[tool.hatch.build.targets.wheel.force-include]   # the browser app and the docs every deck gets, inside the package
+"editor" = "glideshow/editor"
+"docs/agents.md" = "glideshow/docs/agents.md"
+"docs/deck-format.md" = "glideshow/docs/deck-format.md"
+"skills" = "glideshow/skills"
+
+[tool.ruff]
+line-length = 160
+
+[tool.ruff.lint]
+# Pyflakes and the error-prone parts of pycodestyle. The code is deliberately compact (several statements on a line,
+# small lambdas, imports where they're used), so the rules against that style are off.
+ignore = ["E401", "E402", "E701", "E702", "E703", "E731", "E741"]
+
+[tool.pyright]
+include = ["glideshow", "tools", "test"]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+reportMissingImports = "none"   # playwright and python-pptx are fetched by uv per script
+# Parsed documents (HTML, the Slides API's JSON, regex matches) are walked knowing their shape; None-checks on every step
+# would only add noise.
+reportOptionalMemberAccess = "none"
+reportOptionalSubscript = "none"
+reportOptionalOperand = "none"
+reportOptionalIterable = "none"

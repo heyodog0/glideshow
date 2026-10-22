@@ -1,0 +1,3 @@
+#!/bin/sh
+# The glideshow command from a checkout: put bin/ on PATH (or symlink this file). Installed users get `glideshow` from the package.
+exec uv run --quiet --project "$(dirname "$(readlink -f "$0")")/.." glideshow "$@"

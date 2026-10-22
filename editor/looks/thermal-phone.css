@@ -1,0 +1,144 @@
+/* Thermal on a phone: the Google Slides iPhone app's layout and controls (editor/phone.css), dressed in Thermal
+   (editor/looks/thermal.css): cool paper by day and graphite at dusk; the mascot's canopy blue for what's chosen and
+   its navy for text; Hanken Grotesk, with IBM Plex Mono for numbers; hairlines instead of shadows; the sky as the one
+   brand moment, washed behind the top of Home only. It redefines phone.css's --ph-* tokens and dresses the few
+   surfaces that phone.css paints directly. Opt-in on a phone with ?look=thermal (remembered), off with ?look=google. */
+
+html.phone[data-look="thermal"] body {
+  --ph-bar: #f7f9fb; --ph-canvas: #eef2f6; --ph-page: #eef2f6; --ph-ink: #14204a; --ph-muted: #5c6b87; --ph-rule: #dbe2ea;
+  --ph-accent: #d9e4ff; --ph-accent-ink: #2f6bff; --ph-select: #2f6bff; --ph-halo: rgba(47, 107, 255, .22); --ph-adjust: #f2b33d;
+  --ph-surface: #ffffff; --ph-field: #eaf0f6; --ph-press: #e6ecf5; --ph-cell-ink: #2f6bff;
+  --ph-sky: radial-gradient(120% 140% at 88% 130%, #ffe1a8 0%, rgba(255, 225, 168, 0) 58%), linear-gradient(180deg, #a9c8ff 0%, #d4e3ff 48%, #eef2f6 100%);
+  --font: "Hanken Grotesk", -apple-system, system-ui, "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --icon: #3b4a6b; --toolbar: var(--ph-field); --hover: var(--ph-press); --selected: var(--ph-accent); --surface: var(--ph-surface);
+  --menu-shadow: 0 0 0 1px var(--ph-rule), 0 8px 24px rgba(20, 32, 74, .08);
+  color-scheme: light;
+}
+/* dusk: graphite surfaces, the canopy blue paler, the evening sky (violet, a peach glow) behind Home's top */
+html.phone[data-look="thermal"] body.dark {
+  --ph-bar: #17181d; --ph-canvas: #111216; --ph-page: #111216; --ph-ink: #ececee; --ph-muted: #a1a3aa; --ph-rule: #2e2f33;
+  --ph-accent: #2b3447; --ph-accent-ink: #8aaeff; --ph-select: #6f97ff; --ph-halo: rgba(138, 174, 255, .25);
+  --ph-surface: #1d1e25; --ph-field: #232427; --ph-press: #2a2b2f; --ph-cell-ink: #8aaeff;
+  --ph-sky: radial-gradient(120% 140% at 88% 130%, rgba(226, 140, 112, .5) 0%, rgba(226, 140, 112, 0) 58%), radial-gradient(140% 70% at 15% 120%, rgba(150, 88, 140, .45) 0%, rgba(150, 88, 140, 0) 70%), linear-gradient(180deg, #18182c 0%, #221e41 50%, #111216 100%);
+  --icon: #c6c7cc; --menu-shadow: 0 0 0 1px var(--ph-rule), 0 8px 24px rgba(0, 0, 0, .4);
+  color-scheme: dark;
+}
+
+/* ---- Home: the sky washes down behind the search; decks as rounded thumbnails on hairlines; + in canopy blue ---- */
+html.phone[data-look="thermal"] body:has(> .hm-bar) { background: var(--ph-page); isolation: isolate; }
+html.phone[data-look="thermal"] body:has(> .hm-bar)::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 320px; z-index: -1; background: var(--ph-sky);
+  -webkit-mask-image: linear-gradient(180deg, #000 30%, transparent); mask-image: linear-gradient(180deg, #000 30%, transparent); }
+html.phone[data-look="thermal"] .hm-bar { background: transparent !important; border: 0 !important; display: flex !important; }
+html.phone[data-look="thermal"] .ph-search { border-radius: 14px; background: color-mix(in srgb, var(--ph-surface) 72%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ph-ink) 10%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+html.phone[data-look="thermal"] .ph-search .ph-icon-btn:first-child { color: var(--icon); }
+html.phone[data-look="thermal"] .ph-avatar { background: var(--ph-accent-ink); color: var(--ph-surface); }
+html.phone[data-look="thermal"] .ph-avatar img { background: #fff; }
+html.phone[data-look="thermal"] .ph-sort { font: 500 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+html.phone[data-look="thermal"] .ph-sort .icon { font-size: 15px; }
+html.phone[data-look="thermal"] .hm-grid:not(.list) .hm-card .pic { border-radius: 12px; box-shadow: 0 0 0 1px var(--ph-rule); }
+html.phone[data-look="thermal"] .hm-card .meta::before { content: none; }   /* no file icon: the thumbnail says what it is */
+html.phone[data-look="thermal"] .hm-card .meta { padding: 10px 0 0 4px; min-height: 0; align-items: flex-start; }
+html.phone[data-look="thermal"] .hm-card .title { text-align: left; font: 500 15px/20px var(--font); color: var(--ph-ink); }
+html.phone[data-look="thermal"] .hm-card .more { height: 24px; margin-top: -2px; color: var(--ph-muted); }
+html.phone[data-look="thermal"] .hm-grid:not(.list) { row-gap: 18px; }
+html.phone[data-look="thermal"] .hm-folder { background: var(--ph-surface) !important; box-shadow: 0 0 0 1px var(--ph-rule) !important; }
+html.phone[data-look="thermal"] .hm-move { background: var(--ph-surface); box-shadow: inset 0 0 0 1px var(--ph-rule); }
+html.phone[data-look="thermal"] .hm-move-go { background: var(--ph-accent-ink); color: var(--ph-surface); }
+html.phone[data-look="thermal"] #hm-new.ph-fab { background: var(--ph-accent-ink); color: #fff; box-shadow: 0 0 0 1px color-mix(in srgb, #14204a 12%, transparent); }
+html.phone[data-look="thermal"] body.dark #hm-new.ph-fab { background: #ececee; color: #18182c; }   /* dusk: the mascot's white, as the desktop's New presentation */
+html.phone[data-look="thermal"] .menu { border-radius: 14px; }
+
+/* ---- view mode and the editor: calm bars with a hairline, the slide on paper with a soft edge ---- */
+html.phone[data-look="thermal"] .ph-top, html.phone[data-look="thermal"] .ph-show-bar { border-bottom-color: var(--ph-rule); }
+html.phone[data-look="thermal"] .ph-bar .ph-icon-btn { color: var(--icon); }
+html.phone[data-look="thermal"] .ph-bar-edit .ph-done { color: var(--ph-accent-ink); }
+html.phone[data-look="thermal"] .ph-vslide { margin-bottom: 8px; background: var(--ph-field); }
+html.phone[data-look="thermal"] .ph-vslide.cur::after { box-shadow: inset 0 0 0 2px var(--ph-accent-ink); }
+html.phone[data-look="thermal"] .ph-chip { border-radius: 999px; padding: 4px 10px; background: color-mix(in srgb, var(--ph-surface) 80%, transparent); color: var(--ph-ink);
+  box-shadow: 0 0 0 1px var(--ph-rule); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font: 500 12px/1 var(--mono); }
+html.phone[data-look="thermal"] #ed-frame { box-shadow: 0 0 0 1px rgba(20, 32, 74, .06), 0 6px 20px rgba(20, 32, 74, .06); border-radius: 4px; }
+html.phone[data-look="thermal"] body.dark #ed-frame { box-shadow: 0 0 0 1px #2e2f33; }
+/* the filmstrip: rounded thumbnails on hairlines; the current one ringed in blue on a pale tint, its number in mono */
+html.phone[data-look="thermal"] .ph-film, html.phone[data-look="thermal"] .ph-tools { border-top-color: var(--ph-rule); }
+html.phone[data-look="thermal"] .ph-cell { border-radius: 12px; }
+html.phone[data-look="thermal"] .ph-thumb { border-radius: 6px; box-shadow: 0 0 0 1px var(--ph-rule); }
+html.phone[data-look="thermal"] .ph-cell.cur .ph-thumb, html.phone[data-look="thermal"] .ph-cell.picked .ph-thumb { box-shadow: 0 0 0 2px var(--ph-accent-ink); }
+html.phone[data-look="thermal"] .ph-num { font: 400 12px/1 var(--mono); color: var(--ph-muted); }
+html.phone[data-look="thermal"] .ph-cell.cur .ph-num, html.phone[data-look="thermal"] .ph-cell.picked .ph-num { color: var(--ph-cell-ink); font-weight: 500; }
+html.phone[data-look="thermal"] .ph-film-new { color: var(--icon); }
+html.phone[data-look="thermal"] .ph-count { color: var(--ph-accent-ink); font-family: var(--mono); }
+/* toolbars: the active button a pale blue tile */
+html.phone[data-look="thermal"] .ph-tools .ph-icon-btn { color: var(--icon); }
+html.phone[data-look="thermal"] .ph-tools .ph-icon-btn.on .icon { border-radius: 8px; }
+/* selection: the canopy blue */
+html.phone[data-look="thermal"] .sel-box, html.phone[data-look="thermal"] .sel-box.editing { box-shadow: 0 0 0 calc(var(--k, 1px) * .75) var(--ph-select), 0 0 0 calc(var(--k, 1px) * 3.25) var(--ph-halo); }
+html.phone[data-look="thermal"] .handle:not(.adjust):not(.crop):not(.rotate) { border-radius: calc(var(--k, 1px) * 2); }
+/* the iOS-style edit menu: frosted paper with a hairline rather than grey glass */
+html.phone[data-look="thermal"] .ph-editmenu { background: color-mix(in srgb, var(--ph-surface) 85%, transparent); box-shadow: 0 0 0 1px var(--ph-rule), 0 8px 24px rgba(20, 32, 74, .10); }
+html.phone[data-look="thermal"] .ph-editmenu button { color: var(--ph-ink); }
+html.phone[data-look="thermal"] .ph-editmenu button + button { border-left-color: var(--ph-rule); }
+
+/* ---- sheets: paper with rounded top corners and a hairline; rows on hairlines; tabs and picks in canopy blue ---- */
+html.phone[data-look="thermal"] .ph-sheet { border-radius: 18px 18px 0 0; box-shadow: 0 0 0 1px var(--ph-rule); background: var(--ph-surface); }
+html.phone[data-look="thermal"] .ph-page { background: var(--ph-surface); }
+html.phone[data-look="thermal"] .ph-page-title { font-weight: 500; }
+html.phone[data-look="thermal"] .ph-row > .icon:first-child, html.phone[data-look="thermal"] .ph-row .ph-more { color: var(--icon); }
+html.phone[data-look="thermal"] .ph-row:active:not(:disabled), html.phone[data-look="thermal"] .ph-shape-cell:active { background: var(--ph-press); }
+html.phone[data-look="thermal"] .ph-tabs button.on { color: var(--ph-accent-ink); }
+html.phone[data-look="thermal"] .ph-tabs button.on::after { background: var(--ph-accent-ink); }
+html.phone[data-look="thermal"] .ph-shape-cell svg * { fill: var(--ph-field); stroke: color-mix(in srgb, var(--ph-ink) 45%, transparent); }
+html.phone[data-look="thermal"] .ph-swatch-cell { border-color: var(--ph-rule); border-radius: 8px; }
+html.phone[data-look="thermal"] .ph-swatch-cell.on::after { background: var(--ph-accent-ink); color: #fff; }
+html.phone[data-look="thermal"] .ph-hue:first-child { border-radius: 8px 0 0 8px; } html.phone[data-look="thermal"] .ph-hue:last-child { border-radius: 0 8px 8px 0; }
+html.phone[data-look="thermal"] .ph-hue.on { box-shadow: 0 0 0 3px var(--ph-surface), 0 0 0 4px var(--ph-ink); }
+html.phone[data-look="thermal"] .ph-label { font: 500 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ph-muted); }
+html.phone[data-look="thermal"] .ph-addslide { background: var(--ph-page); }
+html.phone[data-look="thermal"] .ph-layout svg { outline-color: var(--ph-rule); border-radius: 6px; }
+html.phone[data-look="thermal"] .ph-layout { font-weight: 500; }
+
+/* ---- comments: the bar and field on paper ---- */
+html.phone[data-look="thermal"] .ph-cm-cancel { background: var(--ph-surface); box-shadow: 0 0 0 1px var(--ph-rule); }
+html.phone[data-look="thermal"] .ph-cm-hint { box-shadow: 0 0 0 1px var(--ph-rule); color: #14204a; }
+html.phone[data-look="thermal"] .ph-cm-field { background: var(--ph-field); }
+
+/* desktop Thermal's home layout that the phone doesn't take: the gap left for the actions pill */
+html.phone[data-look="thermal"] .hm-main { padding-top: 0; }
+
+/* ---- Round two: light / dark on the phone, and a little further from the app ---- */
+html.phone[data-look="thermal"] .ph-theme { display: grid !important; }
+html.phone[data-look="thermal"] .ph-sortrow .ph-theme { width: 40px; height: 48px; color: var(--ph-muted); }
+html.phone[data-look="thermal"] .ph-sortrow .ph-theme .icon { font-size: 22px; }
+/* bars the colour of the page, set apart by a hairline only */
+html.phone[data-look="thermal"] body { --ph-bar: var(--ph-canvas); }
+/* a deck: the slides one after another, a hairline between them */
+html.phone[data-look="thermal"] .ph-vslide { margin-bottom: 0; border-bottom: 1px solid var(--ph-rule); }
+/* the filmstrip: the current slide marked by its blue ring and number only, no band; New slide a dashed tile */
+html.phone[data-look="thermal"] .ph-cell.cur, html.phone[data-look="thermal"] .ph-cell.picked { background: none; }
+/* handles: round, white with a blue ring (friendlier than the app's blue squares) */
+html.phone[data-look="thermal"] .handle:not(.adjust):not(.crop):not(.rotate) { border-radius: 50%; background: #fff; box-shadow: 0 0 0 calc(var(--k, 1px) * 2) var(--ph-select); }
+/* + : a rounded square, not the app's circle */
+html.phone[data-look="thermal"] #hm-new.ph-fab { border-radius: 18px; }
+/* sheets: a grab handle on top, as iOS sheets have */
+html.phone[data-look="thermal"] .ph-sheet::before { content: ""; position: absolute; z-index: 2; left: 50%; top: 6px; width: 36px; height: 4px; translate: -50% 0; border-radius: 2px; background: color-mix(in srgb, var(--ph-ink) 22%, transparent); }
+html.phone[data-look="thermal"] body.dark { --ph-bar: var(--ph-canvas); }
+html.phone[data-look="thermal"] .handle:not(.adjust):not(.crop):not(.rotate) { box-shadow: 0 0 0 calc(var(--k, 1px) * 1.5) var(--ph-select); }
+
+/* New slide: a dashed tile the size of a thumbnail, right after the last slide in the strip (phone-edit.js), never clipped
+   at the strip's end; its + drawn (two bars), not the icon font's ligature, so it is always there and always centred */
+html.phone[data-look="thermal"] .ph-film-strip { padding-right: 10px; }
+html.phone[data-look="thermal"] .ph-film-strip > .ph-film-new { flex: none; display: flex; flex-direction: column; align-items: flex-start; width: 98px; height: 87px; padding: 9px 9px 0; border: 0 !important; border-radius: 12px; background: none; color: var(--icon); }
+html.phone[data-look="thermal"] .ph-film-new .icon { position: relative; display: block; width: 80px; height: 45px; font-size: 0; border-radius: 6px; outline: 1.5px dashed color-mix(in srgb, var(--ph-ink) 30%, transparent); outline-offset: -1px; }
+html.phone[data-look="thermal"] .ph-film-new .icon::after { content: ""; position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; translate: -50% -50%;
+  background: linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat, linear-gradient(currentColor, currentColor) center / 2px 100% no-repeat; }
+
+/* presenting: no title bar; the slide on all of the visible height; a tap shows a small ✕ and "n / N" in the corner,
+   which fade away again (phone-view.js) */
+html.phone[data-look="thermal"] .ph-show-bar { left: max(12px, env(safe-area-inset-left)); right: auto; top: max(12px, env(safe-area-inset-top)); height: 40px; padding: 0 14px 0 2px; gap: 2px;
+  border: 0; border-radius: 20px; background: rgba(18, 18, 22, .55); color: #fff; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: opacity .3s ease; }
+html.phone[data-look="thermal"] .ph-show-bar.away { transform: none; opacity: 0; pointer-events: none; }
+html.phone[data-look="thermal"] .ph-show-bar .ph-icon-btn { color: #fff; width: 32px; height: 40px; margin-left: 3px; }   /* the ✕ as far from the pill's
+   left end as "n / N" is from its right (the 48 px button sat 19 px in, and stood taller than the pill) */
+html.phone[data-look="thermal"] .ph-show-title { display: none; }
+html.phone[data-look="thermal"] .ph-show-count { display: inline; font: 500 13px/1 var(--mono); color: rgba(255, 255, 255, .9); }

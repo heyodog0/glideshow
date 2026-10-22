@@ -1,0 +1,57 @@
+# The end-to-end tests in headless Chrome (about 8 minutes on macOS). On pull requests, and by hand
+# (Actions → tests → Run workflow, or `gh workflow run tests.yml`): pushes are covered by running
+# `uv run test/smoke.py` locally before committing.
+name: tests
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-latest   # the tests are macOS's: ⌘ shortcuts (docs/shortcuts.md), its fonts in the text-fitting checks
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: git config --global user.name ci && git config --global user.email ci@example.org   # the tests make git commits
+      - run: uv run --with playwright python -m playwright install chromium   # tools/gslides2deck.py renders with Playwright's own Chromium
+      - run: uv run test/smoke.py   # drives the installed Google Chrome (playwright channel "chrome")
+      - run: uv run test/keys.py
+      - run: uv run test/agent.py   # the `glideshow` command as an agent uses it (skills/glideshow), in a library of its own
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: screenshots, path: "test/*.png", if-no-files-found: ignore }
+
+  cloud:   # glideshow.org (cloud/) on a local Worker: browser mode, a Google account's library in a stand-in Drive, sharing
+    runs-on: macos-latest   # (the sandbox, passes, comments), reports and takedowns. No real accounts: the secrets are made up.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: made-up secrets for wrangler dev
+        run: |
+          cat > cloud/.dev.vars <<VARS
+          SESSION_KEY=$(openssl rand -hex 32)
+          GITHUB_APP_ID=1
+          GITHUB_APP_SLUG=glideshow-ci
+          GITHUB_CLIENT_ID=ci
+          GITHUB_CLIENT_SECRET=ci
+          GITHUB_APP_KEY=ci
+          DEV_LOGIN=1
+          DEV_REPO=ci/decks
+          DEV_DRIVE=1
+          DRIVE_API=http://localhost:8791
+          GOOGLE_TOKEN_URL=http://localhost:8791/token
+          GOOGLE_CLIENT_ID=ci
+          GOOGLE_CLIENT_SECRET=ci
+          VARS
+      - run: uv run test/fake_drive.py 8791 > fake_drive.log 2>&1 &
+      - run: cd cloud && npx --yes wrangler@4 dev --port 8790 --local-upstream localhost:8790 > ../wrangler.log 2>&1 &
+      - run: for i in $(seq 1 90); do curl -s -o /dev/null http://localhost:8790/ && exit 0; sleep 1; done; cat wrangler.log; exit 1
+      - run: uv run test/cloud.py --drive
+      - if: failure()
+        run: tail -50 wrangler.log fake_drive.log

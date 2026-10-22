@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="/editor/js/phone-mode.js"></script>
+<title>Glideshow</title>
+<link rel="icon" href="/editor/glideshow.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/editor/apple-touch-icon.png">
+<link rel="manifest" href="/editor/manifest.json"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Glideshow">   <!-- Add to Home Screen: opens with no browser bars -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400,0..1,0&display=block">
+<link rel="stylesheet" href="/editor/editor.css">
+<link rel="stylesheet" href="/editor/phone.css">
+<script>/* the look of Glideshow's own screens (editor/looks/): Thermal, on a computer and on a phone;
+   ?look=google gives Google Slides' look and ?look=thermal brings Thermal back, each remembered in this browser */
+{ const q = new URLSearchParams(location.search); let l = 'thermal';
+  try { if (q.has('look')) localStorage.setItem('glideshow-look', q.get('look') || 'google'); l = localStorage.getItem('glideshow-look') || l; } catch {}
+  if (q.has('look')) l = q.get('look') || 'google';
+  if (l !== 'google') document.documentElement.dataset.look = l; }</script>
+<link rel="stylesheet" href="/editor/looks/thermal.css">
+<link rel="stylesheet" href="/editor/looks/thermal-phone.css">
+<style>
+  /* The home screen: the library as folders and decks (folders in ~/decks nest), a deck opens in the editor. */
+  body { display: block; overflow: auto; background: var(--surface); }
+  .hm-bar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 16px; height: 64px; padding: 0 16px; background: var(--surface); }
+  .hm-bar .brand { text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 22px; color: var(--ink); min-width: 220px; }
+  .hm-bar .brand .logo { width: 36px; height: 36px; display: block; }   /* the mascot (glideshow.svg) */
+  .hm-bar .brand .stage { padding: 2px 8px; border-radius: 999px; background: var(--blue, #2f6bff); color: #fff; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }   /* alpha */
+  .hm-search { flex: 0 1 720px; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 16px; border-radius: 24px; background: var(--toolbar); }
+  .hm-search input { flex: 1; border: 0; outline: 0; background: none; font: inherit; font-size: 16px; color: var(--ink); }
+  .hm-search, .hm-search input { min-width: 0; }
+  @media (max-width: 600px) { .hm-bar .brand { min-width: 0; flex: none; } .hm-bar .brand > :not(.logo) { display: none; } }   /* a phone (glideshow.org): the search fits beside the logo */
+  #hm-app-more { margin-left: auto; }
+  .hm-wrap { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+  .hm-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; margin-bottom: 12px; }
+  .hm-crumbs { display: flex; align-items: center; flex-wrap: wrap; margin-left: -8px; font-size: 18px; color: var(--ink); }
+  .hm-crumbs a { padding: 4px 8px; border-radius: 8px; color: inherit; text-decoration: none; cursor: pointer; }
+  .hm-crumbs a:hover, .hm-crumbs a.drop { background: var(--hover); }
+  .hm-crumbs a:last-child { font-weight: 500; }
+  .hm-crumbs .icon { color: var(--muted); font-size: 20px; }
+  .hm-actions { display: flex; align-items: center; gap: 4px; }
+  #hm-new { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px 0 12px; border-radius: 18px; margin-right: 8px; }
+  .hm-section { margin: 20px 0 10px; font-size: 14px; font-weight: 500; color: var(--muted); }
+  .hm-folders, .hm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 20px; }   /* the same columns, so folders line up over decks */
+  .hm-folders:not(:empty) { margin-bottom: 20px; }   /* room before the decks, also when no heading comes between (a folder's time groups) */
+  .hm-folder { display: flex; flex-direction: column; gap: 10px; padding: 12px 4px 8px 12px; border-radius: 16px; background: var(--toolbar); cursor: pointer; color: var(--ink); font-size: 14px; transition: background .15s, box-shadow .15s; }
+  .hm-folder:hover { background: var(--hover); } .hm-folder.drop { box-shadow: inset 0 0 0 2px var(--blue); }
+  .hm-folder .peek { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-right: 8px; }   /* three equal slots across the tile */
+  .hm-folder .peek .slot { aspect-ratio: 16 / 9; display: grid; place-items: center; overflow: hidden; border-radius: 6px; background: #fff; box-shadow: 0 0 0 1px var(--divider); }
+  .hm-folder .peek .slot:empty { background: none; box-shadow: inset 0 0 0 1px var(--divider); opacity: .6; }
+  .hm-folder .row { display: flex; align-items: center; gap: 10px; }
+  .hm-folder .icon { color: var(--icon); } .hm-folder .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 500; }
+  .hm-folder .n { color: var(--muted); font-size: 12px; }
+  .hm-folder .more:hover { background: var(--selected); }
+  .hm-main { display: block; padding: 12px 24px 48px; }   /* editor.css makes <main> the editor's flex row */
+  .hm-move { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 0 0 16px; padding: 12px 16px; border-radius: 12px; background: var(--selected); color: var(--ink); }
+  .hm-move span { flex: 1; min-width: 200px; } .hm-move button { font: inherit; font-weight: 500; border: 0; border-radius: 18px; height: 36px; padding: 0 16px; cursor: pointer; }   /* its own height: the base button's 28 px left the label low */
+  .hm-move-go { background: var(--blue); color: #fff; } .hm-move-not { background: none; color: var(--blue); }
+  .hm-card.dragging { opacity: .4; }
+  .hm-card { border: 1px solid var(--divider); border-radius: 4px; overflow: hidden; cursor: pointer; background: var(--surface); }
+  .hm-card:hover { border-color: var(--blue); }
+  .hm-card .pic { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-bottom: 1px solid var(--divider); background: #fff; }
+  .hm-card .pic > div { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .hm-card .meta { display: flex; align-items: center; gap: 6px; padding: 10px 4px 10px 12px; }
+  .hm-card .meta .txt { flex: 1; min-width: 0; }
+  .hm-card .title { font-size: 14px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hm-card .more { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; }
+  .hm-card .more:hover { background: var(--selected); }   /* stands out on a hovered row, which is --hover already */
+  .hm-pic { position: relative; overflow: hidden; background: #fff; }
+  .hm-card .pic .hm-pic { position: absolute; inset: 0; }
+  .hm-card .title.derived { font-style: italic; }
+  .hm-group { grid-column: 1 / -1;
+ margin: 12px 0 -4px; font-size: 14px; font-weight: 500; color: var(--ink); }
+  .hm-group:first-child { margin-top: 0; }
+  .hm-grid.list .hm-group { margin: 16px 0 4px; padding-left: 12px; }
+  .hm-card { transition: box-shadow .15s, border-color .15s; }
+  .hm-card:hover { box-shadow: 0 1px 2px rgba(60, 64, 67, .3), 0 1px 3px 1px rgba(60, 64, 67, .15); }
+  .hm-preview { position: fixed; z-index: 30; display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; background: var(--surface); box-shadow: var(--menu-shadow); pointer-events: none; }
+  .hm-preview > .hm-pic { border-radius: 6px; box-shadow: 0 0 0 1px var(--divider); }
+  .hm-preview .strip { display: flex; gap: 8px; } .hm-preview .strip .hm-pic { border-radius: 3px; box-shadow: 0 0 0 1px var(--divider); }
+  .hm-preview .cap { font-size: 12px; color: var(--muted); }
+  .hm-empty { color: var(--muted); font-size: 14px; }
+  .hm-welcome { grid-column: 1 / -1; display: grid; justify-items: start; gap: 12px; max-width: 520px; margin: 24px 0; }
+  .hm-welcome h2 { margin: 0; font-size: 24px; font-weight: 400; color: var(--ink); }
+  .hm-welcome p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; }
+  .hm-welcome button { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 18px 0 14px; border-radius: 20px; }
+  #hm-recent:not([hidden]) ~ #hm-grid { margin-top: 28px; }   /* the decks below Recent start clear of its last card */
+  .hm-tool { width: 40px; height: 40px; border-radius: 50%; color: var(--icon); }
+
+  .hm-quit { margin: 120px auto; max-width: 520px; text-align: center; font-size: 16px; color: var(--ink); }
+
+  .hm-tool:hover { background: var(--hover); } .hm-tool.on { background: var(--selected); }
+  /* list view: one row per deck, as Drive's list: a small picture, the title, then folder, opened and slide columns */
+  .hm-grid.list { grid-template-columns: 1fr; gap: 0; }
+  .hm-grid.list .hm-card { display: flex; align-items: center; gap: 16px; padding: 6px 4px 6px 12px; border: 0; border-bottom: 1px solid var(--divider); border-radius: 0; box-shadow: none; }
+  .hm-grid.list .hm-card:hover { background: var(--hover); }
+  .hm-grid.list .hm-card .pic { flex: none; width: 64px; height: 36px; border: 1px solid var(--divider); border-radius: 4px; }
+  .hm-grid.list .hm-card .pic .hm-pic { transform: scale(calc(64 / 210)); transform-origin: 0 0; }
+  .hm-grid.list .hm-card .meta { flex: 1; min-width: 0; padding: 0; }
+  .hm-grid.list .hm-card .meta .txt { display: flex; align-items: center; gap: 24px; }
+  .hm-grid.list .hm-card .title { flex: 1; }
+  .hm-grid.list .hm-card .sub { display: contents; }
+  .hm-grid.list .hm-card .sub > span { flex: none; margin: 0; font-size: 13px; color: var(--muted); }
+  .hm-grid.list .hm-card .where { width: 160px; } .hm-grid.list .hm-card .when { width: 170px; } .hm-grid.list .hm-card .n { width: 70px; text-align: right; }
+  .hm-grid.list .hm-card .where:empty { width: 0; margin-left: -24px; }
+  .hm-card .sub { margin-top: 4px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hm-card .sub > span:empty { display: none; }
+  .hm-card .sub > span:not(:empty) ~ span:not(:empty)::before { content: "·"; margin: 0 6px; }   /* between the parts that are there */
+  .hm-grid.list .hm-card .sub > span::before { content: none !important; }
+
+  .hm-card .more, .hm-folder .more { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--icon); }
+  .hm-card .more .icon, .hm-folder .more { font-size: 20px; line-height: 1; }
+  .hm-card .more .icon { display: block; width: 20px; height: 20px; }
+</style>
+<style id="hm-theme"></style>
+</head>
+<body>
+<header class="hm-bar">
+  <a class="brand" href="/" title="Glideshow home"><img class="logo" src="/editor/glideshow.svg" alt=""><span>Glideshow</span><span class="stage" title="Glideshow is in alpha: still changing week to week">alpha</span></a>
+  <label class="hm-search"><span class="icon">search</span><input type="search" id="hm-q" placeholder="Search all decks" aria-label="Search decks"></label>
+  <button id="hm-app-more" class="hm-tool icon" title="More">more_vert</button>
+</header>
+<main class="hm-wrap hm-main">
+  <div class="hm-sky" aria-hidden="true"><p>Slides you own, <em>gliding</em> where you work.</p><img src="/editor/looks/glider.svg" alt=""></div>
+  <div class="hm-head"><nav class="hm-crumbs" id="hm-crumbs"></nav><div class="hm-actions">
+    <button id="hm-new" class="primary"><span class="icon">add</span>New presentation</button>
+    <button id="hm-newfolder" class="hm-tool icon" title="New folder">create_new_folder</button>
+    <button id="hm-view" class="hm-tool icon" title="List view">view_list</button>
+    <button id="hm-sort" class="hm-tool icon" title="Sort by title">sort_by_alpha</button></div></div>
+  <div id="hm-folders-head" class="hm-section">Folders</div><div class="hm-folders" id="hm-folders"></div>
+  <div id="hm-recent-head" class="hm-section">Recent</div><div class="hm-grid" id="hm-recent"></div>
+
+  <div id="hm-decks-head" class="hm-section">Presentations</div><div class="hm-grid" id="hm-grid"></div>
+</main>
+<script src="/editor/js/theme-toggle.js"></script>
+<script>
+const $ = s => document.querySelector(s), div = c => Object.assign(document.createElement('div'), { className: c });
+let decks = [], folders = [], BASE_CSS = '';
+const when = t => { const d = new Date(t * 1000), now = new Date();
+  return 'Opened ' + (d.toDateString() === now.toDateString() ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })); };
+async function post(url, body) { return (await fetch(url, { method: 'POST', headers: { 'X-Glideshow': '1' }, body: JSON.stringify(body) })).json(); }   // the server wants X-Glideshow on a POST
+async function openDeck(d) { const j = await post('/api/open', { path: d.path }); if (!j.error) location.href = '/edit'; }
+/* The folder on show is in the address (#/Lab/2026), so Back and reloads keep it. */
+const here = () => decodeURIComponent(location.hash.replace(/^#\/?/, ''));
+const goTo = f => { location.hash = f ? '/' + f.split('/').map(encodeURIComponent).join('/') : ''; };
+/* A deck's slides, drawn from its own HTML (fetched once per deck; files from /library/<deck id>/…) into a shadow root
+   so the deck's CSS stays inside: the card picture is its first slide, the hover preview shows more. */
+const deckDocs = {};
+function deckDoc(d) {
+  return deckDocs[d.id] ??= fetch(`/library/${d.id}/deck.html`).then(r => r.text()).catch(() => '').then(html => {
+    const doc = new DOMParser().parseFromString(html, 'text/html'), m = (doc.querySelector('.slides')?.dataset.size || '').match(/^(\d+)x(\d+)$/);
+    const list = [...doc.querySelectorAll('.slides > section')].flatMap(s => s.querySelector(':scope > section') ? [...s.querySelectorAll(':scope > section')] : [s]);
+    return { doc, list, W: m ? +m[1] : 1920, H: m ? +m[2] : 1080 };
+  });
+}
+function slidePic(d, info, i, width) {
+  const s = info.list[i]?.cloneNode(true); if (!s) return null;
+  const base = `/library/${d.id}/`;
+  s.querySelectorAll('img[src], video[poster]').forEach(e => { const a = e.tagName === 'IMG' ? 'src' : 'poster', v = e.getAttribute(a); if (!/^(data:|https?:)/.test(v)) e.setAttribute(a, base + v); });
+  s.querySelectorAll('iframe, video, aside.notes, script, .box.note').forEach(e => e.remove());
+  const host = div('reveal'), slides = div('slides'), box = div('hm-pic');
+  box.style.cssText = `width:${width}px;height:${width * info.H / info.W}px`;
+  const frame = document.createElement('div'); frame.style.cssText = `width:${info.W}px;height:${info.H}px;transform:scale(${width / info.W});transform-origin:0 0;background:${s.dataset.backgroundColor || '#fff'}`;
+  const root = frame.attachShadow({ mode: 'open' });
+  root.innerHTML = `<style>${BASE_CSS}\n${info.doc.querySelector('#deck-theme')?.textContent || ''}\n:host { display: block; } .slides > section { display: block !important; position: absolute; left: 0; top: 0; }</style>`;
+  slides.append(s); host.append(slides); root.append(host); box.append(frame);
+  root.querySelectorAll('.box[data-shape]').forEach(b => window.renderShape?.(b));
+  return box;
+}
+const shown = d => d.shown || d.title || d.name;
+const dateOf = d => d.date ? new Date(d.date + 'T12:00') : null;   // the deck's own date (the talk's or meeting's)
+const fmtDate = d => dateOf(d)?.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) || '';
+const when_ = d => dateOf(d)?.getTime() / 1000 || d.mtime;   // what "newest" means in a folder: its date, else last opened   // the server names an untitled deck by its first slide's first line
+const cardFit = new ResizeObserver(es => es.forEach(e => { const p = e.target.firstChild; if (p) p.style.zoom = e.target.closest('.list') ? '' : String(e.target.clientWidth / 210); }));
+async function thumb(d, pic, when) {   // drawn 210 px wide, then zoomed to fill the card (its column's width)
+  const info = await deckDoc(d), p = slidePic(d, info, 0, 210);
+  if (p) { pic.append(p); cardFit.observe(pic); }
+  if (when) when.textContent = `${info.list.length} slide${info.list.length === 1 ? '' : 's'}`;
+}
+/* Hover a card: a larger look at the deck, its first slide and the next few, as a popover beside the card. */
+let preview = null, previewTimer = 0;
+function hidePreview() { clearTimeout(previewTimer); preview?.remove(); preview = null; }
+let lastPointer = null;
+function showPreview(d, card, e) {
+  lastPointer = e;
+  hidePreview();
+  previewTimer = setTimeout(async () => {
+    const info = await deckDoc(d); if (!card.matches(':hover') || !info.list.length) return;
+    const p = div('hm-preview'), strip = div('strip'), cap = div('cap');
+    p.append(slidePic(d, info, 0, 400));
+    info.list.slice(1, 7).forEach((_, i) => strip.append(slidePic(d, info, i + 1, 60)));
+    if (strip.children.length) p.append(strip);
+    cap.textContent = `${shown(d)}${d.date ? ' · ' + fmtDate(d) : ''} · ${info.list.length} slide${info.list.length === 1 ? '' : 's'}`; p.append(cap);
+    document.body.append(p); preview = p;
+    const r = card.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight;
+    if (card.closest('.list')) {   // a row spans the page: beside the pointer, below the row (above it near the bottom)
+      const x = lastPointer?.clientX ?? r.left + 120;
+      p.style.left = Math.max(8, Math.min(x + 16, innerWidth - w - 8)) + 'px';
+      p.style.top = (r.bottom + 6 + h < innerHeight ? r.bottom + 6 : Math.max(72, r.top - 6 - h)) + 'px';
+    } else {
+      p.style.left = (r.right + 12 + w < innerWidth ? r.right + 12 : Math.max(8, r.left - 12 - w)) + 'px';
+      p.style.top = Math.max(72, Math.min(r.top, innerHeight - h - 8)) + 'px';
+    }
+  }, 450);
+}
+function popMenu(btn, items) {
+  document.querySelector('.menu')?.remove();
+  const m = div('menu'), r = btn.getBoundingClientRect();
+  for (const it of items) {
+    if (it === '-') { m.append(div('menu-sep')); continue; }
+    const [icon, label, run] = it, b = document.createElement('button'); b.className = 'menu-item'; b.innerHTML = `<span class="menu-icon icon">${icon}</span><span class="menu-label"></span>`;
+    b.querySelector('.menu-label').textContent = label; b.onclick = e => { e.stopPropagation(); m.remove(); run(); }; m.append(b);
+  }
+  document.body.append(m); m.style.left = Math.min(r.left, innerWidth - m.offsetWidth - 8) + 'px'; m.style.top = Math.min(r.bottom + 4, innerHeight - m.offsetHeight - 8) + 'px';
+  setTimeout(() => addEventListener('pointerdown', e => { if (!m.contains(e.target)) m.remove(); }, { once: true }));
+}
+const moveItems = d => [['home', 'My decks', () => op(d, 'move', { folder: '' })], ...folders.map(f => ['folder', f.replace(/\//g, ' › '), () => op(d, 'move', { folder: f })])];
+function menu(d, btn) {
+  popMenu(btn, [['open_in_new', 'Open', () => openDeck(d)], ['drive_file_move', 'Move to…', () => popMenu(btn, moveItems(d))], ['file_copy', 'Duplicate', () => op(d, 'duplicate')],
+    ['title', 'Rename', () => rename(d)], ...(CLOUD ? [] : [['folder_open', 'Reveal in Finder', () => op(d, 'reveal')]]), '-',
+    ['delete', 'Remove', () => confirm(CLOUD?.local ? `Remove "${d.title}" from this browser?` : CLOUD ? `Remove "${d.title}"? (It stays in the repo's history.)` : `Move "${d.title}" to the Trash?`) && op(d, 'delete')]]);
+}
+/* ⋮ in the top bar: Quit server stops the background server (`glideshow`, Glideshow.app or the login agent start it again).
+   Online (glideshow.org) there is no server of yours to stop: Sign out instead. */
+const CLOUD = window.GLIDESHOW_CLOUD || null;   // online: {user, name, repo}, or {local: true} for a library kept in this browser (editor/local/sw.js)
+// signed in online: decks made in this browser without an account can move into the library (lib/move-local.js)
+const MOVE = '/editor/lib/move-local.js';
+if (CLOUD && !CLOUD.local) import(MOVE).then(m => m.offer(document.querySelector('.hm-main'))).catch(e => console.warn('glideshow: browser decks', e));
+if (CLOUD?.local) {   // without an account: say where the decks are, and how to keep them (Safari clears a site's storage after 7 days away)
+  const bar = document.createElement('div'), say = document.createElement('span'), go = document.createElement('button');
+  bar.className = 'hm-move'; say.textContent = 'These decks live only in this browser, which can clear them. To keep them, download each one (File → Download) or sign in.';
+  go.className = 'hm-move-go primary'; go.textContent = 'Sign in'; go.onclick = () => { location.href = '/login'; };
+  const f = CLOUD.folder;   // a folder on this computer (editor/lib/store-folder.js)
+  if (f?.ok) say.textContent = `These decks are in the folder “${f.name}” on this computer, and only there: not synced, and they can't be shared. Sign in to keep them in Drive or GitHub.`;
+  else if (f) {   // the browser forgot its permission for the folder (a new session): ask again, with this click
+    say.textContent = `Glideshow needs your OK to open the folder “${f.name}” again. Until then, changes stay in this browser.`;
+    go.textContent = `Open “${f.name}”`;
+    go.onclick = async () => {
+      const m = await import('/editor/lib/store-folder.js'), dir = await m.getFolder();
+      if (dir && await m.folderAllowed(dir, true)) { navigator.serviceWorker.controller?.postMessage({ type: 'library-changed' }); setTimeout(() => location.reload(), 400); }
+    };
+  }
+  bar.append(say, go); document.querySelector('.hm-main')?.prepend(bar);
+}
+$('#hm-app-more').onclick = e => { e.stopPropagation(); popMenu(e.currentTarget, CLOUD?.local ? [CLOUD.folder ? ['folder', `Your decks are in the folder “${CLOUD.folder.name}”`, () => {}] : ['devices', 'Your decks are in this browser', () => {}],
+  ...(CLOUD.folder ? [['folder_off', 'Stop using this folder (the decks stay in it, and in this browser)', async () => {
+    await (await import('/editor/lib/store-folder.js')).setFolder(null); navigator.serviceWorker.controller?.postMessage({ type: 'library-changed' }); setTimeout(() => location.reload(), 400); }]] : []),
+  ['login', 'Sign in to keep decks in Drive or GitHub, and share them', () => { location.href = '/login'; }]] : CLOUD ? [['folder_shared', `Library: ${CLOUD.repo || ''}`, () => { location.href = '/setup'; }], ['logout', `Sign out (${CLOUD.user || ''})`, () => { location.href = '/logout'; }]] : [['power_settings_new', 'Quit server', async () => {
+  if (!confirm('Stop the Glideshow server? Open Glideshow again (or run `glideshow`) to restart it.')) return;
+  await post('/api/quit', {}).catch(() => {});
+  document.body.innerHTML = '<p class="hm-quit">The Glideshow server has stopped. Open Glideshow again, or run <code>glideshow</code>, to restart it.</p>';
+}]]); };
+async function op(d, what, extra = {}) { const j = await post('/api/deckop', { path: d.path, op: what, ...extra }); if (j.error) alert(j.error); else load(); }
+async function folderOp(what, path, name) { const j = await post('/api/folder', { op: what, path, name }); if (j.error) alert(j.error); return !j.error; }
+function rename(d) { const t = prompt('Rename', d.title); if (t && t.trim()) op(d, 'rename', { title: t.trim() }); }
+const pref = (k, d) => { try { return localStorage.getItem('slides-home-' + k) || d; } catch { return d; } };
+const setPref = (k, v) => { try { localStorage.setItem('slides-home-' + k, v); } catch {} };
+/* Drag a card onto a folder (or a breadcrumb) to move the deck there. */
+let dragged = null;
+function dropTarget(el, folder) {
+  el.ondragover = e => { if (!dragged) return; e.preventDefault(); el.classList.add('drop'); };
+  el.ondragleave = () => el.classList.remove('drop');
+  el.ondrop = e => { e.preventDefault(); el.classList.remove('drop'); if (dragged && dragged.folder !== folder) op(dragged, 'move', { folder }); };
+}
+function crumbs(cur) {
+  const parts = cur ? cur.split('/') : [], out = [];
+  [['My decks', ''], ...parts.map((p, i) => [p, parts.slice(0, i + 1).join('/')])].forEach(([label, f], i) => {
+    if (i) out.push(Object.assign(document.createElement('span'), { className: 'icon', textContent: 'chevron_right' }));
+    const a = document.createElement('a'); a.textContent = label; a.onclick = () => goTo(f); dropTarget(a, f); out.push(a);
+  });
+  $('#hm-crumbs').replaceChildren(...out);
+}
+const PEEK_W = 240;   // folder-tile pictures are drawn this wide, then zoomed to their slot
+function folderTile(f) {
+  const mine = decks.filter(d => d.folder === f || d.folder?.startsWith(f + '/')).sort((a, b) => when_(b) - when_(a)), inside = mine.length;
+  const t = div('hm-folder'), peek = div('peek');   // the first slides of its three newest decks, each filling a third of the tile
+  const slots = [0, 1, 2].map(() => div('slot')); peek.append(...slots);
+  const fit = () => slots.forEach(s => { const p = s.firstChild; if (p) p.style.zoom = s.clientWidth / PEEK_W; });
+  mine.slice(0, 3).forEach(async (d, i) => { const p = slidePic(d, await deckDoc(d), 0, PEEK_W); if (p) { slots[i].append(p); fit(); } });
+  new ResizeObserver(fit).observe(peek);
+  t.innerHTML = '<div class="row"><span class="icon">folder</span><span class="name"></span><span class="n"></span><button class="more icon" title="More actions">more_vert</button></div>';
+  t.prepend(peek);
+  t.querySelector('.name').textContent = f.split('/').pop(); t.querySelector('.n').textContent = inside ? `${inside} deck${inside === 1 ? '' : 's'}` : 'Empty';
+  t.onclick = () => goTo(f); dropTarget(t, f);
+  t.querySelector('.more').onclick = e => { e.stopPropagation(); popMenu(e.currentTarget, [
+    ['drive_file_rename_outline', 'Rename', async () => { const n = prompt('Rename folder', f.split('/').pop()); if (n && n.trim() && await folderOp('rename', f, n.trim())) load(); }],
+    ['delete', 'Remove', async () => { if (await folderOp('delete', f)) load(); }]]); };
+  return t;
+}
+function card(d, q) {
+  const c = div('hm-card'), pic = div('pic'), meta = div('meta');
+  meta.innerHTML = `<div class="txt"><div class="title"></div><div class="sub"><span class="where"></span><span class="when"></span><span class="n"></span></div></div><button class="more" title="More actions"><span class="icon">${PHONE ? 'more_horiz' : 'more_vert'}</span></button>`;
+  const t = meta.querySelector('.title'); t.textContent = shown(d); t.classList.toggle('derived', !!d.shown && d.shown !== d.title);
+  meta.querySelector('.where').textContent = q && d.folder ? d.folder.replace(/\//g, ' › ') : '';
+  meta.querySelector('.when').textContent = fmtDate(d) || when(d.mtime); c.title = `${d.path}\n${when(d.mtime)}`;
+  meta.querySelector('.more').onclick = e => { e.stopPropagation(); hidePreview(); menu(d, e.currentTarget); };
+  c.draggable = true; c.ondragstart = e => { dragged = d; hidePreview(); c.classList.add('dragging'); e.dataTransfer.setData('text/plain', shown(d)); };
+  c.ondragend = () => { dragged = null; c.classList.remove('dragging'); };
+  c.onmouseenter = e => showPreview(d, c, e); c.onmousemove = e => { lastPointer = e; }; c.onmouseleave = hidePreview; c.onpointerdown = hidePreview;
+  c.onclick = () => openDeck(d); c.append(pic, meta); thumb(d, pic, meta.querySelector('.n')); return c;
+}
+function show() {
+  const q = $('#hm-q').value.trim().toLowerCase(), byTitle = pref('sort', 'time') === 'title';
+  let cur = here(); if (cur && !folders.includes(cur)) cur = '';
+  crumbs(cur);
+  // a search looks through the whole library; otherwise this folder (decks outside the library show at the top).
+  // On a phone the top level is every deck by when it was last opened, as the Slides app (folders: the folder button).
+  const all = PHONE && !cur && !q;
+  const list = decks.filter(d => q ? [d.title, d.name, d.shown || ''].some(t => t.toLowerCase().includes(q)) : all || (d.folder ?? '') === cur)
+    .sort((a, b) => byTitle ? shown(a).localeCompare(shown(b)) : PHONE ? b.mtime - a.mtime : when_(b) - when_(a));
+  const subs = q || all ? [] : folders.filter(f => cur ? f.startsWith(cur + '/') && !f.slice(cur.length + 1).includes('/') : !f.includes('/')).sort((a, b) => a.localeCompare(b));
+  const asList = pref('view', 'grid') === 'list';
+  $('#hm-grid').classList.toggle('list', asList);
+  $('#hm-view').textContent = asList ? 'grid_view' : 'view_list'; $('#hm-view').title = asList ? 'Grid view' : 'List view';
+  $('#hm-sort').classList.toggle('on', byTitle); $('#hm-sort').title = byTitle ? 'Sort by last opened' : 'Sort by title';
+  // Recent only once the top level doesn't already show every deck (some are in folders, or there are many): a new
+  // library would otherwise show each deck twice
+  const recent = !cur && !q && !PHONE && (decks.some(d => d.folder) || decks.length > 8) ? [...decks].sort((a, b) => b.mtime - a.mtime).slice(0, 8) : [];
+  $('#hm-recent').replaceChildren(...recent.map(d => card(d, true))); $('#hm-recent').hidden = $('#hm-recent-head').hidden = !recent.length;
+  $('#hm-recent').classList.toggle('list', asList);
+  $('#hm-folders').replaceChildren(...subs.map(folderTile)); $('#hm-folders-head').hidden = !subs.length;
+  const group = d => { const t = dateOf(d); return t ? t.toLocaleDateString([], { month: 'long', year: 'numeric' }) : 'No date'; };
+  const items = [];
+  list.forEach((d, i) => { if (!byTitle && !q && !PHONE && (i === 0 || group(d) !== group(list[i - 1]))) items.push(Object.assign(div('hm-group'), { textContent: group(d) })); items.push(card(d, q)); });
+  const empty = q || !(subs.length || $('#hm-recent').children.length) ? [Object.assign(div('hm-empty'), { textContent: q ? 'No decks match.' : PHONE ? 'No presentations here yet. Start one with +.' : 'No presentations here yet. Start one with New presentation.' })] : [];
+  $('#hm-grid').replaceChildren(...(list.length ? items : !decks.length && !folders.length && !q && !cur ? [welcome()] : empty));
+
+  $('#hm-decks-head').hidden = !subs.length || !byTitle && !q;   // the time groups head the decks themselves
+}
+/* A library with nothing in it yet: what Glideshow is, where the decks will be, and the one thing to do first. */
+let libraryHome = '~/decks';
+function welcome() {
+  const w = div('hm-welcome'), where = CLOUD?.local ? 'in this browser' : CLOUD ? `in ${CLOUD.repo}` : `in ${libraryHome} on this computer`;
+  w.innerHTML = `<h2>Welcome to Glideshow</h2><p></p><button class="primary"><span class="icon">add</span>New presentation</button>`;
+  w.querySelector('p').textContent = `Your decks will be kept ${where}. Each one is a folder with a deck.html and its pictures, which you, Claude or any other agent can open and edit.`;
+  w.querySelector('button').onclick = () => $('#hm-new').click();
+  return w;
+}
+async function load() {
+  if (!CLOUD) fetch('/api/library').then(r => r.json()).then(l => { if (l?.home && l.home !== libraryHome) { libraryHome = l.home; if (!decks.length) show(); } }).catch(() => {});
+  const [d, f] = await Promise.all([fetch('/api/decks').then(r => r.json()).catch(e => ({ error: String(e) })), fetch('/api/folders').then(r => r.json()).catch(() => [])]);
+  if (!Array.isArray(d)) { document.querySelector('#hm-grid').replaceChildren(Object.assign(div('hm-empty'), { textContent: `Couldn't load your decks: ${d?.error || 'no answer'}. Reload to try again.` })); return; }
+  decks = d; folders = Array.isArray(f) ? f : []; show();
+}
+$('#hm-q').oninput = show;
+addEventListener('hashchange', show);
+$('#hm-view').onclick = () => { setPref('view', pref('view', 'grid') === 'list' ? 'grid' : 'list'); show(); };
+$('#hm-sort').onclick = () => { setPref('sort', pref('sort', 'time') === 'title' ? 'time' : 'title'); show(); };
+$('#hm-new').onclick = async () => { const j = await post('/api/open', { new: true, folder: here() }); if (!j.error) location.href = '/edit'; };
+$('#hm-newfolder').onclick = async () => { const n = prompt('New folder'); if (n && n.trim() && await folderOp('create', here(), n.trim())) { await load(); } };
+(async () => { BASE_CSS = await fetch('/editor/deck/base.css').then(r => r.text()); await load(); })();
+</script>
+<script src="/editor/deck/shapes.js"></script>
+<script src="/editor/js/phone-home.js"></script>
+</body>
+</html>

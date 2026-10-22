@@ -1,0 +1,268 @@
+/* Thermal, a look for Glideshow's own screens (the editor's chrome and the home screen; never a deck): the mascot's
+   colors, its blue canopy and navy eyes, on cool paper, Hanken Grotesk, soft shadows instead of hairline outlines, and
+   one brand moment, a morning sky with a little grain, behind the mascot on the home screen. Google Slides' behavior is
+   untouched: this file only redefines the tokens of editor.css and dresses a few surfaces.
+   On with ?look=thermal (remembered), off with ?look= ; see the <head> script in index.html and home.html. */
+@import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+html[data-look="thermal"] body {
+  --font: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --blue: #2f6bff; --blue-hover: #1f58e6; --hover: #e6ecf5; --selected: #d9e4ff;
+  --ink: #14204a; --muted: #5c6b87; --divider: #dbe2ea; --icon: #3b4a6b; --outline: #c3ccd9;
+  --chrome: #f7f9fb; --surface: #ffffff; --stage: #eef2f6; --toolbar: #eaf0f6; --tip: #14204a;
+  --slide-shadow: 0 1px 2px rgba(20, 32, 74, .08), 0 10px 30px rgba(20, 32, 74, .08);
+  --menu-shadow: 0 10px 30px rgba(20, 32, 74, .14), 0 1px 3px rgba(20, 32, 74, .12);
+  --radius: 6px;
+  --sky: radial-gradient(120% 140% at 88% 130%, #ffe1a8 0%, rgba(255, 225, 168, 0) 58%), linear-gradient(180deg, #a9c8ff 0%, #d4e3ff 48%, #f3f6fb 100%);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+}
+/* Dusk: the same look at night (View → Dark mode, or the system's dark setting) */
+html[data-look="thermal"] body.dark {
+  --blue: #7aa2ff; --blue-hover: #9ab8ff; --hover: #212b47; --selected: #223a78;
+  --ink: #e6ebf7; --muted: #9aa7c2; --divider: #26304a; --icon: #b8c3dc; --outline: #3a4766;
+  --chrome: #10172b; --surface: #18213a; --stage: #0b1121; --toolbar: #1a2340; --tip: #e6ebf7;
+  --slide-shadow: 0 0 0 1px #26304a, 0 10px 30px rgba(0, 0, 0, .35);
+  --menu-shadow: 0 10px 30px rgba(0, 0, 0, .5), 0 1px 3px rgba(0, 0, 0, .5);
+  --sky: radial-gradient(120% 140% at 88% 130%, rgba(255, 170, 120, .35) 0%, rgba(255, 170, 120, 0) 58%), linear-gradient(180deg, #1c2a5c 0%, #18213a 60%, #10172b 100%);
+}
+
+/* The editor: a calm top bar with a hint of sky at its right edge, rounder controls, the deck's date in mono. */
+html[data-look="thermal"] #ed-bar { background: linear-gradient(90deg, var(--chrome) 0 60%, color-mix(in srgb, var(--chrome) 80%, #a9c8ff) 85%, color-mix(in srgb, var(--chrome) 82%, #ffe1a8) 100%); border-bottom: 1px solid var(--divider); }
+html[data-look="thermal"] body.dark #ed-bar { background: linear-gradient(90deg, var(--chrome) 0 60%, #16224a 100%); }
+html[data-look="thermal"] input#ed-title { font-weight: 500; letter-spacing: -.01em; }
+html[data-look="thermal"] input#ed-date { font-family: var(--mono); font-size: 12px; }
+html[data-look="thermal"] #ed-toolbar { background: var(--surface); box-shadow: 0 0 0 1px var(--divider); }
+html[data-look="thermal"] #ed-share { background: var(--blue); color: #fff; }
+html[data-look="thermal"] #ed-share .icon { color: #fff; }
+html[data-look="thermal"] body.dark #ed-share { color: #0b1121; } html[data-look="thermal"] body.dark #ed-share .icon { color: #0b1121; }
+html[data-look="thermal"] body.dark button.primary { color: #0b1121; }   /* dark ink on dusk's paler blue, as Share */
+html[data-look="thermal"] .menu, html[data-look="thermal"] .dialog { border-radius: 12px; }
+
+/* The home screen: the sky with the mascot gliding across it, above the library. */
+.hm-sky { display: none; }
+html[data-look="thermal"] .hm-sky { display: flex; align-items: center; justify-content: space-between; gap: 16px; position: relative; overflow: hidden;
+  margin: 0 0 24px; padding: 28px 32px; min-height: 168px; border-radius: 18px; background: var(--sky); }
+html[data-look="thermal"] .hm-sky::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .16; mix-blend-mode: multiply; background-image: var(--grain); }
+html[data-look="thermal"] .hm-sky p { margin: 0; font: 300 clamp(24px, 3.4vw, 36px)/1.15 var(--font); letter-spacing: -.02em; color: var(--ink); max-width: 22ch; position: relative; z-index: 1; }
+html[data-look="thermal"] .hm-sky p em { font-style: normal; color: var(--blue); }
+html[data-look="thermal"] .hm-sky img { width: clamp(84px, 11vw, 132px); flex: none; position: relative; z-index: 1; filter: drop-shadow(0 6px 14px rgba(20, 32, 74, .18)); animation: hm-glide 7s ease-in-out infinite; }
+@keyframes hm-glide { 0%, 100% { transform: translate(0, 0) rotate(0deg); } 50% { transform: translate(-8px, -10px) rotate(-2deg); } }
+@media (prefers-reduced-motion: reduce) { html[data-look="thermal"] .hm-sky img { animation: none; } }
+html[data-look="thermal"] .hm-card { border-radius: 12px; border-color: var(--divider); box-shadow: 0 1px 2px rgba(20, 32, 74, .04); }
+html[data-look="thermal"] .hm-card:hover { border-color: var(--blue); box-shadow: 0 6px 20px rgba(20, 32, 74, .10); }
+html[data-look="thermal"] .hm-folder { border-radius: 18px; background: var(--toolbar); }
+html[data-look="thermal"] .hm-card .sub, html[data-look="thermal"] .hm-folder .n { font-family: var(--mono); font-size: 11px; }
+
+/* ---- Later rounds, layered over the above ---- */
+
+/* Thermal v2: the sky as a slim top bar instead of a banner, no
+   shadow on the mascot, and layouts pushed away from Google Slides' while keeping its controls. */
+
+/* ---- home ---- */
+html[data-look="thermal"] .hm-sky { display: none !important; }
+html[data-look="thermal"] .hm-bar { height: 60px; background: linear-gradient(90deg, #dce8ff 0%, #eef3ff 45%, #fbf5ea 85%, #fff1d6 100%); border-bottom: 1px solid var(--divider); }
+html[data-look="thermal"] body.dark .hm-bar { background: linear-gradient(90deg, #1a2752 0%, #18213a 55%, #2a2440 100%); }
+html[data-look="thermal"] .hm-bar .brand { font-weight: 500; letter-spacing: -.01em; min-width: 0; gap: 10px; }
+html[data-look="thermal"] .hm-bar .brand .logo { filter: none; }
+html[data-look="thermal"] .hm-bar .brand::after { content: "Slides you own, gliding where you work."; margin-left: 14px; padding-left: 14px; border-left: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+  font: 300 14px/1 var(--font); letter-spacing: 0; color: var(--muted); white-space: nowrap; }
+@media (max-width: 900px) { html[data-look="thermal"] .hm-bar .brand::after { display: none; } }
+html[data-look="thermal"] .hm-search { flex: 0 1 460px; margin-left: auto; height: 40px; background: color-mix(in srgb, var(--surface) 70%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 10%, transparent); }
+html[data-look="thermal"] .hm-head h1, html[data-look="thermal"] .hm-crumbs { font-weight: 300; font-size: 28px; letter-spacing: -.02em; }
+html[data-look="thermal"] .hm-section { font: 500 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 28px 0 14px; }
+/* decks: thumbnail first (a document browser), no box around the card */
+html[data-look="thermal"] .hm-grid:not(.list) .hm-card { border: 0; background: transparent; box-shadow: none; overflow: visible; }
+html[data-look="thermal"] .hm-grid:not(.list) .hm-card .pic { border: 0; border-radius: 12px; box-shadow: 0 0 0 1px var(--divider), 0 2px 10px rgba(20, 32, 74, .06); transition: box-shadow .15s, transform .15s; }
+html[data-look="thermal"] .hm-grid:not(.list) .hm-card:hover .pic { box-shadow: 0 0 0 2px var(--blue), 0 10px 28px rgba(20, 32, 74, .14); transform: translateY(-2px); }
+html[data-look="thermal"] .hm-grid:not(.list) .hm-card .meta { padding: 10px 2px 2px 4px; }
+html[data-look="thermal"] .hm-card .title { font-size: 15px; font-weight: 500; }
+html[data-look="thermal"] .hm-folder { background: var(--surface); box-shadow: 0 0 0 1px var(--divider); }
+html[data-look="thermal"] .hm-folder:hover { box-shadow: 0 0 0 2px var(--blue); background: var(--surface); }
+html[data-look="thermal"] .hm-folder .peek .hm-pic, html[data-look="thermal"] .hm-folder .peek > * { border-radius: 8px; }
+html[data-look="thermal"] #hm-new { border-radius: 12px; }
+
+/* ---- editor ---- */
+html[data-look="thermal"] #ed-top { padding-top: 10px; }
+html[data-look="thermal"] input#ed-title { font-size: 20px; font-weight: 500; }
+html[data-look="thermal"] #ed-menubar button { font-size: 13px; color: var(--muted); padding: 0 8px; }
+html[data-look="thermal"] #ed-menubar button:hover, html[data-look="thermal"] #ed-menubar button.open { color: var(--ink); }
+html[data-look="thermal"] #ed-toolbar { margin: 6px 12px 10px; border-radius: 14px; box-shadow: 0 0 0 1px var(--divider), 0 2px 8px rgba(20, 32, 74, .05); }
+/* the slide list floats on the stage: no band of its own, rounder thumbnails, the number in mono */
+html[data-look="thermal"] #ed-side { background: var(--stage); }
+html[data-look="thermal"] .thumb .num { font: 400 11px/16px var(--mono); }
+html[data-look="thermal"] .thumb-view { border-radius: 10px; box-shadow: 0 0 0 1px var(--divider), 0 2px 8px rgba(20, 32, 74, .06); }
+html[data-look="thermal"] .thumb.active .thumb-view, html[data-look="thermal"] .thumb.picked .thumb-view { box-shadow: 0 0 0 2px var(--blue), 0 6px 18px color-mix(in srgb, var(--blue) 25%, transparent); }
+html[data-look="thermal"] .ruler { opacity: .5; }   /* quieter (View → Show ruler hides them) */
+html[data-look="thermal"] #ed-frame { border-radius: 4px; }
+/* Format options: a floating card */
+html[data-look="thermal"] .panel { margin: 10px 12px 12px 0; border-radius: 18px; box-shadow: var(--menu-shadow); border: 0; }
+/* the insert bar: frosted, floating */
+html[data-look="thermal"] #ed-dock { background: color-mix(in srgb, var(--surface) 78%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 0 0 1px var(--divider), 0 10px 28px rgba(20, 32, 74, .12); border-radius: 22px; padding: 4px; }
+html[data-look="thermal"] #ed-dock button { border-radius: 14px; }
+
+/* Thermal v3: v2's layout with almost no shadows: hairlines everywhere, one soft shadow under the slide. */
+html[data-look="thermal"] .hm-grid:not(.list) .hm-card .pic { box-shadow: 0 0 0 1px var(--divider) !important; }
+html[data-look="thermal"] .hm-grid:not(.list) .hm-card:hover .pic { box-shadow: 0 0 0 2px var(--blue) !important; transform: none !important; }
+html[data-look="thermal"] .hm-card { box-shadow: none !important; }
+html[data-look="thermal"] #ed-toolbar { box-shadow: 0 0 0 1px var(--divider) !important; }
+html[data-look="thermal"] .thumb-view { box-shadow: 0 0 0 1px var(--divider) !important; }
+html[data-look="thermal"] .thumb.active .thumb-view, html[data-look="thermal"] .thumb.picked .thumb-view { box-shadow: 0 0 0 2px var(--blue) !important; }
+html[data-look="thermal"] .panel { box-shadow: none !important; border: 1px solid var(--divider) !important; }
+html[data-look="thermal"] #ed-dock { box-shadow: 0 0 0 1px var(--divider) !important; }
+html[data-look="thermal"] body { --slide-shadow: 0 0 0 1px rgba(20, 32, 74, .06), 0 6px 20px rgba(20, 32, 74, .06); --menu-shadow: 0 0 0 1px var(--divider), 0 8px 24px rgba(20, 32, 74, .08); }
+
+/* Dusk: v1's evening sky (dark blue fading down, a warm glow at the bottom right) with the blue turned down,
+   over graphite surfaces; the canopy blue only as the accent. */
+html[data-look="thermal"] body.dark {
+  --blue: #8aaeff; --blue-hover: #a6c1ff; --hover: #2a2b2f; --selected: #2b3447;
+  --ink: #ececee; --muted: #a1a3aa; --divider: #2e2f33; --icon: #c6c7cc; --outline: #3f4045;
+  --chrome: #17181d; --surface: #1d1e25; --stage: #111216; --toolbar: #232427; --tip: #ececee;
+  --slide-shadow: 0 0 0 1px #2e2f33, 0 6px 20px rgba(0, 0, 0, .3);
+  --menu-shadow: 0 0 0 1px #2e2f33, 0 8px 24px rgba(0, 0, 0, .4);
+  --sky: radial-gradient(120% 140% at 88% 130%, rgba(255, 170, 120, .5) 0%, rgba(255, 170, 120, 0) 58%), linear-gradient(180deg, #2d3352 0%, #23252f 60%, #1d1e25 100%);
+}
+html[data-look="thermal"] body.dark .hm-bar { background: linear-gradient(90deg, #22253a 0%, #1f2130 55%, #2d2630 85%, #3a2c2c 100%) !important; }
+html[data-look="thermal"] body.dark #ed-bar { background: linear-gradient(90deg, var(--chrome) 0 60%, #20233a 85%, #2e2629 100%) !important; }
+html[data-look="thermal"] body.dark #ed-share, html[data-look="thermal"] body.dark #ed-share .icon { color: #121314; }
+
+/* Home v4: the front page's sky as a wash behind the top of the page (no banner), the latest deck larger, folders compact. */
+html[data-look="thermal"] body { --home-sky: radial-gradient(120% 140% at 88% 130%, #ffe1a8 0%, rgba(255, 225, 168, 0) 58%), linear-gradient(180deg, #a9c8ff 0%, #d4e3ff 48%, #f3f6fb 100%); }
+html[data-look="thermal"] body.dark { --home-sky: radial-gradient(120% 140% at 88% 130%, rgba(226, 140, 112, .5) 0%, rgba(226, 140, 112, 0) 58%), radial-gradient(140% 70% at 15% 120%, rgba(150, 88, 140, .45) 0%, rgba(150, 88, 140, 0) 70%), linear-gradient(180deg, #18182c 0%, #221e41 50%, #2f2749 100%); }
+html[data-look="thermal"] body:has(> .hm-bar)::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 480px; z-index: -1; background: var(--home-sky);
+  -webkit-mask-image: linear-gradient(180deg, #000 40%, transparent); mask-image: linear-gradient(180deg, #000 40%, transparent); }
+html[data-look="thermal"] body:has(> .hm-bar) { isolation: isolate; background: var(--stage); }
+html[data-look="thermal"] .hm-bar { background: transparent !important; border-bottom: 0 !important; position: relative; }
+html[data-look="thermal"] .hm-bar .brand::after { display: none; }
+html[data-look="thermal"] .hm-search { background: color-mix(in srgb, var(--surface) 75%, transparent) !important; backdrop-filter: blur(8px); }
+html[data-look="thermal"] .hm-head h1, html[data-look="thermal"] .hm-crumbs { font-size: 32px; }
+/* folders: one row each, the latest deck's slide beside the name; no empty slots */
+html[data-look="thermal"] .hm-folder { flex-direction: row; align-items: center; gap: 12px; padding: 8px 4px 8px 8px; border-radius: 14px; background: var(--surface) !important; }
+html[data-look="thermal"] .hm-folder .peek { width: 76px; flex: none; margin: 0; grid-template-columns: 1fr; }
+html[data-look="thermal"] .hm-folder .peek .slot:not(:first-child) { display: none; }
+html[data-look="thermal"] .hm-folder .row { flex: 1; min-width: 0; }
+html[data-look="thermal"] .hm-folder .row > .icon:not(.more):first-child { display: none; }
+/* the latest deck, larger: where you left off */
+html[data-look="thermal"] .hm-grid:not(.list) > .hm-card:first-child { grid-column: span 2; grid-row: span 2; }
+html[data-look="thermal"] .hm-grid:not(.list) > .hm-card:first-child .title { font-size: 20px; }
+html[data-look="thermal"] .hm-grid:not(.list) > .hm-card:first-child .meta { padding-top: 14px; }
+html[data-look="thermal"] .hm-folder .more { flex: none; }
+html[data-look="thermal"] .hm-folder .n { white-space: nowrap; }
+/* the name gets the row's width; the count goes under it, so a long name isn't cut to a few letters */
+html[data-look="thermal"] .hm-folder .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; row-gap: 3px; }
+html[data-look="thermal"] .hm-folder .row .name { grid-area: 1 / 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-look="thermal"] .hm-folder .row .n { grid-area: 2 / 1; }
+html[data-look="thermal"] .hm-folder .row .more { grid-area: 1 / 2 / 3 / 3; }
+html[data-look="thermal"] .hm-grid:not(.list) > .hm-card:first-child { display: flex; flex-direction: column; }
+html[data-look="thermal"] body.dark .hm-bar { background: transparent !important; }
+/* the search truly centred: brand | search | menu as three columns */
+html[data-look="thermal"] .hm-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 640px) minmax(0, 1fr); }
+html[data-look="thermal"] .hm-bar .brand { justify-self: start; min-width: 0; }
+html[data-look="thermal"] .hm-search { justify-self: stretch; margin: 0 !important; }
+html[data-look="thermal"] #hm-app-more { justify-self: end; margin: 0; }
+/* at the top level, no "My decks" heading: the actions share the Folders line (inside a folder the path still shows) */
+html[data-look="thermal"] .hm-head:not(:has(.hm-crumbs .icon)) { position: relative; z-index: 1; margin: 18px 0 -54px; pointer-events: none; }
+html[data-look="thermal"] .hm-head:not(:has(.hm-crumbs .icon)) .hm-crumbs { visibility: hidden; }
+html[data-look="thermal"] .hm-head .hm-actions { pointer-events: auto; }
+html[data-look="thermal"] #hm-folders-head { margin: 22px 0 24px; }
+html[data-look="thermal"] .hm-folders:not(:empty) { margin-bottom: 28px; }
+/* dusk: New presentation in the mascot's white rather than a pale blue slab */
+html[data-look="thermal"] body.dark #hm-new { background: #ececee; color: #18182c; }
+html[data-look="thermal"] body.dark #hm-new .icon { color: inherit; }
+html[data-look="thermal"] body.dark #hm-new:hover { background: #ffffff; }
+
+/* Home: the actions leave the Folders line and sit just under the search, in a frosted pill */
+html[data-look="thermal"] .hm-head { position: static !important; }
+html[data-look="thermal"] .hm-head:not(:has(.hm-crumbs .icon)) { margin: 0 !important; min-height: 0; height: 0; }
+html[data-look="thermal"] .hm-main { padding-top: 64px; }
+html[data-look="thermal"] .hm-actions { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); z-index: 6; pointer-events: auto; gap: 2px; padding: 4px; border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 75%, transparent); backdrop-filter: blur(14px) saturate(1.3); -webkit-backdrop-filter: blur(14px) saturate(1.3); box-shadow: 0 0 0 1px var(--divider); }
+html[data-look="thermal"] .hm-actions .hm-tool { width: 36px; height: 36px; color: var(--icon); }
+html[data-look="thermal"] body.dark .hm-actions .hm-tool { color: var(--ink); }
+html[data-look="thermal"] #hm-new { margin: 0 4px 0 0; height: 36px; border-radius: 18px; }
+
+/* The editor's shorter toolbar (js/toolbar-groups.js): inserting is the insert bar's, Print and Paint format are in the menus,
+   related controls sit in a tray under one ▾ button, and a plain text box shows no fill or border until it has one. */
+html.tb-grouped #ed-toolbar > .grp[data-i="1"], html.tb-grouped #ed-toolbar > .grp[data-i="4"], html.tb-grouped #ed-print, html.tb-grouped #ed-paint-format, html.tb-grouped #ed-animate { display: none !important; }
+html.tb-grouped body.sel-plaintext :is(.swatch[data-for=fill], #ed-border) { display: none !important; }
+html.tb-grouped #ed-toolbar .tray-btn { display: inline-flex; align-items: center; gap: 0; padding: 0 0 0 4px; }
+html.tb-grouped #ed-toolbar .tray-btn .caret { font-size: 18px; margin-left: -2px; color: var(--muted); }
+html.tb-grouped #ed-toolbar .tray-btn.open { background: var(--selected); }
+html.tb-grouped #ed-toolbar .tray-btn .sw { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+html.tb-grouped #ed-toolbar .tray-btn .sw .icon { font-size: 18px; line-height: 18px; height: 14px; overflow: hidden; }   /* the glyph's own bar cut off; ours shows the color */
+html.tb-grouped #ed-toolbar .tray-btn .sw .bar { width: 16px; height: 3px; margin: 0; border-radius: 2px; box-shadow: none; }
+html.tb-grouped .tray { display: none; position: fixed; z-index: 21; align-items: center; gap: 2px; padding: 6px; border-radius: 12px; background: var(--surface); border: 1px solid var(--divider); box-shadow: var(--menu-shadow); }
+html.tb-grouped .tray.open { display: flex; }
+
+/* View → Floating toolbar (js/toolbar-groups.js): no menu bar (Menus browses and searches it), the deck's controls in the top
+   row, the toolbar as a small bar over the selection, and a larger insert bar, now the main one. */
+#ed-deckrow:empty { display: none; }
+html.tb-float #ed-menubar, html.tb-float #ed-toolbar > .grp[data-i="0"], html.tb-float #ed-toolbar > .grp.nosel-only, html.tb-float #ed-collapse, html.tb-float #ed-more-wrap { display: none !important; }
+html.tb-float #ed-top { padding-bottom: 6px; }
+html.tb-float #ed-deckrow { display: flex; align-items: center; gap: 2px; margin: 0 8px 0 auto; }
+html.tb-float #ed-deckrow > button { height: 36px; min-width: 36px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; color: var(--icon); }
+html.tb-float #ed-deckrow > button:hover { background: var(--hover); }
+html.tb-float #ed-deckrow #ed-zoom { gap: 2px; font-size: 14px; color: var(--ink); }
+html.tb-float #ed-deckrow #ed-zoom .zoom-glyph { display: none; }
+html.tb-float #ed-deckrow #ed-menus { width: 220px; height: 36px; margin: 0 8px 0 0; padding: 0 12px; border-radius: 10px; background: var(--toolbar); }
+html.tb-float #ed-deckrow #ed-menus input { flex: 1; width: auto; }
+html.tb-float #ed-toolbar { display: none; position: fixed; z-index: 15; width: max-content; max-width: calc(100vw - 16px); margin: 0 !important; padding: 4px 6px; border-radius: 12px; overflow: visible;
+  background: var(--surface); box-shadow: 0 0 0 1px var(--divider), 0 6px 18px rgba(20, 32, 74, .08) !important; }
+html.tb-float #ed-toolbar.shown { display: flex; }
+html.tb-float body.dark #ed-toolbar { box-shadow: 0 0 0 1px var(--divider), 0 6px 18px rgba(0, 0, 0, .35) !important; }
+html.tb-float #ed-dock { padding: 6px; gap: 4px; border-radius: 22px; margin-bottom: 14px; }
+html.tb-float #ed-dock button { width: 48px; height: 48px; border-radius: 16px; }
+html.tb-float #ed-dock button .icon { font-size: 24px; }
+html.tb-float #ed-dock .sep { height: 28px; margin: 0 6px; }
+
+/* Home's list view: one rounded card, rows split by short hairlines, a soft rounded hover (no blue underline); smaller titles,
+   the folder, date and slide count in small mono, rounded thumbnails */
+html[data-look="thermal"] .hm-grid.list .hm-card .title { font-size: 15px; font-weight: 500; }
+html[data-look="thermal"] .hm-grid.list .hm-card .sub > span { font: 400 12px/1 var(--mono); }
+html[data-look="thermal"] .hm-grid.list .hm-card .pic { width: 72px; height: 40.5px; border: 0; border-radius: 6px; box-shadow: 0 0 0 1px var(--divider); overflow: hidden; }
+html[data-look="thermal"] .hm-grid.list .hm-card .pic .hm-pic { transform: scale(calc(72 / 210)); }
+html[data-look="thermal"] .hm-grid.list .hm-card:hover { border-color: transparent; box-shadow: none; }
+html[data-look="thermal"] .hm-grid.list { background: var(--surface); border-radius: 16px; padding: 6px; box-shadow: 0 0 0 1px var(--divider); }
+html[data-look="thermal"] .hm-grid.list .hm-card { border: 0; border-radius: 10px; padding: 8px 6px 8px 10px; background: transparent; position: relative; }
+html[data-look="thermal"] .hm-grid.list .hm-card + .hm-card::before { content: ""; position: absolute; left: 98px; right: 10px; top: 0; border-top: 1px solid var(--divider); }
+html[data-look="thermal"] .hm-grid.list .hm-card:hover { background: var(--hover); }
+html[data-look="thermal"] .hm-grid.list .hm-card:hover::before, html[data-look="thermal"] .hm-grid.list .hm-card:hover + .hm-card::before { border-color: transparent; }
+html[data-look="thermal"] .hm-grid.list:empty { display: none; }   /* no empty card where a section has no decks */
+
+/* Dialogs: the canopy blue for the main button instead of Slides' yellow Done, rounder fields and buttons, the blue focus ring */
+html[data-look="thermal"] .bg-dialog h2 { font-size: 20px; font-weight: 500; letter-spacing: -.01em; line-height: 1.25; }
+html[data-look="thermal"] .bg-dialog .done { background: var(--blue); color: #fff; border-radius: 10px; }
+html[data-look="thermal"] .bg-dialog .done:hover { background: var(--blue-hover); }
+html[data-look="thermal"] body.dark .bg-dialog .done { color: #0b1121; }
+html[data-look="thermal"] .bg-dialog .outlined, html[data-look="thermal"] .bg-dialog .primary { border-radius: 10px; }
+html[data-look="thermal"] .bg-dialog :is(.url-in, textarea, select, input[type=date]) { border-radius: 10px; border: 1px solid var(--divider); background-color: var(--surface); color: var(--ink); }
+html[data-look="thermal"] .bg-dialog :is(.url-in, textarea, select, input[type=date]):focus { outline: 2px solid var(--blue); outline-offset: -1px; box-shadow: none; }
+html[data-look="thermal"] .bg-dialog select { appearance: none; padding: 0 34px 0 12px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%235c6b87' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center var(--surface); }
+html[data-look="thermal"] .share-dialog .share-link .outlined { flex: none; height: 40px; white-space: nowrap; }
+html[data-look="thermal"] .share-dialog .people-box { border-radius: 10px; background: var(--surface); padding: 6px 8px; }
+html[data-look="thermal"] .share-dialog .person { height: 30px; border-radius: 999px; padding-left: 12px; font-weight: 500; }
+html[data-look="thermal"] body.dark .share-dialog .person.bad { color: #ff8a80; box-shadow: inset 0 0 0 1px #ff8a80; }
+html[data-look="thermal"] #ed-trans .play:not(:disabled) { background: var(--blue); color: #fff; border-radius: 10px; }   /* Motion's Play: the canopy blue, not Slides' yellow */
+html[data-look="thermal"] body.dark #ed-trans .play:not(:disabled) { color: #0b1121; }
+
+/* Layout (the toolbar's, Slide → Apply layout): each layout a wireframe on a rounded card (theme.js layoutWire), the
+   current one ringed in canopy blue, names in the app's type */
+html[data-look="thermal"] .menu.tile-grid { grid-template-columns: repeat(3, 152px); gap: 6px 6px; padding: 12px; border-radius: 16px; }
+html[data-look="thermal"] .menu.tile-grid .menu-item { padding: 6px 6px 8px; border-radius: 12px; }
+html[data-look="thermal"] .menu.tile-grid .menu-item:hover { background: var(--hover); }
+html[data-look="thermal"] .menu.tile-grid .menu-label { gap: 8px; }
+html[data-look="thermal"] .menu.tile-grid svg.lp { display: block; width: 140px; height: auto; border-radius: 8px; box-shadow: 0 0 0 1px var(--divider); transition: box-shadow .15s; }
+html[data-look="thermal"] .menu.tile-grid .menu-item:hover svg.lp { box-shadow: 0 0 0 1px var(--outline), 0 6px 16px rgba(20, 32, 74, .10); }
+html[data-look="thermal"] .menu.tile-grid .menu-item.on svg.lp { box-shadow: 0 0 0 2px var(--blue); }
+html[data-look="thermal"] .menu.tile-grid .cap { font-size: 12.5px; line-height: 1.3; color: var(--ink); }
+html[data-look="thermal"] .menu.tile-grid .menu-item.on .cap { color: var(--blue); font-weight: 500; }
+html[data-look="thermal"] svg.lp .lp-bg { fill: #fff; }
+html[data-look="thermal"] svg.lp .lp-pane { fill: #eef2f6; }
+html[data-look="thermal"] svg.lp .lp-box { fill: #f5f7fa; }
+html[data-look="thermal"] svg.lp .lp-title { fill: #2f6bff; }
+html[data-look="thermal"] svg.lp .lp-sub { fill: #b8c3d6; }
+html[data-look="thermal"] svg.lp .lp-line { fill: #d3dae5; }
+html[data-look="thermal"] body.dark .menu.tile-grid svg.lp { box-shadow: 0 0 0 1px #3f4045; }
+html[data-look="thermal"] body.dark .menu.tile-grid .menu-item.on svg.lp { box-shadow: 0 0 0 2px var(--blue); }

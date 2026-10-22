@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Agent-written fixture</title>
+<meta name="date" content="2026-10-07">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link id="deck-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;700&display=swap">
+<link id="deck-icons" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=lightbulb&display=block">
+<style id="deck-base"></style>
+<style id="deck-theme"></style>
+</head>
+<body>
+<!-- Hand-written by an agent following docs/deck-format.md. Every documented feature appears
+     once. Boxes deliberately omit optional attributes (ids, --sw, data-valign) to check defaults. -->
+<div class="reveal"><div class="slides" data-guides="v960 h540">
+<section data-background-color="#ffffff">
+  <div class="box" id="title" style="left: 120px; top: 60px; width: 1680px; height: 120px;">
+    <div class="content" style="font-size: 72px; font-weight: bold;">Algorithm Distillation</div>
+  </div>
+  <div class="box" data-shape="roundrect" style="left: 160px; top: 400px; width: 400px; height: 200px; --fill: #e8f0fe; --stroke: #1a73e8; --sw: 3px;">
+    <div class="content" style="font-size: 44px;">RL learner</div>
+  </div>
+  <div class="box" data-shape="arrowline" style="left: 580px; top: 500px; width: 160px; height: 0px;"><div class="content"></div></div>
+  <div class="box" data-shape="roundrect" style="left: 760px; top: 400px; width: 400px; height: 200px; --fill: #e8f0fe; --stroke: #1a73e8; --sw: 3px;">
+    <div class="content" style="font-size: 44px;">learning history</div>
+  </div>
+  <div class="box" data-shape="arrowline" data-dir="up" style="left: 1180px; top: 440px; width: 160px; height: 60px; --stroke: #d93025; --sw: 6px;"><div class="content"></div></div>
+  <div class="box" data-shape="roundrect" style="left: 1360px; top: 400px; width: 400px; height: 200px; --fill: #fce8e6; --stroke: #d93025;">
+    <div class="content" style="font-size: 44px;">transformer</div>
+  </div>
+  <div class="box" data-valign="top" style="left: 160px; top: 680px; width: 800px; height: 340px; --fill: #f8f9fa;">
+    <div class="content" style="font-size: 32px; --space-after: 26.67px;">
+      <ul><li>predict the next action</li><li>context = last 4 episodes, loss ∝ T<sup>2</sup> · α<sub>t</sub></li></ul>
+      <pre><code class="language-python">loss = ce(logits, a_next)  # next-action prediction</code></pre>
+    </div>
+  </div>
+  <div class="box" style="left: 1060px; top: 760px; width: 700px; height: 160px;">
+    <div class="content" style="font-size: 48px; text-align: center;">$\pi_\theta(a_t \mid h_{&lt;t})$</div>
+  </div>
+  <div class="box note" data-valign="top" data-time="2026-10-09T10:00" style="left: 1300px; top: 860px; width: 500px; height: 180px;"><div class="content">Note for AI: make the arrows thicker</div></div>
+  <aside class="notes">Speaker notes written by the agent.</aside>
+</section>
+<section data-background-color="#202124">
+  <div class="box" style="left: 120px; top: 80px; width: 1680px; height: 120px;">
+    <div class="content" style="font-size: 64px; color: #ffffff; letter-spacing: 0.05em; font-family: 'Roboto Slab', serif;">Every shape</div>
+  </div>
+  <div class="box" data-shape="rect" style="left: 120px; top: 300px; width: 240px; height: 240px;"><div class="content"></div></div>
+  <div class="box" data-shape="roundrect" data-adj="0.4" style="left: 400px; top: 300px; width: 240px; height: 240px; --fill: #34a853;"><div class="content"></div></div>
+  <div class="box" data-shape="ellipse" data-shadow data-shadow-angle="45" data-shadow-distance="14" data-shadow-blur="4" data-shadow-color="#000000" data-shadow-opacity="0.6" style="left: 680px; top: 300px; width: 240px; height: 240px; --fill: #fbbc04;"><div class="content"></div></div>
+  <div class="box" data-shape="triangle" style="left: 960px; top: 300px; width: 240px; height: 240px; --fill: #ea4335;"><div class="content"></div></div>
+  <div class="box" data-shape="diamond" style="left: 1240px; top: 300px; width: 240px; height: 240px; --fill: #a142f4;"><div class="content"></div></div>
+  <div class="box" data-shape="arrow" data-adj="0.3" data-adj2="0.6" style="left: 1520px; top: 360px; width: 280px; height: 120px; --fill: #ffffff;"><div class="content"></div></div>
+  <div class="box" data-shape="line" style="left: 120px; top: 700px; width: 800px; height: 0px; --stroke: #ffffff;"><div class="content"></div></div>
+  <div class="box image" data-crop="0.1 0 0.1 0.2" style="left: 1000px; top: 620px; width: 800px; height: 400px;"><div class="content"><img src="assets/missing.png" alt=""></div></div>
+  <div class="box group" style="left: 120px; top: 780px; width: 520px; height: 200px;">
+    <div class="box" data-shape="ellipse" style="left: 0px; top: 0px; width: 200px; height: 200px; --fill: #4285f4;"><div class="content"></div></div>
+    <div class="box" style="left: 220px; top: 60px; width: 300px; height: 80px;"><div class="content" style="font-size: 40px; color: #ffffff;">Grouped</div></div>
+  </div>
+</section>
+<section data-background-color="#1a73e8" data-background-image="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='9'%3E%3Ccircle cx='8' cy='4.5' r='3' fill='%23fbbc04'/%3E%3C/svg%3E">
+  <div class="box video" style="left: 1240px; top: 640px; width: 560px; height: 315px;"><div class="content"><video src="assets/missing-clip.mp4" controls playsinline data-autoplay muted loop></video></div></div>
+  <div class="box" data-shape="rightarrowcallout" style="left: 160px; top: 700px; width: 600px; height: 240px; --fill: #ffffff; --stroke: #202124; --sw: 3px;"><div class="content" style="font-size: 40px;">Callout arrow</div></div>
+  <div class="box" data-shape="cloudcallout" style="left: 800px; top: 120px; width: 420px; height: 260px; --fill: #ffffff; --stroke: #202124; --sw: 3px;"><div class="content" style="font-size: 40px;">Thought</div></div>
+  <div class="box" data-shape="notequal" style="left: 1300px; top: 140px; width: 200px; height: 200px; --fill: #fbbc04;"><div class="content"></div></div>
+  <div class="box" data-shape="flow-decision" style="left: 1560px; top: 140px; width: 240px; height: 200px; --fill: #e6f4ea; --stroke: #34a853; --sw: 3px;"><div class="content" style="font-size: 32px;">ok?</div></div>
+  <div class="box" data-shape="icon" data-icon="lightbulb" style="left: 1560px; top: 420px; width: 160px; height: 160px; --fill: #ffffff;"><div class="content"></div></div>
+  <div class="box embed" style="left: 120px; top: 120px; width: 560px; height: 315px;"><div class="content"><iframe src="about:blank" allowfullscreen loading="lazy"></iframe></div></div>
+  <aside class="notes">A slide whose background is an image (data-background-image, cover), set from Slide → Change background.</aside>
+</section>
+<section data-background-color="#ffffff">
+  <div class="box" id="para" data-shape="parallelogram" style="left: 160px; top: 200px; width: 220px; height: 220px; --fill: #eeeeee; --stroke: #9e9e9e; --sw: 2.5px;"><div class="content"></div></div>
+  <div class="box" id="trap" data-shape="trapezoid" style="left: 440px; top: 200px; width: 220px; height: 220px; --fill: #eeeeee; --stroke: #9e9e9e; --sw: 2.5px;"><div class="content"></div></div>
+  <div class="box" data-shape="pentagon" style="left: 720px; top: 200px; width: 220px; height: 220px; --fill: #eeeeee; --stroke: #9e9e9e; --sw: 2.5px;"><div class="content"></div></div>
+  <div class="box" data-shape="hexagon" style="left: 1000px; top: 200px; width: 220px; height: 220px; --fill: #eeeeee; --stroke: #9e9e9e; --sw: 2.5px;"><div class="content"></div></div>
+  <div class="box" data-shape="octagon" style="left: 1280px; top: 200px; width: 220px; height: 220px; --fill: #eeeeee; --stroke: #9e9e9e; --sw: 2.5px;"><div class="content"></div></div>
+  <div class="box" data-shape="star" style="left: 1560px; top: 200px; width: 220px; height: 220px; --fill: #eeeeee; --stroke: #9e9e9e; --sw: 2.5px;"><div class="content"></div></div>
+  <div class="box" data-shape="plus" style="left: 160px; top: 600px; width: 220px; height: 220px; --fill: #eeeeee; --stroke: #9e9e9e; --sw: 2.5px;"><div class="content"></div></div>
+  <div class="box" data-shape="cloud" style="left: 440px; top: 600px; width: 220px; height: 220px; --fill: #eeeeee; --stroke: #9e9e9e; --sw: 2.5px;"><div class="content"></div></div>
+  <div class="box" id="chev" data-shape="chevron" style="left: 720px; top: 600px; width: 220px; height: 220px; --fill: #eeeeee; --stroke: #9e9e9e; --sw: 2.5px;"><div class="content"></div></div>
+  <div class="box" data-shape="callout" style="left: 1000px; top: 600px; width: 220px; height: 220px; --fill: #eeeeee; --stroke: #9e9e9e; --sw: 2.5px;"><div class="content"></div></div>
+  <div class="box" data-shape="roundcallout" style="left: 1280px; top: 600px; width: 220px; height: 220px; --fill: #eeeeee; --stroke: #9e9e9e; --sw: 2.5px;"><div class="content"></div></div>
+  <div class="box" data-shape="line" data-dash="dash" data-start="open-circle" data-end="fill-arrow" style="left: 1000px; top: 1000px; width: 760px; height: 0px; --stroke: #1a73e8; --sw: 4px;"><div class="content"></div></div>
+  <div class="box" data-shape="rect" data-dash="dot" style="left: 1500px; top: 620px; width: 260px; height: 220px; --fill: #1a73e866; --stroke: #5f6368; --sw: 3px;"><div class="content"></div></div>
+  <div class="box" data-shape="elbow" data-from="para:r" data-to="chev:l" data-bend="0.3" data-end="fill-arrow" style="left: 380px; top: 310px; width: 340px; height: 400px; --stroke: #333333; --sw: 3px;"><div class="content"></div></div>
+  <div class="box" data-shape="curve" data-dir="up" data-bend="0.7" style="left: 160px; top: 640px; width: 600px; height: 160px; --stroke: #333333; --sw: 3px;"><div class="content"></div></div>
+  <div class="box" data-shape="path" data-path="M0,1 C0.2,0 0.4,0 0.5,0.5 C0.6,1 0.8,1 1,0" style="left: 900px; top: 880px; width: 500px; height: 160px; --stroke: #ea4335; --sw: 5px;"><div class="content"></div></div>
+  <div class="box" data-shape="line" data-from="para:b" data-to="trap:b" data-end="fill-arrow" style="left: 270px; top: 420px; width: 280px; height: 0px; --stroke: #5f6368; --sw: 3px;"><div class="content"></div></div>
+  <div class="box" data-shape="wordart" style="left: 1500px; top: 880px; width: 380px; height: 140px; --fill: #fbbc04; --stroke: #202124; --sw: 4px;"><div class="content" style="font-weight: bold;">Word art</div></div>
+  <div class="box" data-shape="uturnarrow" style="left: 1480px; top: 640px; width: 260px; height: 260px; --fill: #cfe2f3; --stroke: #9fc5e8; --sw: 3px;"><div class="content"></div></div>
+  <div class="box" data-shape="curveduparrow" style="left: 1240px; top: 860px; width: 240px; height: 160px; --fill: #d2e3fc; --stroke: #4285f4; --sw: 2px;"><div class="content"></div></div>
+  <div class="box" data-shape="quadarrow" data-adj="0.2" style="left: 1500px; top: 320px; width: 220px; height: 220px; --fill: #fce8b2; --stroke: #f9ab00; --sw: 3px;"><div class="content"></div></div>
+</section>
+<section data-background-color="#ffffff" data-layout="title-body">
+  <div class="box" data-placeholder="Click to add title" data-role="title" data-valign="top" style="left: 65px; top: 93px; width: 1790px; height: 122px;"><div class="content" style="font-size: 74.67px; text-align: left;">A layout slide</div></div>
+  <div class="box table" data-valign="top" style="left: 1100px; top: 700px; width: 720px; height: 230px;"><div class="content" style="padding: 0px; font-size: 37.33px;"><table><tr><td>Item</td><td>Q1</td></tr><tr><td>Revenue</td><td>12</td></tr></table></div></div>
+  <div class="box" data-placeholder="Click to add text" data-role="body" data-valign="top" style="left: 65px; top: 242px; width: 1790px; height: 721px;"><div class="content" style="font-size: 48px; text-align: left;"></div></div>
+</section>
+<section>
+  <section data-background-color="#ffffff">
+    <div class="box" style="left: 160px; top: 440px; width: 1600px; height: 200px;"><div class="content" style="font-size: 96px; text-align: center;">A stack: press ↓</div></div>
+  </section>
+  <section data-background-color="#e8f0fe">
+    <div class="box" style="left: 160px; top: 440px; width: 1600px; height: 200px;"><div class="content" style="font-size: 96px; text-align: center;">Sub-slide 5.2</div></div>
+  </section>
+</section>
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script id="deck-shapes"></script>
+<script>Reveal.initialize({ width: 1920, height: 1080, margin: 0.02, center: false, hash: true, transition: 'none' });</script>
+</body>
+</html>

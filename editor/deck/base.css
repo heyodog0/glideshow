@@ -1,0 +1,92 @@
+/* Box model shared by the editor and every deck. The editor copies this file into each deck's
+   <style id="deck-base"> on save, so edit it here, not in a deck. */
+.reveal .slides > section { width: var(--slide-w, 1920px); height: var(--slide-h, 1080px); padding: 0; top: 0; left: 0; }   /* page size: data-size on .slides (shapes.js) */
+/* The box centres its text vertically; .content itself is ordinary flowing text, so inline formatting
+   (bold words, links, highlights) stays on one line. */
+.box { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; }
+.box:not([data-shape]) { background: var(--fill, transparent); border: var(--sw, 0px) solid var(--stroke, transparent); }
+.box > svg.shape { position: absolute; left: 0; top: 0; width: 100%; height: 100%; min-width: 1px; min-height: 1px; overflow: visible; pointer-events: none; }
+.box > svg.shape .f { fill: var(--fill, #4a86e8); stroke: var(--stroke, none); stroke-width: var(--sw, 0px); }
+.box > svg.shape .l { fill: none; stroke: var(--stroke, #333); stroke-width: var(--sw, 4px); stroke-linecap: round; }
+.box > svg.shape .h { fill: var(--stroke, #333); }
+.box:not([data-shape])[data-dash="dot"] { border-style: dotted; }
+.box:not([data-shape])[data-dash]:not([data-dash="dot"]) { border-style: dashed; }
+.box > svg.shape .hit { fill: none; stroke: transparent; stroke-width: 24px; }
+.box > .content {
+  position: relative; display: block; flex: none;
+  width: 100%; box-sizing: border-box; padding: 8px 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  font-size: 40px; line-height: 1.3; color: #222; text-align: left; overflow-wrap: break-word; outline: none;
+}
+.box[data-shape] > .content { text-align: center; }
+.box[data-shape] > .content { width: auto; align-self: stretch; margin: var(--tx-t, 0px) var(--tx-r, 0px) var(--tx-b, 0px) var(--tx-l, 0px); }   /* the preset's text rectangle (--tx-* set by shapes.js), as Slides */
+.box[data-shape="wordart"] > .content { opacity: 0; }   /* the text is drawn by the SVG; .content keeps it for editing and search */
+.box[data-shape="wordart"] > svg.shape .f { fill: var(--fill, #000); }
+.box.group { display: block; }   /* members are positioned inside it, relative to its top-left */
+.box[data-valign="top"] { justify-content: flex-start; }
+.box[data-valign="bottom"] { justify-content: flex-end; }
+.box > .content > * { margin: var(--space-before, 0px) 0 var(--space-after, 0px); }   /* paragraph spacing, set on .content */
+/* A superscript or subscript doesn't make its line taller, as in Slides (and Word, Docs): it rides on the line. */
+.box > .content sup, .box > .content sub { line-height: 0; }
+.box > .content ul, .box > .content ol { display: block; margin: 0; padding-left: 1.2em; text-align: left; }
+.box > .content ul { list-style: disc; }
+.box > .content ol { list-style: decimal; }
+/* Nested levels as Slides' defaults: ● ○ ■ and 1. a. i. */
+.box > .content ul ul { list-style-type: circle; }
+.box > .content ul ul ul { list-style-type: square; }
+.box > .content ol ol { list-style-type: lower-alpha; }
+.box > .content ol ol ol { list-style-type: lower-roman; }
+.box > .content li { margin: var(--space-before, 0px) 0 var(--space-after, 0px); }
+/* Lists from Google Slides (data-mk): the marker ends at the paragraph's first-line indent and the text starts at its
+   indent, as Slides draws them. --mk: the gap between the two; --glyph: a bullet's own character; --num, --sfx: a
+   number's style and suffix; --bl: the font's baseline shift (as its runs get). The marker's box is 3em, right-aligned,
+   and takes no room on the line */
+.box > .content [data-mk] { list-style: none; }
+.box > .content [data-mk] > li::before { display: inline-block; width: 3em; text-align: right; margin-left: calc(-3em - var(--mk, 0px));
+  margin-right: var(--mk, 0px); content: var(--glyph); position: relative; top: var(--bl, 0px); }
+.box > .content ol[data-mk] > li::before { content: counter(list-item, var(--num, decimal)) var(--sfx, "."); }
+.box > .content a { color: #1a73e8; text-decoration: underline; }
+/* Tables (.box.table): a plain <table> filling the box, 1pt black rules, 0.1in cell padding, as Slides' default */
+.box.table > .content { align-self: stretch; height: 100%; }
+.box > .content table { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; }
+.box > .content td, .box > .content th { border: 2.667px solid #000000; padding: 9.6px 19.2px; vertical-align: top; text-align: left; overflow-wrap: anywhere; }
+.box > .content pre {
+  font-size: 0.7em; background: #f4f4f4; padding: 0.6em 0.8em; border-radius: 8px;
+  overflow: auto; white-space: pre; text-align: left; line-height: 1.4;
+}
+.box > .content pre code { font-family: Menlo, "SF Mono", Consolas, monospace; background: none; padding: 0; }
+/* highlight.js token colours (light, GitHub-like) for <pre><code class="language-…"> */
+.hljs-keyword, .hljs-selector-tag, .hljs-type, .hljs-doctag { color: #cf222e; }
+.hljs-string, .hljs-regexp, .hljs-template-tag { color: #0a3069; }
+.hljs-comment, .hljs-quote { color: #6e7781; font-style: italic; }
+.hljs-number, .hljs-literal, .hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable { color: #0550ae; }
+.hljs-title, .hljs-title.function_, .hljs-section { color: #8250df; }
+.hljs-built_in, .hljs-symbol, .hljs-meta { color: #953800; }
+.hljs-params, .hljs-subst { color: inherit; }
+.box > .content code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.box.image > .content, .box.video > .content, .box.embed > .content { padding: 0; height: 100%; }
+.box.embed iframe { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
+.box.live > .content { padding: 0; height: 100%; } .box.live iframe { display: block; width: 100%; height: 100%; border: 0; background: transparent; }
+.box.video video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.box[data-autofit="shrink"] > .content { zoom: var(--fit, 1); }   /* --fit set by shapes.js */
+.box[data-crop] > .content { position: relative; overflow: hidden; }
+.box[data-crop] > .content > img { position: absolute; object-fit: fill;
+  width: calc(100% / (1 - var(--cl, 0) - var(--cr, 0))); height: calc(100% / (1 - var(--ct, 0) - var(--cb, 0)));
+  left: calc(-100% * var(--cl, 0) / (1 - var(--cl, 0) - var(--cr, 0))); top: calc(-100% * var(--ct, 0) / (1 - var(--ct, 0) - var(--cb, 0))); }
+.box.image img { display: block; width: 100%; height: 100%; object-fit: contain; margin: 0; max-width: none; max-height: none; border: 0; box-shadow: none; }
+.box[data-shape="line"] > .content, .box[data-shape="arrowline"] > .content, .box[data-shape="elbow"] > .content, .box[data-shape="curve"] > .content, .box[data-shape="path"] > .content { display: none; }
+/* Flip (data-flip="h|v|hv") composes with the inline rotate transform; text stays readable. */
+.box[data-flip="h"], .box[data-flip="h"] > .content { scale: -1 1; }
+.box[data-flip="v"], .box[data-flip="v"] > .content { scale: 1 -1; }
+.box[data-flip="hv"], .box[data-flip="hv"] > .content { scale: -1 -1; }
+/* --shx/--shy/--shb/--shc are set by shapes.js from data-shadow-*, so the shadow keeps its page direction. */
+.box[data-shadow] { filter: drop-shadow(var(--shx, 0px) var(--shy, 6px) var(--shb, 8px) var(--shc, rgba(0, 0, 0, .3))); }
+/* "Slide from left" (data-transition="sl-left"): reveal's slide transition, entering from the other side. */
+.reveal .slides > section[data-transition="sl-left"].past { transform: translate(150%, 0); }
+.reveal .slides > section[data-transition="sl-left"].future { transform: translate(-150%, 0); }
+/* Object animation "Appear" (class fragment appear): reveal fragment without the fade. */
+.reveal .slides section .fragment.appear { transition: none; }
+.box[data-placeholder]:has(> .content:empty) { display: none; }   /* an unfilled layout placeholder: the editor shows "Click to add …", decks show nothing */
+
+/* Notes for the AI (AGENTS.md): sticky notes on a slide that only the editor shows */
+.box.note { display: none; }

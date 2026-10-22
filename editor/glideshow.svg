@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+<title>Glideshow</title>
+<rect width="256" height="256" rx="58" fill="#2F6BFF"/>
+<g transform="rotate(-10 128 128)">
+<path d="M36 100 Q128 -4 220 100" fill="none" stroke="#fff" stroke-width="24" stroke-linecap="round"/>
+<g stroke="#fff" stroke-width="10" stroke-linecap="round"><path d="M44 94 L74 142"/><path d="M212 94 L182 142"/></g>
+<rect x="60" y="136" width="136" height="94" rx="28" fill="#fff"/>
+<g fill="#14204A"><circle cx="120" cy="176" r="10.5"/><circle cx="154" cy="176" r="10.5"/></g>
+</g>
+</svg>

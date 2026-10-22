@@ -1,0 +1,345 @@
+/* The phone's chrome: Google Slides' iPhone app. Every rule is under html.phone
+   (editor/js/phone-mode.js), so none of it reaches the desktop editor. Sizes are CSS px = iOS pt. */
+html.phone {
+  /* the app in dark mode, measured on the captures */
+  --ph-bar: #303134; --ph-canvas: #202123; --ph-page: #202124; --ph-ink: #e8eaed; --ph-muted: #9aa0a6; --ph-rule: #5f6367;
+  --ph-accent: #1c419a; --ph-accent-ink: #aec6f6; --ph-select: #3771e0; --ph-halo: #bed1f7; --ph-adjust: #eab63e;
+  --ph-bar-h: 62px; --ph-film-h: 96px; --ph-tool-h: 44px; --ph-sheet-row: 60px; --ph-icon-pitch: 48px;
+}
+/* The app is dark (the captures): editor.css's tokens follow, on <body> so they win over body.dark's. */
+html.phone body {
+  --font: -apple-system, system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ink: var(--ph-ink); --muted: var(--ph-muted); --divider: var(--ph-rule); --icon: var(--ph-ink); --outline: var(--ph-rule);
+  --chrome: var(--ph-bar); --surface: var(--ph-bar); --stage: var(--ph-canvas); --toolbar: #2a2b2e; --hover: #3c4043; --selected: var(--ph-accent); --tip: var(--ph-ink);
+  --menu-shadow: 0 2px 6px rgba(0, 0, 0, .5), 0 1px 2px rgba(0, 0, 0, .6);
+  color-scheme: dark; -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
+}
+html.phone .ph-icon-btn { display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 0; background: none; color: var(--ph-ink); }
+html.phone .ph-icon-btn .icon, html.phone .ph-sortrow #hm-view { font-size: 24px; }
+html.phone .menu-item { height: 48px; font-size: 16px; }
+
+/* ---------- Home (01-home.png) ---------- */
+html.phone body:has(> .hm-bar) { background: var(--ph-page); font-size: 17px; }
+html.phone .hm-bar { position: sticky; top: 0; height: auto; padding: calc(env(safe-area-inset-top) + 7px) 16px 0; gap: 0; background: var(--ph-page); }
+html.phone .hm-bar .brand, html.phone #hm-app-more, html.phone .hm-sky, html.phone .hm-actions, html.phone .hm-section, html.phone .hm-group { display: none !important; }
+/* the search bar: 48 tall, radius 8, ≡ | placeholder | folder | account */
+html.phone .ph-search { flex: 1; min-width: 0; display: flex; align-items: center; height: 48px; padding: 0 4px; border-radius: 8px; background: #2a2b2e; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
+html.phone .ph-search input { flex: 1; min-width: 0; height: 100%; padding: 0 0 0 8px; border: 0; outline: 0; background: none; color: var(--ph-ink); font: 17px var(--font); }
+html.phone .ph-search input::placeholder { color: var(--ph-muted); }
+html.phone .ph-search .ph-icon-btn { color: var(--ph-muted); }
+html.phone .ph-search .ph-icon-btn:first-child { color: var(--ph-ink); }
+html.phone .ph-avatar { flex: none; display: grid; place-items: center; width: 32px; height: 32px; margin: 0 8px 0 4px; padding: 0; border: 0; border-radius: 50%; overflow: hidden; background: var(--ph-accent); color: var(--ph-ink); font: 500 15px var(--font); }
+html.phone .ph-avatar img { width: 100%; height: 100%; display: block; background: #fff; }
+/* the sort label and the grid/list toggle */
+html.phone .hm-main { padding: 0 11px calc(96px + env(safe-area-inset-bottom)); max-width: none; }
+html.phone .hm-head { min-height: 0; margin: 10px 5px 0; }
+html.phone .hm-head:has(.hm-crumbs > a:only-child) { display: none; }   /* at the top level: no path to show */
+html.phone .hm-crumbs { font-size: 17px; margin: 0; }
+html.phone .ph-sortrow { display: flex; align-items: center; justify-content: space-between; height: 42px; margin: 10px 0 16px 5px; }
+html.phone .ph-sort { display: flex; align-items: center; gap: 2px; padding: 0; border: 0; background: none; color: var(--ph-muted); font: 15px var(--font); }
+html.phone .ph-sort .icon { font-size: 18px; }
+html.phone .ph-sortrow #hm-view { width: 48px; height: 48px; margin-right: -8px; border-radius: 0; background: none; color: var(--ph-muted); }
+/* two columns of decks: a 2:1 picture (the slide cropped top and bottom), then the file icon, the title, ⋯ */
+html.phone .hm-folders, html.phone .hm-grid:not(.list) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 26px; row-gap: 22px; }
+html.phone .hm-folders:not(:empty) { margin-bottom: 22px; }
+html.phone .hm-card, html.phone .hm-card:hover { border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible; }
+html.phone .hm-grid:not(.list) .hm-card .pic { display: flex; align-items: center; aspect-ratio: 2 / 1; border: 0; border-radius: 6px; }
+html.phone .hm-grid:not(.list) .hm-card .pic .hm-pic { position: relative; inset: auto; flex: none; }
+html.phone .hm-card .meta { gap: 0; padding: 6px 0 0; min-height: 52px; }
+html.phone .hm-card .meta::before { content: "slideshow"; flex: none; width: 32px; font: 24px/1 "Material Symbols Outlined"; font-variation-settings: "FILL" 1; color: #fdd663; font-feature-settings: "liga"; }
+html.phone .hm-card .title { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; text-align: center; font-size: 17px; line-height: 22px; color: var(--ph-ink); }
+html.phone .hm-card .sub { display: none; }
+html.phone .hm-card .more { width: 32px; height: 44px; color: var(--ph-ink); }
+html.phone .hm-card .more .icon { font-size: 24px; width: 24px; height: 24px; }
+html.phone .hm-folder { background: #2a2b2e; }
+/* + : 56 round, bottom right */
+html.phone #hm-new.ph-fab { position: fixed; right: 20px; margin: 0; bottom: max(20px, env(safe-area-inset-bottom)); z-index: 6; display: grid; place-items: center; width: 56px; height: 56px; padding: 0; border: 0; border-radius: 50%;
+  background: #353639; color: var(--ph-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .3), 0 4px 8px 3px rgba(0, 0, 0, .15); }
+html.phone #hm-new.ph-fab .icon { font-size: 32px; width: auto; }
+
+/* ---------- the editor page: the desktop chrome gives way (each phone screen brings its own) ---------- */
+html.phone:has(#ph-top), html.phone body:has(#ph-top) { overflow: hidden; height: 100%; }
+html.phone body:has(#ph-top) { background: var(--ph-canvas); font-size: 17px; overscroll-behavior: none; }
+html.phone #ed-bar, html.phone #ed-side, html.phone .ruler, html.phone #ed-dock, html.phone #ed-splitter, html.phone #ed-ai-notes, html.phone #ed-notes { display: none !important; }
+html.phone #ed-stage { padding: 0; touch-action: none; }
+html.phone:not(.ph-view) #ph-view, html.phone:not(.ph-view) .ph-chip, html.phone.ph-view main { display: none; }
+/* the top bar: 62 under the status bar, icons 24 on a 48 pitch, 1 px rule (02-open-view.png, 03-edit.png) */
+html.phone .ph-top { flex: none; position: relative; z-index: 20; padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); background: var(--ph-bar); border-bottom: 1px solid var(--ph-rule); transition: transform .25s ease; }
+html.phone .ph-bar { display: none; align-items: center; height: var(--ph-bar-h); }
+html.phone.ph-view .ph-bar-view, html.phone.ph-edit .ph-bar-edit { display: flex; }
+html.phone .ph-gap { flex: 1; }
+html.phone .ph-bar .ph-icon-btn .icon { font-variation-settings: "FILL" 0; }
+html.phone .ph-bar .ph-icon-btn:active { opacity: .45; }
+
+/* ---------- view mode: the slides as a vertical list (02-open-view.png, r01) ---------- */
+html.phone.ph-view .ph-top { position: fixed; left: 0; right: 0; top: 0; }
+html.phone.ph-view .ph-top.away { transform: translateY(-100%); }
+html.phone #ph-view { position: fixed; inset: 0; z-index: 1; overflow-y: auto; overscroll-behavior: contain; padding: calc(env(safe-area-inset-top) + var(--ph-bar-h) + 1px) 0 env(safe-area-inset-bottom); background: var(--ph-canvas); }
+html.phone .ph-vslide { position: relative; width: 100%; margin-bottom: 4px; overflow: hidden; background: #3c4043; }   /* dark until drawn */
+html.phone .ph-vslide.drawn { background: #fff; }
+html.phone .ph-vslide-canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+html.phone .ph-vslide-canvas > section { display: block !important; position: absolute; inset: 0; }
+html.phone .ph-vslide.cur::after { content: ""; position: absolute; inset: 0; z-index: 5; box-shadow: inset 0 0 0 2px var(--ph-accent-ink); pointer-events: none; }
+/* "Slide N of M" while scrolling: top right, 6 under the bar */
+html.phone .ph-chip { position: fixed; z-index: 21; right: 5px; top: calc(env(safe-area-inset-top) + var(--ph-bar-h) + 7px); padding: 3px 8px; border-radius: 4px; background: #555659; color: #fff; font: 15px var(--font); opacity: 0; transition: opacity .2s; pointer-events: none; }
+html.phone .ph-chip.on { opacity: 1; }
+/* the iOS edit menu: a dark glass pill of labels with thin rules between */
+html.phone .ph-editmenu { position: fixed; z-index: 40; display: flex; align-items: stretch; height: 42px; border-radius: 21px; overflow: hidden; background: rgba(110, 110, 112, .82); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); box-shadow: 0 4px 16px rgba(0, 0, 0, .3); }
+html.phone .ph-editmenu button { height: auto; padding: 0 16px; border: 0; border-radius: 0; background: none; color: #fff; font: 16px var(--font); white-space: nowrap; }
+html.phone .ph-editmenu button + button { border-left: 1px solid rgba(255, 255, 255, .25); }
+html.phone .ph-editmenu button:active { background: rgba(255, 255, 255, .15); }
+/* presenting (13-present.png): ✕ and the title over the black */
+html.phone .ph-show-bar { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; height: calc(env(safe-area-inset-top) + var(--ph-bar-h)); padding-top: env(safe-area-inset-top); background: var(--ph-bar); border-bottom: 1px solid var(--ph-rule); color: var(--ph-ink); }
+html.phone .ph-show-title { font: 17px var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- editing (03-edit.png, 04-select-text-box.png) ---------- */
+html.phone body { --slide-shadow: none; }
+html.phone:not(.ph-edit) .ph-film { display: none; }
+/* the top bar: back at the left, the rest on the 48 grid against the right edge; with a selection, ✓ and no share */
+html.phone .ph-bar-edit .ph-done { display: none; color: var(--ph-accent-ink); }
+html.phone .ph-bar-edit.picking .ph-done { display: grid; }
+html.phone .ph-bar-edit.picking > .ph-icon-btn:first-child, html.phone .ph-bar-edit.picking .ph-icon-btn[title=Share] { display: none; }
+html.phone .ph-bar-edit .ph-icon-btn:last-child { margin-right: 0; }
+/* the filmstrip: 1 px rule, cells 98 wide with an 80 × 45 picture 9 in and the number under it; the current cell blue */
+html.phone .ph-film { flex: none; display: flex; height: calc(97px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: var(--ph-bar); border-top: 1px solid var(--ph-rule); }
+html.phone .ph-film-strip { flex: 1; display: flex; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding-top: 5px; }
+html.phone .ph-film-strip::-webkit-scrollbar { display: none; }
+html.phone .ph-film-cells { display: contents; }   /* the slides' cells, in the strip (a New slide tile may follow them) */
+html.phone .ph-cell { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; width: 98px; height: 87px; padding: 9px 9px 0; border: 0; border-radius: 2px; background: none; color: var(--ph-ink); text-align: left; }
+html.phone .ph-cell.cur { background: var(--ph-accent); }
+html.phone .ph-thumb { position: relative; width: 80px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px #545759; border-radius: 1px; }
+html.phone .ph-cell.cur .ph-thumb { box-shadow: 0 0 0 1px #9dbdf3; }
+html.phone .ph-thumb > .thumb-view { position: absolute; left: 0; top: 0; transform: scale(calc(80 / 158)); transform-origin: 0 0; border-radius: 0; box-shadow: none; }
+html.phone .ph-num { font: 15px/1 var(--font); }
+html.phone .ph-cell.cur .ph-num { color: #f8e39d; }
+html.phone .ph-film-new { flex: none; width: 44px; height: 100%; border-radius: 0; border-left: 1px solid var(--ph-rule) !important; padding-bottom: 6px; }
+
+/* ---------- selection and touch (04-select-text-box.png, 06-select-shape.png, r02) ---------- */
+/* square blue handles with a thin white edge, a blue knob on a stem, a blue frame in a pale halo */
+html.phone .sel-box { box-shadow: 0 0 0 calc(var(--k, 1px) * .75) var(--ph-select), 0 0 0 calc(var(--k, 1px) * 3.25) rgba(190, 209, 247, .85); }
+html.phone .sel-box.thin { box-shadow: 0 0 0 calc(var(--k, 1px) * .75) var(--ph-select); opacity: 1; }
+html.phone .handle:not(.adjust):not(.crop):not(.rotate) { border-radius: 0; background: var(--ph-select); box-shadow: 0 0 0 calc(var(--k, 1px) * 1.3) #fff; }
+html.phone .handle.rotate { background: var(--ph-select); border-radius: 50%; box-shadow: 0 0 0 calc(var(--k, 1px) * 1.5) #fff; }
+html.phone .handle.rotate .icon { display: none; }
+html.phone .rot-stem { background: var(--ph-select); }
+html.phone .handle.adjust { background: var(--ph-adjust); box-shadow: 0 0 0 var(--k) #7a5a00; }
+html.phone .handle::before { inset: -150%; }   /* a 30 px touch target around each handle */
+/* while a handle is dragged, only it stays (r02) */
+html.phone #ed-ui.ph-sizing .handle:not(.on), html.phone #ed-ui.ph-sizing .rot-stem { display: none; }
+/* the grey outline that follows the finger */
+html.phone .ph-ghost { position: absolute; box-shadow: 0 0 0 calc(var(--k) * 1.3) #8d8d8d; pointer-events: none; }
+html.phone .guide { background: #f00; }
+html.phone #ed-rules .rule { pointer-events: none; }   /* a deck's guides are drawn but not dragged on a phone: a tap goes to the box under it */
+/* the angle while rotating: a dark chip (r02) */
+html.phone .rot-label { scale: 2.2; transform-origin: 100% 0; padding: .25em .6em; border-radius: .3em; background: #2c2c2c; color: #fff; }
+html.phone #ed-stage.zoomed { overflow: hidden; }   /* we scroll it ourselves: one finger on nothing, or two */
+
+/* ---------- the text and shape toolbars (04-select-text-box.png, 06-select-shape.png, r03) ---------- */
+html.phone .ph-tools { display: none; flex: none; height: calc(var(--ph-tool-h) + env(safe-area-inset-bottom)); align-items: flex-start; background: var(--ph-bar); border-top: 1px solid var(--ph-rule); }
+html.phone.ph-edit.ph-tools-text .ph-tools, html.phone.ph-edit.ph-tools-shape .ph-tools { display: flex; }
+/* the toolbar takes the bottom edge and pushes the filmstrip up over the canvas: the slide doesn't move (r02) */
+html.phone.ph-edit.ph-tools-text .ph-film, html.phone.ph-edit.ph-tools-shape .ph-film { position: relative; z-index: 2; height: 97px; padding-bottom: 0; margin-top: calc(-1 * var(--ph-tool-h)); }
+html.phone .ph-tools > div { display: none; flex: 1; align-items: center; height: var(--ph-tool-h); padding-left: 4px; overflow-x: auto; scrollbar-width: none; }   /* scrolls sideways when it doesn't fit */
+html.phone .ph-tools > div::-webkit-scrollbar { display: none; }
+html.phone.ph-tools-text .ph-tools-text, html.phone.ph-tools-shape .ph-tools-shape { display: flex; }
+html.phone .ph-tools-shape { justify-content: center; padding-left: 0 !important; }
+html.phone .ph-tools .ph-icon-btn { position: relative; flex: none; width: 48px; height: var(--ph-tool-h); }
+html.phone .ph-tools .ph-icon-btn.on .icon { width: 32px; height: 36px; line-height: 36px; border-radius: 4px; background: var(--ph-accent); color: var(--ph-accent-ink); text-align: center; }
+html.phone .ph-sep { flex: none; width: 1px; height: 28px; margin: 0 4px; background: var(--ph-rule); }
+html.phone .ph-bar-color { position: absolute; left: 13px; right: 13px; bottom: 6px; height: 3px; border: 1px solid #5f6367; }
+/* typing: the filmstrip goes, the toolbar sits on the keyboard */
+html.phone.ph-edit.ph-typing .ph-film { display: none; }
+html.phone.ph-typing .ph-tools { height: var(--ph-tool-h); }
+html.phone .sel-box.editing { outline: none; box-shadow: 0 0 0 calc(var(--k, 1px) * .75) var(--ph-select), 0 0 0 calc(var(--k, 1px) * 3.25) rgba(190, 209, 247, .85); }   /* typing keeps the frame (r03) */
+
+/* ---------- bottom sheets (09-insert-menu.png, r04) ---------- */
+html.phone { --ph-safe-top: env(safe-area-inset-top); --ph-sheet-h: min(442px, 58vh); }
+html.phone #ph-top, html.phone main, html.phone #ph-film, html.phone #ph-tools { transition: transform .25s ease; }
+html.phone .ph-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; height: var(--ph-sheet-h); overflow: hidden; background: var(--ph-bar); color: var(--ph-ink); transform: translateY(100%); transition: transform .25s ease; font: 17px var(--font); }
+html.phone.ph-sheet-open .ph-sheet { transform: none; }
+html.phone .ph-page { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--ph-bar); transition: transform .25s ease; }
+html.phone .ph-page.in { transform: translateX(100%); } html.phone .ph-page.out { transform: translateX(-30%); }
+html.phone .ph-page-head { position: relative; flex: none; display: flex; align-items: center; justify-content: center; height: 47px; border-bottom: 1px solid var(--ph-rule); }
+html.phone .ph-page-title { font-size: 17px; }
+html.phone .ph-back { position: absolute; left: 0; top: 0; height: 46px; }
+html.phone .ph-page-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding-bottom: env(safe-area-inset-bottom); }
+/* rows: 60 tall, icon at 36, label at 72, › at the right, inset rules */
+html.phone .ph-row { position: relative; display: flex; align-items: center; width: 100%; height: 60px; padding: 0 24px 0 24px; border: 0; border-radius: 0; background: none; color: var(--ph-ink); font: 17px var(--font); text-align: left; }
+html.phone .ph-row + .ph-row::before { content: ""; position: absolute; left: 24px; right: 24px; top: 0; border-top: 1px solid var(--ph-rule); }
+html.phone .ph-row > .icon:first-child { width: 24px; margin-right: 24px; font-size: 24px; color: var(--ph-muted); }
+html.phone .ph-row-label { flex: 1; }
+html.phone .ph-row .ph-more { color: var(--ph-muted); font-size: 24px; }
+html.phone .ph-row:active:not(:disabled) { background: #3c4043; }
+html.phone .ph-row:disabled { opacity: .4; }
+/* tabs: equal widths, the chosen one light blue with a 3 px bar under its label */
+html.phone .ph-tabs { display: flex; height: 47px; border-bottom: 1px solid var(--ph-rule); }
+html.phone .ph-tabs button { flex: 1; position: relative; border: 0; border-radius: 0; background: none; color: var(--ph-muted); font: 15px var(--font); }
+html.phone .ph-tabs button.on { color: #a8c7fa; }
+html.phone .ph-tabs button.on::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 50%; height: 3px; translate: -50% 0; border-radius: 3px 3px 0 0; background: #a8c7fa; }
+/* the shape grid: 4 columns, ~52 px pictures, light grey with a grey outline */
+html.phone .ph-shape-grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 86px; padding: 4px 0; }
+html.phone .ph-shape-cell { display: grid; place-items: center; border: 0; border-radius: 0; background: none; }
+html.phone .ph-shape-cell:active { background: #3c4043; }
+html.phone .ph-shape-cell svg { width: 52px; height: 52px; }
+html.phone .ph-shape-cell svg * { fill: #f4f4f4; stroke: #949494; stroke-width: 1px; vector-effect: non-scaling-stroke; }
+html.phone .ph-table-pick { padding: 16px; }
+
+/* ---------- colour panels (r03, r04) ---------- */
+html.phone .ph-none { height: 50px; }
+html.phone .ph-none .ph-check { display: none; color: var(--ph-muted); font-size: 22px; }
+html.phone .ph-none.on .ph-check { display: inline-block; }
+/* the hue strip: 11 square segments 25 wide, the chosen one in a white frame */
+html.phone .ph-hues { display: flex; justify-content: center; margin: 16px 0 12px; }
+html.phone .ph-hue { width: 25px; height: 30px; padding: 0; border: 0; border-radius: 0; }
+html.phone .ph-hue.on { position: relative; z-index: 1; border-radius: 4px; box-shadow: 0 0 0 4px #fff; scale: 1.15; }
+html.phone .ph-swatches { display: grid; gap: 2px 2.5px; margin: 0 12px; }
+html.phone .ph-swatches.five { grid-template-columns: repeat(5, 1fr); }
+html.phone .ph-swatches.four { grid-template-columns: repeat(4, 1fr); }
+html.phone .ph-swatches.custom { grid-template-columns: repeat(auto-fill, 56px); }
+html.phone .ph-swatch-cell { position: relative; height: 56px; padding: 0; border: 1px solid #54575d; border-radius: 0; }
+html.phone .ph-swatch-cell.on::after { content: "check"; position: absolute; right: 4px; bottom: 4px; width: 15px; height: 15px; border-radius: 50%; background: #d8d8d8; color: #000; font: 13px/15px "Material Symbols Outlined"; font-feature-settings: "liga"; text-align: center; }
+html.phone .ph-add { display: grid; place-items: center; background: none; color: var(--ph-muted); }
+html.phone .ph-label { margin: 16px 12px 10px; font-size: 17px; }
+
+/* ---------- slide mode (11-slide-selected.png, r05) ---------- */
+html.phone.ph-edit.ph-slide .ph-bar-edit { display: none; }
+html.phone.ph-edit.ph-slide .ph-bar-slide { display: flex; }
+html.phone .ph-count { min-width: 32px; padding-left: 4px; color: #ccdcfc; font: 17px var(--font); }
+html.phone .ph-bar-slide .ph-act { flex: 0 1 44px; min-width: 34px; }   /* 44 apart, a little less on a narrow phone */
+html.phone .ph-cell.picked { background: var(--ph-accent); }
+html.phone .ph-cell.picked .ph-thumb { box-shadow: 0 0 0 1px #9dbdf3; }
+html.phone .ph-cell.picked .ph-num { color: #f8e39d; }
+
+/* ---------- Add slide (12-new-slide-layouts.png) ---------- */
+html.phone .ph-addslide { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; background: var(--ph-page); color: var(--ph-ink); }
+html.phone .ph-addslide[hidden] { display: none; }
+html.phone .ph-addslide-head { flex: none; position: relative; display: flex; align-items: center; justify-content: center; height: calc(41px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); border-bottom: 1px solid #3c4043; font: 17px var(--font); }
+html.phone .ph-addslide-head .ph-icon-btn { position: absolute; right: 18px; bottom: -4px; }
+html.phone .ph-layouts { flex: 1; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); }
+html.phone .ph-sheet .ph-layouts { overflow: visible; padding: 16px 20px; }
+html.phone .ph-layout { display: flex; flex-direction: column; align-items: stretch; gap: 8px; height: auto; padding: 0 0 12px; border: 0; border-radius: 0; background: none; color: var(--ph-ink); font: 600 15px var(--font); }
+html.phone .ph-layout svg { flex: none; display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; outline: 1px solid var(--ph-rule); }
+html.phone .ph-layout:active svg { outline: 2px solid var(--ph-accent-ink); }
+html.phone .ph-layout svg text { font-weight: 400; }
+
+/* ---------- reordering slides (r05) ---------- */
+html.phone .ph-cell { transition: transform .25s ease-out; }
+html.phone .ph-cell.lifting { visibility: hidden; }   /* its place closes up as the others make room */
+html.phone .ph-lifted { position: fixed; z-index: 50; width: 97px !important; height: 55px !important; border-radius: 4px; box-shadow: none; pointer-events: none; }
+html.phone .ph-lifted > .thumb-view { transform: scale(calc(97 / 158)); }
+html.phone .ph-film.dragging .ph-film-new { color: #6a6b70; }
+
+/* ---------- presenting (13-present.png, r07) ---------- */
+html.phone #ed-show { background: #000; bottom: auto; height: 100dvh; }   /* the visible height: iPhone Safari's own bars don't hide the slide's bottom */
+/* a home-screen app (html.ph-app): the editor and presenting keep the app's full height (phone-mode.js), as iOS's
+   viewport units and 100% can be off there by about a status bar */
+html.phone.ph-app:has(#ph-top), html.phone.ph-app body:has(#ph-top), html.phone.ph-app #ed-show { height: var(--ph-app-h, 100%); }
+html.phone.ph-app.ph-kb body:has(#ph-top) { position: fixed; left: 0; right: 0; top: var(--ph-vv-top, 0px); }   /* the keyboard up: the page is the visible area, wherever iOS has moved it */
+html.phone.ph-app.ph-typing:not(.ph-kb) .ph-tools { height: calc(var(--ph-tool-h) + env(safe-area-inset-bottom)); }   /* editing with the keyboard down: clear of the home indicator */
+html.phone .ph-show-count { display: none; }
+html.phone .ph-show-touch { position: absolute; inset: 0; z-index: 1; }   /* taps and swipes, over the deck */
+html.phone .ph-show-bar { z-index: 2; transition: transform .38s ease; }
+html.phone .ph-show-bar.away { transform: translateY(-100%); }
+
+/* ---------- adding a comment (15-comments.png) ---------- */
+html.phone .ph-cm-cancel, html.phone .ph-cm-hint, html.phone .ph-cm-bar { display: none; }
+html.phone.ph-commenting .ph-top, html.phone.ph-commenting .ph-film, html.phone.ph-commenting .ph-tools { display: none !important; }
+html.phone.ph-commenting main { padding: calc(env(safe-area-inset-top) + 64px) 0 136px; }
+html.phone.ph-commenting .ph-cm-cancel { position: fixed; z-index: 30; left: 50%; top: calc(env(safe-area-inset-top) + 6px); translate: -50% 0; display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 20px 0 8px; border: 0; border-radius: 23px; background: var(--ph-page); color: var(--ph-ink); font: 22px var(--font); box-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
+html.phone .ph-cm-cancel .icon { font-size: 32px; width: auto; }
+html.phone.ph-commenting .ph-cm-hint { position: fixed; z-index: 30; left: 8px; right: 8px; bottom: calc(73px + env(safe-area-inset-bottom)); display: flex; align-items: center; height: 48px; padding: 0 16px; border-radius: 4px; background: #fff; color: #202124; font: 17px var(--font); }
+html.phone.ph-commenting .ph-cm-bar { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 4px; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); background: var(--ph-bar); border-top: 1px solid var(--ph-rule); }
+html.phone .ph-cm-at { color: var(--ph-muted); }
+html.phone .ph-cm-field { flex: 1; display: flex; align-items: center; min-height: 48px; padding: 0 4px 0 16px; border-radius: 24px; background: #46474a; }
+html.phone .ph-cm-input { flex: 1; min-width: 0; padding: 12px 0; border: 0; outline: 0; resize: none; background: none; color: var(--ph-ink); font: 17px/22px var(--font); }
+html.phone .ph-cm-input::placeholder { color: var(--ph-muted); }
+html.phone .ph-cm-send { color: var(--ph-accent-ink); }
+html.phone .ph-cm-send:disabled { color: var(--ph-muted); }
+
+/* ---------- the comments list and Share, full screen in the app's dark look (14-share.png) ---------- */
+html.phone #ed-comments:not([hidden]) { position: fixed; inset: 0; z-index: 45; width: auto !important; max-width: none; margin: 0; border-radius: 0; padding-top: env(safe-area-inset-top); border: 0; background: var(--ph-page); color: var(--ph-ink); font-size: 15px; }
+html.phone #ed-comments header { height: 56px; font-size: 17px; }
+html.phone .cm-card { border-color: var(--ph-rule); background: var(--ph-bar); font-size: 15px; }
+html.phone #ed-sharedlg { background: var(--ph-page); }
+html.phone #ed-sharedlg .share-dialog { position: fixed; inset: 0; width: auto; max-width: none; max-height: none; margin: 0; padding: calc(env(safe-area-inset-top) + 8px) 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 0; box-shadow: none; background: var(--ph-page); color: var(--ph-ink); font-size: 15px; overflow-y: auto; }
+html.phone #ed-sharedlg header h2 { font-size: 17px; font-weight: 500; }
+html.phone #ed-sharedlg .share-dialog > header { flex-direction: row-reverse; padding: 0 0 8px; border: 0; }   /* ✕ at the left, the title in the middle (14-share.png) */
+html.phone #ed-sharedlg .share-dialog > header h2 { margin-right: 40px; text-align: center; }
+html.phone #ed-ui:has(~ #ed-guides .rot-ghost) .handle:not(.rotate) { display: none; }   /* turning: only the knob and the frame stay (r02) */
+
+/* ---------- glideshow.org on a phone: the browser-only notice under the search, and the empty library ---------- */
+html.phone .hm-move { margin: 12px 0 4px; padding: 12px 12px 12px 16px; gap: 10px 12px; border-radius: 12px; background: #2a2b2e; box-shadow: inset 0 0 0 1px var(--ph-rule); font-size: 15px; line-height: 1.35; }
+html.phone .hm-move span { min-width: 0; color: var(--ph-muted); }
+html.phone .hm-move-go { height: 36px; background: var(--ph-accent-ink); color: #202124; }
+html.phone .hm-empty { margin: 8px 5px; font-size: 15px; color: var(--ph-muted); }
+html.phone .ph-theme { display: none !important; }   /* the app's own look is always dark: the switch is Thermal's */
+html.phone .ph-sorttools { display: flex; align-items: center; }
+
+/* ---------- layout experiments (?layout=thumb,float,shelf; previews, see phone-mode.js) ---------- */
+/* thumb: the deck's title on top; undo, redo, insert, present and comments in a pill above the filmstrip */
+html.phone .ph-dock, html.phone .ph-doc-title { display: none; }
+html.phone[data-layout~="thumb"] .ph-doc-title { display: block; flex: 1; min-width: 0; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; font: 500 17px var(--font); color: var(--ph-ink); }
+html.phone.ph-edit[data-layout~="thumb"]:not(.ph-typing):not(.ph-slide) .ph-dock { display: flex; flex: none; align-self: center; gap: 2px; margin: 8px 0 10px; padding: 4px; border-radius: 999px;
+  background: var(--ph-surface, #303134); box-shadow: 0 0 0 1px var(--ph-rule), 0 6px 18px rgba(0, 0, 0, .12); }
+html.phone[data-layout~="thumb"] .ph-dock .ph-icon-btn { width: 52px; height: 44px; border-radius: 999px; color: var(--icon, var(--ph-ink)); }
+html.phone[data-layout~="thumb"] .ph-dock .ph-icon-btn:active { background: var(--ph-press, #3c4043); }
+html.phone.ph-edit[data-layout~="thumb"].ph-tools-text .ph-film, html.phone.ph-edit[data-layout~="thumb"].ph-tools-shape .ph-film { margin-top: 0; }
+/* float: the format bar floats just above the selection, as a pill; the filmstrip keeps the bottom */
+html.phone.ph-edit[data-layout~="float"]:not(.ph-typing) .ph-tools { position: fixed; z-index: 25; height: 48px; width: max-content; max-width: calc(100vw - 16px); padding: 2px 4px; border: 0; border-radius: 16px;
+  background: var(--ph-surface, #303134); box-shadow: 0 0 0 1px var(--ph-rule), 0 8px 24px rgba(0, 0, 0, .14); }
+html.phone.ph-edit[data-layout~="float"]:not(.ph-typing) .ph-tools > div { height: 44px; padding: 0; }
+html.phone.ph-edit[data-layout~="float"]:not(.ph-typing) .ph-tools .ph-icon-btn { width: 44px; }
+html.phone.ph-edit[data-layout~="float"].ph-tools-text:not(.ph-typing) .ph-film, html.phone.ph-edit[data-layout~="float"].ph-tools-shape:not(.ph-typing) .ph-film { margin-top: 0; height: calc(97px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); }
+/* shelf: Home as one column; the deck opened last large, the rest as rows with the date and slide count */
+html.phone[data-layout~="shelf"] .hm-grid:not(.list) { grid-template-columns: minmax(0, 1fr); row-gap: 0; }
+html.phone[data-layout~="shelf"] .hm-folders { grid-template-columns: minmax(0, 1fr); row-gap: 10px; }   /* folders one to a row too, so a name has room */
+html.phone[data-layout~="shelf"] .hm-grid:not(.list) .hm-card { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--ph-rule); }
+html.phone[data-layout~="shelf"] .hm-grid:not(.list) .hm-card .pic { aspect-ratio: 16 / 9; border-radius: 10px; }
+html.phone[data-layout~="shelf"] .hm-grid:not(.list) .hm-card .meta { padding: 0; min-height: 0; align-items: flex-start; }
+html.phone[data-layout~="shelf"] .hm-card .meta::before { content: none; }
+html.phone[data-layout~="shelf"] .hm-card .title { text-align: left; font: 500 16px/21px var(--font); }
+html.phone[data-layout~="shelf"] .hm-card .sub { display: block; margin-top: 6px; font: 400 12px/1.3 var(--mono, ui-monospace, monospace); color: var(--ph-muted); white-space: normal; }
+html.phone[data-layout~="shelf"] .hm-card .more { height: 28px; margin-top: -4px; }
+html.phone[data-layout~="shelf"] .hm-grid:not(.list) > .hm-card:first-child { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 4px 0 18px; }
+html.phone[data-layout~="shelf"] .hm-grid:not(.list) > .hm-card:first-child .title { font-size: 21px; line-height: 26px; }
+html.phone[data-layout~="shelf"] .hm-grid:not(.list) > .hm-card { grid-row: auto !important; grid-column: auto !important; }   /* desktop Thermal's larger first card spans two rows */
+html.phone[data-layout~="shelf"] .hm-grid:not(.list) > .hm-card:first-child { display: grid !important; }
+html.phone[data-layout~="shelf"] .hm-grid:not(.list) > .hm-card:not(:first-child) .pic { width: 128px; }
+html.phone[data-layout~="shelf"] .hm-grid:not(.list) > .hm-card:first-child .sub { margin-top: 4px; }
+html.phone[data-layout~="shelf"] .hm-grid:not(.list) > .hm-card { border-radius: 0 !important; }
+
+/* Long-press on the app's own controls (bars, the pill, the filmstrip, sheets, cards) doesn't select their text or icon
+   glyphs, nor open iOS's callout ("Copy | Search with Google"); text being edited, and fields, still select as usual. */
+html.phone body, html.phone body * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+html.phone :is([contenteditable="true"], [contenteditable="true"] *, input, textarea) { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+
+/* thumb, in landscape (html.ph-rails, phone-edit.js): side rails. No top bar, so the slide gets all of the height; the
+   filmstrip runs down the left; the pill stands on the right as a column (back or ✓, undo, redo, insert, present,
+   comments, ⋯). A text box or shape selected turns the column into its format controls: ✓ on top, the three align
+   buttons as one, and Cut, Copy, Paste, Delete in a ⋯ at the foot. Slide mode brings its bar back over the slide. */
+html.phone .ph-rail-only, html.phone.ph-rails .ph-dock .ph-done, html.phone.ph-rails.ph-picking .ph-dock .ph-rail-back { display: none !important; }
+html.phone.ph-edit.ph-rails .ph-rail-only:not(.ph-done, .ph-rail-back), html.phone.ph-edit.ph-rails #ph-tools .ph-done,
+  html.phone.ph-edit.ph-rails:not(.ph-picking) .ph-dock .ph-rail-back, html.phone.ph-edit.ph-rails.ph-picking .ph-dock .ph-done { display: grid !important; }
+html.phone.ph-edit.ph-rails { --ph-rail-l: calc(112px + env(safe-area-inset-left)); --ph-rail-r: calc(68px + env(safe-area-inset-right)); }
+html.phone.ph-edit.ph-rails:not(.ph-slide) #ph-top { display: none; }
+html.phone.ph-edit.ph-rails main { position: fixed; left: var(--ph-rail-l); right: var(--ph-rail-r); top: 0; bottom: 0; height: auto; margin: 0; }
+html.phone.ph-edit.ph-rails.ph-slide #ph-top { position: fixed; left: var(--ph-rail-l); right: 0; top: 0; padding-right: env(safe-area-inset-right); }
+html.phone.ph-edit.ph-rails.ph-slide main { top: var(--ph-bar-h); right: 0; }
+html.phone.ph-edit.ph-rails:is(.ph-typing, .ph-commenting) main { left: env(safe-area-inset-left); }
+html.phone.ph-edit.ph-rails.ph-commenting main { right: 0; }
+html.phone.ph-edit.ph-rails.ph-commenting .ph-dock { display: none; }
+/* the filmstrip, down the left */
+html.phone.ph-edit.ph-rails #ph-film { position: fixed; z-index: 2; left: 0; top: 0; bottom: 0; width: var(--ph-rail-l); height: auto; margin: 0; padding: 0 0 0 env(safe-area-inset-left); flex-direction: column; border-top: 0; border-right: 1px solid var(--ph-rule); }
+html.phone.ph-edit.ph-rails #ph-film .ph-film-strip { position: relative; flex-direction: column; align-items: center; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); }
+html.phone.ph-edit.ph-rails #ph-film > .ph-film-new { width: 100%; height: calc(44px + env(safe-area-inset-bottom)); padding: 0 0 env(safe-area-inset-bottom); border-left: 0 !important; border-top: 1px solid var(--ph-rule); }
+/* the pill, and the format controls in its place, as a column on the right */
+html.phone.ph-edit.ph-rails[data-layout~="thumb"]:not(.ph-typing):not(.ph-slide) .ph-dock, html.phone.ph-edit.ph-rails #ph-tools {
+  position: fixed; z-index: 25; left: auto; right: calc(8px + env(safe-area-inset-right)); top: 50%; bottom: auto; translate: 0 -50%; flex-direction: column; align-items: center;
+  width: 52px; height: auto; max-height: calc(100% - 16px); margin: 0; padding: 4px 0; overflow-x: hidden; overflow-y: auto; scrollbar-width: none; border: 0; border-radius: 26px;
+  background: var(--ph-surface, #303134); box-shadow: 0 0 0 1px var(--ph-rule), 0 6px 18px rgba(0, 0, 0, .12); }
+html.phone.ph-edit.ph-rails[data-layout~="thumb"]:is(.ph-tools-text, .ph-tools-shape) .ph-dock { display: none; }
+html.phone.ph-edit.ph-rails .ph-dock .ph-icon-btn, html.phone.ph-edit.ph-rails #ph-tools .ph-icon-btn { flex: none; width: 52px; height: 42px; }
+html.phone.ph-edit.ph-rails #ph-tools > div { flex: none; flex-direction: column; align-items: center; height: auto; padding: 0; overflow: visible; }
+html.phone.ph-edit.ph-rails #ph-tools [data-align] { display: none; }
+html.phone.ph-edit.ph-rails #ph-tools .ph-sep { width: 28px; height: 1px; margin: 4px 0; }
+html.phone.ph-edit.ph-rails .ph-done { color: var(--ph-accent-ink); }
