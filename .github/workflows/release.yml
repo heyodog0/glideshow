@@ -1,4 +1,4 @@
-# A version tag (v0.2.0) on main: the checks and the browser tests (tests.yml), glideshow.org runs it, and a GitHub Release with notes from the commits
+# A version tag (v0.2.0) on main: the quick checks (the browser tests are run locally before tagging, and nightly), glideshow.org runs it, and a GitHub Release with notes from the commits
 # since the last one. The tag must match pyproject.toml's version. Staging is staging.yml.
 name: release
 on:
@@ -23,11 +23,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: tools/check.sh
-  tests:
-    needs: checks
-    uses: ./.github/workflows/tests.yml
   deploy:
-    needs: tests
+    needs: checks
     runs-on: ubuntu-latest
     environment: { name: production, url: https://glideshow.org }
     steps:

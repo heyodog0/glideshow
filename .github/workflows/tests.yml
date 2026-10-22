@@ -1,11 +1,12 @@
-# The end-to-end tests in headless Chrome (about 8 minutes on macOS). On pull requests, before every release
-# (release.yml), and by hand (Actions → tests → Run workflow, or `gh workflow run tests.yml`); pushes are covered by
-# running `uv run test/smoke.py` locally before committing.
+# The end-to-end tests in headless Chrome (about 10 minutes on macOS): on pull requests, every night on main, and by hand
+# (Actions → tests → Run workflow, or `gh workflow run tests.yml`). They gate nothing: a failure is a heads-up to look
+# at. Before tagging a release, run `uv run test/smoke.py` locally.
 name: tests
 on:
   pull_request:
+  schedule:
+    - cron: '0 7 * * *'   # 07:00 UTC, every night
   workflow_dispatch:
-  workflow_call:
 permissions:
   contents: read
 

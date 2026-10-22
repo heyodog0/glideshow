@@ -46,8 +46,8 @@ $ # bump `version` in pyproject.toml, commit it, then:
 $ git tag v0.2.0 && git push origin main v0.2.0
 ```
 
-The tag runs the checks and the browser tests, deploys [glideshow.org](https://glideshow.org) and publishes a GitHub
-Release with notes and the package (`0.x` versions are marked pre-release). The deploys need the repo secret
+Run `uv run test/smoke.py` first. The tag runs the quick checks, deploys [glideshow.org](https://glideshow.org) and publishes a GitHub
+Release with notes and the package (`0.x` versions are marked pre-release). The browser tests also run nightly and on pull requests, as a heads-up. The deploys need the repo secret
 `CLOUDFLARE_API_TOKEN` (a Cloudflare token from the "Edit Cloudflare Workers" template) and the variable
 `CLOUDFLARE_ACCOUNT_ID`.
 
