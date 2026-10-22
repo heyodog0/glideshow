@@ -86,7 +86,7 @@ def start(deck: Path | None = None):
     log = open(CACHE.mkdir(parents=True, exist_ok=True) or CACHE / "server.log", "a")
     subprocess.Popen([sys.executable, "-m", "glideshow.server", *([str(deck)] if deck else []), "--no-open"],
                      stdout=log, stderr=log, stdin=subprocess.DEVNULL, start_new_session=True)
-    for _ in range(150):
+    for _ in range(600):   # (a cold first start can take a while: imports, a fresh .pyc cache)
         if running(): return
         time.sleep(0.1)
     raise SystemExit(f"the slides server did not start; see {CACHE / 'server.log'}")

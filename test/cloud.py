@@ -434,14 +434,14 @@ with sync_playwright() as p:
         check("…anyone else gets No access", "No access" in other.content() and "stranger@example.com" in other.content())
 
         # comments from viewers, seen by the owner
-        anon.click(".gs-toggle"); anon.click(".gs-primary:has-text('Add a comment')")
+        anon.mouse.move(300, 300, steps=2); anon.click(".gs-toggle");   # (the buttons fade out after 3 s without the mouse moving) anon.click(".gs-primary:has-text('Add a comment')")
         anon.mouse.click(500, 400); anon.wait_for_selector(".gs-new textarea")
         anon.fill(".gs-new textarea", "Could this be bigger?"); anon.click(".gs-new .gs-primary")
         anon.wait_for_selector(".gs-card[data-id]", timeout=20000)
         check("a viewer comments on a spot on the slide (a pin marks it)", anon.locator(".gs-marker").count() == 1)
         left = pg.evaluate("fetch('/api/comments').then(r => r.json())").get("comments", [{}])[-1]
         check("…and the comment keeps the slide's id (so it stays with the slide when slides move)", bool(left.get("sid")), left)
-        lab.click(".gs-toggle"); lab.wait_for_selector(".gs-card[data-id]", timeout=20000)
+        lab.mouse.move(300, 300, steps=2); lab.click(".gs-toggle"); lab.wait_for_selector(".gs-card[data-id]", timeout=20000)
         lab.fill(".gs-card .gs-in", "Agreed"); lab.press(".gs-card .gs-in", "Enter"); lab.wait_for_selector(".gs-reply", timeout=20000)
         check("another viewer sees it and replies", "Agreed" in lab.inner_text(".gs-card"))
         seen = lab.evaluate("() => fetch(GLIDESHOW.comments, { headers: { 'X-Glideshow-View': GLIDESHOW.pass } }).then(r => r.json())")
