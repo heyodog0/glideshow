@@ -28,5 +28,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.152.0"   # as locally (the action's own default is older)
           workingDirectory: cloud
           command: deploy --env dev
