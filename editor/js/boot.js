@@ -51,6 +51,7 @@ function remoteVersion(v, by = '', both = null) {   // both: slides where a libr
 /* On glideshow.org a save anywhere reaches every open editor of the deck at once, over a WebSocket (cloud/library.js);
    the 8 s poll of /api/events stays for what comes from GitHub or Drive. */
 let liveSocket = null;
+setInterval(sendHere, 200);   // (people.js) started here, once liveSocket exists
 function live(wait = 1000) {
   try { liveSocket?.close(); } catch {}
   const ws = liveSocket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/live`);
