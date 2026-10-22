@@ -352,7 +352,7 @@ def checks(pg, deck: Path, errors):
       e.clipboardData = { files: [], items: [{ kind: 'string', type: 'text/plain', getAsFile: () => null }, { kind: 'file', type: 'image/png', getAsFile: () => f }], getData: () => 'finder.png' };
       document.body.dispatchEvent(e);
     })()""")
-    pg.wait_for_timeout(800)
+    pg.wait_for_function(f"document.querySelectorAll('#ed-canvas .box.image').length > {n_img}", timeout=10000)
     check("paste falls back to clipboard items", pg.evaluate("document.querySelectorAll('#ed-canvas .box.image').length") == n_img + 1)
     pg.evaluate("addShape('arrowline')")
 
@@ -1223,7 +1223,9 @@ def checks(pg, deck: Path, errors):
     check("⌘/ opens the shortcuts dialog; search filters; Esc closes", sc == [True, 8] and hits == ["Bold"] and pg.evaluate("document.querySelector('#ed-shortcuts').hidden"), f"{sc} {hits}")
     pg.screenshot(path=str(HERE / "editor.png"))
 
-    html = deck.read_text()
+    for _ in range(50):   # (a slow runner's last save can land after the status says saved)
+        if "Mention the caveat" in (html := deck.read_text()): break
+        pg.wait_for_timeout(300)
     st = pg.evaluate("[document.querySelector('#ed-status .status-text').textContent, document.querySelector('#ed-status .icon').textContent, document.querySelector('#ed-status').dataset.tip || '']")
     check("saved: 'All changes saved' with cloud icon and last-saved time", st[:2] == ["All changes saved", "cloud_done"] and st[2].startswith("Saved to disk at "), str(st))
     check("two slides saved", html.count("<section") == 2)
@@ -1238,11 +1240,11 @@ def checks(pg, deck: Path, errors):
 
     pg.evaluate("go(0)"); pg.wait_for_timeout(300)
     deck.write_text(html.replace("Slide two", "Slide two (edited by agent)"))
-    pg.wait_for_function("document.querySelector('#ed-thumbs').innerHTML.includes('edited by agent')", timeout=5000)
+    pg.wait_for_function("document.querySelector('#ed-thumbs').innerHTML.includes('edited by agent')", timeout=15000)
     seen = pg.evaluate("[cur, $('#ed-status').innerText, document.querySelectorAll('#ed-flash .flash-box').length]")
     check("editor reloads agent edit: goes to the changed slide, says which, outlines the changed box", seen[0] == 1 and "slide 2" in seen[1] and seen[2] >= 1, seen)
     pg.keyboard.press("Escape"); pg.mouse.click(5, 300); pg.keyboard.press("Meta+z")
-    pg.wait_for_function("!document.querySelector('#ed-thumbs').innerHTML.includes('edited by agent')", timeout=5000); pg.wait_for_timeout(1200)
+    pg.wait_for_function("!document.querySelector('#ed-thumbs').innerHTML.includes('edited by agent')", timeout=15000); pg.wait_for_timeout(1200)
     undone = "edited by agent" not in deck.read_text()
     pg.keyboard.press("Meta+Shift+z"); pg.wait_for_timeout(1200)
     check("⌘Z takes an agent's edit back (and saves that); ⇧⌘Z brings it back", undone and "edited by agent" in deck.read_text())

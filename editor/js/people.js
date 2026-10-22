@@ -26,7 +26,6 @@ function sendHere() {
   hereKey = key;
   try { liveSocket.send(JSON.stringify({ here })); } catch {}
 }
-setInterval(sendHere, 200);
 
 function drawPeople() {
   const list = others(), bar = $('#ed-people');

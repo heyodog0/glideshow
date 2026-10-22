@@ -20,8 +20,10 @@ jobs:
       - run: git config --global user.name ci && git config --global user.email ci@example.org   # the tests make git commits
       - run: uv run --with playwright python -m playwright install chromium   # tools/gslides2deck.py renders with Playwright's own Chromium
       - run: uv run test/smoke.py   # drives the installed Google Chrome (playwright channel "chrome")
-      - run: uv run test/keys.py
-      - run: uv run test/agent.py   # the `glideshow` command as an agent uses it (skills/glideshow), in a library of its own
+      - if: ${{ !cancelled() }}   # (each test runs even when one before it failed)
+        run: uv run test/keys.py
+      - if: ${{ !cancelled() }}
+        run: uv run test/agent.py   # the `glideshow` command as an agent uses it (skills/glideshow), in a library of its own
       - if: failure()
         uses: actions/upload-artifact@v4
         with: { name: screenshots, path: "test/*.png", if-no-files-found: ignore }
