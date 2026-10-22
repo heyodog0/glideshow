@@ -1,0 +1,49 @@
+# A version tag (v0.2.0) on main: the checks and the browser tests (tests.yml), glideshow.org runs it, and a GitHub Release with notes from the commits
+# since the last one. The tag must match pyproject.toml's version. Staging is staging.yml.
+name: release
+on:
+  push:
+    tags: ['v*.*.*']
+permissions:
+  contents: write   # the GitHub Release
+concurrency: { group: production, cancel-in-progress: false }
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: The tag is pyproject.toml's version, on main
+        run: |
+          v=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME but pyproject.toml says $v"; exit 1; }
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "$GITHUB_REF_NAME isn't on main"; exit 1; }
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: tools/check.sh
+  tests:
+    needs: checks
+    uses: ./.github/workflows/tests.yml
+  deploy:
+    needs: tests
+    runs-on: ubuntu-latest
+    environment: { name: production, url: https://glideshow.org }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloud
+          command: deploy
+  release:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv build
+      - env: { GH_TOKEN: '${{ github.token }}' }
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "Glideshow $GITHUB_REF_NAME" --generate-notes $([[ "$GITHUB_REF_NAME" == v0.* ]] && echo --prerelease)

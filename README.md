@@ -35,6 +35,22 @@ Or use it online, with nothing to install, at [glideshow.org](https://glideshow.
 Issues and pull requests are welcome. Before sending one, run `tools/check.sh` (types and lint) and `uv run test/smoke.py`
 (the editor end to end, in Chrome).
 
+## Releasing
+
+Work lands on `main` (small changes directly, bigger ones through a short branch and a pull request). Every push to
+`main` that passes the checks goes to [dev.glideshow.org](https://dev.glideshow.org), the nightly channel
+(`uv tool install git+https://github.com/heyodog0/glideshow@main` for the command). A release is a version tag:
+
+```console
+$ # bump `version` in pyproject.toml, commit it, then:
+$ git tag v0.2.0 && git push origin main v0.2.0
+```
+
+The tag runs the checks and the browser tests, deploys [glideshow.org](https://glideshow.org) and publishes a GitHub
+Release with notes and the package (`0.x` versions are marked pre-release). The deploys need the repo secret
+`CLOUDFLARE_API_TOKEN` (a Cloudflare token from the "Edit Cloudflare Workers" template) and the variable
+`CLOUDFLARE_ACCOUNT_ID`.
+
 ## License
 
 [AGPL-3.0](LICENSE). Use it, change it and share it; if you run a changed version as a service, publish your changes.

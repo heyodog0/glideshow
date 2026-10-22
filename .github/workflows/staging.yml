@@ -1,0 +1,32 @@
+# Every push to main: the checks, then dev.glideshow.org (the nightly channel) runs it. Production is release.yml.
+# Needs the repo secret CLOUDFLARE_API_TOKEN and the variable CLOUDFLARE_ACCOUNT_ID (README → Releasing).
+name: staging
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency: { group: staging, cancel-in-progress: true }   # only the newest push deploys
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: tools/check.sh
+  deploy:
+    needs: checks
+    runs-on: ubuntu-latest
+    environment: { name: staging, url: https://dev.glideshow.org }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloud
+          command: deploy --env dev
