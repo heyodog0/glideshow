@@ -472,7 +472,7 @@ with sync_playwright() as p:
         # editing together, stage 4: who else is here, where they are, the box they type in; undo that keeps others' edits
         others = "[...document.querySelectorAll('#ed-people .person')].map(e => e.dataset.tip)"
         pg.wait_for_function(f"{others}.some(t => t.startsWith('PI'))", timeout=10000); lab.wait_for_function(f"{others}.some(t => t.startsWith('Test Owner'))", timeout=10000)
-        check("…each sees the other's initials by Share (named on hover, with the slide they're on), and not their own", pg.evaluate(others) == ["PI · slide 1"] and lab.evaluate(others) == [f"Test Owner · slide {pg.evaluate('cur') + 1}"]
+        check("…each sees the other's initials by Share (named on hover, with the slide they're on), and not their own", pg.evaluate(others) == [f"PI · slide {lab.evaluate('cur') + 1}"] and lab.evaluate(others) == [f"Test Owner · slide {pg.evaluate('cur') + 1}"]
               and pg.inner_text("#ed-people .person") == "P", [pg.evaluate(others), lab.evaluate(others)])
         lab2 = lab.context.new_page(); lab2.goto(args.url + epath); lab2.wait_for_function("typeof slides !== 'undefined' && slides.length > 0 && liveSocket?.readyState === 1", timeout=SLOW); lab2.wait_for_timeout(1500)
         check("…the same person in two windows shows once", [t.split(" ·")[0] for t in pg.evaluate(others)] == ["PI"], pg.evaluate(others)); lab2.close()

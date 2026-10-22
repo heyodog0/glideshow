@@ -77,6 +77,7 @@ try:
     deck_a = Path(a_out.splitlines()[0]) if a_out else Path()
     check("new --no-open makes the deck, prints only its folder, and starts the background server (which keeps versions) without opening anything",
           code == 0 and a_out == str(deck_a) and (deck_a / "deck.html").exists() and (deck_a / "AGENTS.md").exists() and bool(ping()), (code, a_out, err))
+    if code: print("server.log:\n" + ((TMP / "cache" / "server.log").read_text()[-3000:] if (TMP / "cache" / "server.log").exists() else "(none)"), flush=True)
     code, _, err = gs(deck_a.name, "--no-open")   # the editor shows deck A
     p = ping() or {}
     check("a server on GLIDESHOW_PORT records itself apart (server-PORT.json) and never touches the usual server.json",
