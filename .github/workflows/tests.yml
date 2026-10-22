@@ -31,6 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with: { prune-cache: false }   # (its cleanup failed on uv's cache, held by the background fake Drive)
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - name: made-up secrets for wrangler dev

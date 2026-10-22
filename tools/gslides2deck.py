@@ -34,6 +34,17 @@ import argparse, base64, os, hashlib, html, json, math, re, sys, urllib.request
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+
+def chromium(p):
+    """Playwright's own Chromium, downloaded the first time this environment lacks it (uv makes this script a fresh
+    environment, whose Playwright may want a browser build no other one fetched)."""
+    try: return p.chromium.launch()
+    except Exception as e:
+        if "playwright install" not in str(e) and "Executable doesn't exist" not in str(e): raise
+        import subprocess
+        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True, stdout=sys.stderr)
+        return p.chromium.launch()
+
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
@@ -573,7 +584,7 @@ def fit_text(frames, families):
     head = f'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?{q}&display=block">' if google else ""
     loads = [f'document.fonts.load("{st} {wt} 40px \\"{f}\\"")' for f in families for st in ("normal", "italic") for wt in ("400", "700")]
     with sync_playwright() as p:
-        b = p.chromium.launch()
+        b = chromium(p)
         pg = b.new_page()
         pg.set_content(f"<!doctype html><html><head>{head}</head><body></body></html>", wait_until="networkidle")
         pg.evaluate(f"Promise.all([{','.join(loads)}]).catch(() => 0)")
@@ -654,7 +665,7 @@ def match_presets(targets):
     if not targets: return []
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
-        b = p.chromium.launch(); pg = b.new_page()
+        b = chromium(p); pg = b.new_page()
         pg.set_content("<!doctype html><html><body></body></html>")
         pg.add_script_tag(content=_sj)
         res = pg.evaluate(MATCH_JS, {"targets": targets, "names": PRESET_NAMES})
@@ -991,7 +1002,7 @@ def render_refs(capture: Path, out: Path, only=None):
     out.mkdir(parents=True, exist_ok=True)
     nums = only or list(range(1, len(cap["slides"]) + 1))
     with sync_playwright() as p:
-        b = p.chromium.launch(); pg = b.new_page(viewport={"width": 1920, "height": 1080})
+        b = chromium(p); pg = b.new_page(viewport={"width": 1920, "height": 1080})
         for n in nums:
             svg = cap["slides"][n - 1]
             svg = re.sub(r'xlink:href="([^"]+)"', lambda m: f'xlink:href="{images.get(html.unescape(m.group(1)), m.group(1))}"', svg)
