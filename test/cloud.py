@@ -434,7 +434,7 @@ with sync_playwright() as p:
         check("…anyone else gets No access", "No access" in other.content() and "stranger@example.com" in other.content())
 
         # comments from viewers, seen by the owner
-        anon.mouse.move(300, 300, steps=2); anon.click(".gs-toggle");   # (the buttons fade out after 3 s without the mouse moving) anon.click(".gs-primary:has-text('Add a comment')")
+        anon.mouse.move(300, 300, steps=2); anon.click(".gs-toggle"); anon.click(".gs-primary:has-text('Add a comment')")   # (moved: the buttons fade after 3 s still)
         anon.mouse.click(500, 400); anon.wait_for_selector(".gs-new textarea")
         anon.fill(".gs-new textarea", "Could this be bigger?"); anon.click(".gs-new .gs-primary")
         anon.wait_for_selector(".gs-card[data-id]", timeout=20000)
