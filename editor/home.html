@@ -244,14 +244,14 @@ if (CLOUD?.local) {   // without an account: say where the decks are, and how to
   }
   bar.append(say, go); document.querySelector('.hm-main')?.prepend(bar);
 }
-$('#hm-app-more').onclick = e => { e.stopPropagation(); popMenu(e.currentTarget, CLOUD?.local ? [CLOUD.folder ? ['folder', `Your decks are in the folder “${CLOUD.folder.name}”`, () => {}] : ['devices', 'Your decks are in this browser', () => {}],
+$('#hm-app-more').onclick = e => { e.stopPropagation(); popMenu(e.currentTarget, [...(CLOUD?.local ? [CLOUD.folder ? ['folder', `Your decks are in the folder “${CLOUD.folder.name}”`, () => {}] : ['devices', 'Your decks are in this browser', () => {}],
   ...(CLOUD.folder ? [['folder_off', 'Stop using this folder (the decks stay in it, and in this browser)', async () => {
     await (await import('/editor/lib/store-folder.js')).setFolder(null); navigator.serviceWorker.controller?.postMessage({ type: 'library-changed' }); setTimeout(() => location.reload(), 400); }]] : []),
   ['login', 'Sign in to keep decks in Drive or GitHub, and share them', () => { location.href = '/login'; }]] : CLOUD ? [['folder_shared', `Library: ${CLOUD.repo || ''}`, () => { location.href = '/setup'; }], ['logout', `Sign out (${CLOUD.user || ''})`, () => { location.href = '/logout'; }]] : [['power_settings_new', 'Quit server', async () => {
   if (!confirm('Stop the Glideshow server? Open Glideshow again (or run `glideshow`) to restart it.')) return;
   await post('/api/quit', {}).catch(() => {});
   document.body.innerHTML = '<p class="hm-quit">The Glideshow server has stopped. Open Glideshow again, or run <code>glideshow</code>, to restart it.</p>';
-}]]); };
+}]]), ...(document.documentElement.classList.contains('phone') ? ['-', ['code', 'Glideshow on GitHub', () => open('https://github.com/heyodog0/glideshow', '_blank', 'noopener')]] : [])]); };   // (a phone has no GitHub icon in the bar)
 async function op(d, what, extra = {}) { const j = await post('/api/deckop', { path: d.path, op: what, ...extra }); if (j.error) alert(j.error); else load(); }
 async function folderOp(what, path, name) { const j = await post('/api/folder', { op: what, path, name }); if (j.error) alert(j.error); return !j.error; }
 function rename(d) { const t = prompt('Rename', d.title); if (t && t.trim()) op(d, 'rename', { title: t.trim() }); }
