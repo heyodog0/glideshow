@@ -5,7 +5,7 @@
 import { page, esc } from './auth.js';
 
 const CONTACT = 'heyodogo@gmail.com';
-const foot = '<small><a href="/">Glideshow</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></small>';
+const foot = '<small><a href="/">Glideshow</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="https://github.com/heyodog0/glideshow">GitHub</a></small>';
 
 export function landing() {
   return page('Glideshow', `<p class="tag">Slides you own, <em>gliding</em> where you work.</p>

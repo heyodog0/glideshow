@@ -21,7 +21,7 @@ html.phone .menu-item { height: 48px; font-size: 16px; }
 /* ---------- Home (01-home.png) ---------- */
 html.phone body:has(> .hm-bar) { background: var(--ph-page); font-size: 17px; }
 html.phone .hm-bar { position: sticky; top: 0; height: auto; padding: calc(env(safe-area-inset-top) + 7px) 16px 0; gap: 0; background: var(--ph-page); }
-html.phone .hm-bar .brand, html.phone #hm-app-more, html.phone .hm-sky, html.phone .hm-actions, html.phone .hm-section, html.phone .hm-group { display: none !important; }
+html.phone .hm-bar .brand, html.phone #hm-app-more, html.phone #hm-gh, html.phone .hm-sky, html.phone .hm-actions, html.phone .hm-section, html.phone .hm-group { display: none !important; }
 /* the search bar: 48 tall, radius 8, ≡ | placeholder | folder | account */
 html.phone .ph-search { flex: 1; min-width: 0; display: flex; align-items: center; height: 48px; padding: 0 4px; border-radius: 8px; background: #2a2b2e; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
 html.phone .ph-search input { flex: 1; min-width: 0; height: 100%; padding: 0 0 0 8px; border: 0; outline: 0; background: none; color: var(--ph-ink); font: 17px var(--font); }

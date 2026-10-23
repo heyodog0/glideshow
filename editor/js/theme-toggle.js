@@ -35,8 +35,7 @@ if (typeof setDark !== 'function') {   // the home screen
   btn.onclick = () => setDark(!document.body.classList.contains('dark'));
   label();
   if (document.querySelector('#ed-comments-btn')) { btn.className = 'icon-btn'; document.querySelector('#ed-comments-btn').after(btn); }
-  else {   // the home screen: beside More, the two as the top bar's last item
-    const more = document.querySelector('#hm-app-more'), end = document.createElement('div');
-    btn.className = 'hm-tool'; end.className = 'hm-end'; more.before(end); end.append(btn, more);
+  else {   // the home screen: in the top bar's last item (.hm-end), between GitHub and More
+    btn.className = 'hm-tool'; document.querySelector('#hm-app-more').before(btn);
   }
 }
