@@ -1203,7 +1203,7 @@ def checks(pg, deck: Path, errors):
     check("Share → Publish to the web: off by default, publishing shows the link with Copy (no Update: it always shows the latest), the Share button shows it's public; Esc closes",
           before == [False, True, True] and after == ["https://slides-x.example.workers.dev/deck-abc123/", True, "public", True] and pg.evaluate("$('#ed-sharedlg').hidden"), f"{before} {after}")
     pg.evaluate("() => { go(0); sel = new Set([boxes()[0]]); render(); }")
-    pg.keyboard.press("Meta+Alt+m"); pg.wait_for_selector("#ed-comments:not([hidden]) .cm-card textarea")
+    pg.keyboard.press("Meta+Alt+m"); pg.wait_for_function("document.activeElement?.matches('#ed-comments:not([hidden]) .cm-card textarea')", timeout=10000)   # (it takes focus a tick after it appears)
     pg.keyboard.type("Tighten this title"); pg.keyboard.press("Meta+Enter")
     pg.wait_for_function("cmList.length === 1 && document.querySelectorAll('#ed-pins .cm-pin').length === 1", timeout=10000)
     pg.fill(".cm-card input", "Done"); pg.press(".cm-card input", "Enter"); pg.wait_for_function("cmList[0]?.replies?.length === 1", timeout=10000)
@@ -1868,7 +1868,10 @@ def cli_checks(b):
         v.click(".hist-row:has-text('deck: Lab Meeting')"); v.wait_for_selector(".hist-row.on:has-text('deck: Lab Meeting')"); v.wait_for_timeout(200)
         old = v.evaluate("slides[0].textContent.includes('Hypothesis one')")
         v.click("#ed-hist-restore"); v.wait_for_function("!document.body.classList.contains('history-mode') && !slides[0].textContent.includes('Hypothesis one')", timeout=15000)
-        top = subprocess.run(["git", "-C", str(home), "log", "--format=%s", "-1"], capture_output=True, text=True).stdout.strip()
+        for _ in range(50):   # (the page shows the restore before the server has committed it)
+            top = subprocess.run(["git", "-C", str(home), "log", "--format=%s", "-1"], capture_output=True, text=True).stdout.strip()
+            if top.startswith("deck: restore"): break
+            v.wait_for_timeout(200)
         v.close()
         check("File → Version history lists the commits, previews one read-only, and Restore this version commits it back",
               rows[:3] == ["what you are editing", "slide 1: Hypothesis one", "deck: Lab Meeting"] and old is False and top.startswith("deck: restore the version of"), f"{rows} {old} {top!r}")
