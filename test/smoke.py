@@ -1849,12 +1849,18 @@ def cli_checks(b):
               (home / ".git").exists() and len(names) == 3 and names[1].startswith("journal-club-") and cur == ["Lab Meeting"] and "lab-meeting" in out and len(servers) <= 2,
               f"{names} {cur} {out!r} {servers}")
         save = lambda html, m: urllib.request.urlopen(urllib.request.Request(f"http://localhost:{PORT + 2}/api/save", method="POST", headers={"X-Glideshow": "1"}, data=json.dumps({"html": html, "mtime": m}).encode())).read()
-        d = json.load(urllib.request.urlopen(f"http://localhost:{PORT + 2}/api/deck")); save(d["html"], d["mtime"]); time.sleep(1.2)   # the first commit
+        d = json.load(urllib.request.urlopen(f"http://localhost:{PORT + 2}/api/deck")); save(d["html"], d["mtime"])
+        gitlog = lambda: subprocess.run(["git", "-C", str(home), "log", "--format=%s", "-4"], capture_output=True, text=True).stdout
+        last = lambda *g: subprocess.run(["git", *(g or ("-C", str(home))), "log", "--format=%s", "-1"], capture_output=True, text=True).stdout.strip()
+        def until(words, log=gitlog):   # (commits are debounced, and slower on CI)
+            for _ in range(75):
+                if words in log(): return
+                time.sleep(0.2)
+        until("deck: Lab Meeting")   # the first commit
         d = json.load(urllib.request.urlopen(f"http://localhost:{PORT + 2}/api/deck"))
         urllib.request.urlopen(urllib.request.Request(f"http://localhost:{PORT + 2}/api/save", method="POST", headers={"X-Glideshow": "1"},
             data=json.dumps({"html": d["html"].replace("</section>", '<div class="box" style="left: 100px; top: 100px; width: 600px; height: 100px;"><div class="content">Hypothesis one</div></div></section>', 1), "mtime": d["mtime"]}).encode()))
-        time.sleep(1.5)
-        log = subprocess.run(["git", "-C", str(home), "log", "--format=%s", "-4"], capture_output=True, text=True).stdout
+        until("slide 1: Hypothesis one"); log = gitlog()
         mine = [m for m in log.split("\n") if m and not m.startswith("outside the editor:")]   # the picture added from the command line, and the other decks, are their own versions
         check("history: saves in a git-tracked deck are committed (debounced): 'deck: <title>', then 'slide N: <new words>'", mine[:2] == ["slide 1: Hypothesis one", "deck: Lab Meeting"], repr(log))
 
@@ -1881,22 +1887,20 @@ def cli_checks(b):
         subprocess.run(["git", "-C", str(home), "remote", "add", "origin", str(bare)], check=True)
         ir = run("init-remote", "someone/decks")   # origin already set: commits the library (.gitignore) and pushes, no GitHub call
         d = json.load(urllib.request.urlopen(f"http://localhost:{PORT + 2}/api/deck"))
-        save(d["html"].replace("</section>", '<div class="box" style="left: 100px; top: 300px; width: 600px; height: 100px;"><div class="content">Backed up</div></div></section>', 1), d["mtime"]); time.sleep(1.5)
-
-        pushed = subprocess.run(["git", "--git-dir", str(bare), "log", "--format=%s", "-1"], capture_output=True, text=True).stdout.strip()
+        save(d["html"].replace("</section>", '<div class="box" style="left: 100px; top: 300px; width: 600px; height: 100px;"><div class="content">Backed up</div></div></section>', 1), d["mtime"])
+        until("slide 1:", lambda: last("--git-dir", str(bare))); pushed = last("--git-dir", str(bare))
         check("backup: `glideshow init-remote` pushes the library to origin, and each later auto-commit is pushed too",
               "backed up to someone/decks" in ir and pushed.startswith("slide 1:") and (home / ".gitignore").exists(), f"{ir!r} {pushed!r}")
         open_file = Path(json.load(urllib.request.urlopen(f"http://localhost:{PORT + 2}/api/ping"))["deck"]) / "deck.html"
         open_file.write_text(open_file.read_text().replace("Backed up", "Backed up, then edited by an agent"))
         race = subprocess.run(["uv", "run", "--quiet", "--project", str(ROOT), "python", "-c", "import sys; from pathlib import Path; from glideshow.history import commit_outside_library as c; "
                                "print(c(Path(sys.argv[1]), Path(sys.argv[2])))", str(home), str(open_file)], env=env, capture_output=True, text=True, timeout=60)   # the 30 s pass, in the second before the watcher notices
-        time.sleep(3)
-        outside = subprocess.run(["git", "-C", str(home), "log", "--format=%s", "-1"], capture_output=True, text=True).stdout.strip()
+        until("outside the editor: slide 1:", last); outside = last()
         check("an edit made outside the editor is committed as its own version, named by slide (the library's 30 s pass leaves the open deck to it)",
               outside.startswith("outside the editor: slide 1:") and race.stdout.strip() == "False", f"{outside!r} {race.stdout.strip()!r} {race.stderr[-200:]}")
         other = next(d for d in home.iterdir() if (d / "deck.html").is_file() and (d / "deck.html").resolve() != open_file.resolve())
-        (other / "deck.html").write_text((other / "deck.html").read_text().replace("</section>", '<div class="box" style="left: 0px; top: 0px; width: 9px; height: 9px;"><div class="content">agent</div></div></section>', 1)); time.sleep(3)
-        elsewhere = subprocess.run(["git", "-C", str(home), "log", "--format=%s", "-1"], capture_output=True, text=True).stdout.strip()
+        (other / "deck.html").write_text((other / "deck.html").read_text().replace("</section>", '<div class="box" style="left: 0px; top: 0px; width: 9px; height: 9px;"><div class="content">agent</div></div></section>', 1))
+        until(f"outside the editor: {other.name}", last); elsewhere = last()
         check("an agent's edit to a deck that isn't open is committed too (so syncing never waits on it)", elsewhere == f"outside the editor: {other.name}" and not subprocess.run(["git", "-C", str(home), "status", "--porcelain"], capture_output=True, text=True).stdout.strip(), elsewhere)
         subprocess.run(["git", "-C", str(home), "remote", "set-url", "origin", "git@github.com:someone/decks.git"], check=True)   # only the URL changes; origin/main stays
         hl = json.load(urllib.request.urlopen(f"http://localhost:{PORT + 2}/api/history"))
