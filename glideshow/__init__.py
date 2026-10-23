@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 # Before it was Glideshow it was "slides": its environment variables (SLIDES_HOME, …) still work, and its folder of
 # settings (~/.slides) moves to ~/.glideshow the first time, leaving a link behind for anything still pointing there.
