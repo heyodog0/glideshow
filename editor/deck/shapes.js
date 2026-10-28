@@ -233,6 +233,21 @@
       const defs = el('defs', {}); defs.append(def); svg.prepend(defs);
       out.forEach(e => { if (e.classList.contains('f') && e.style.fill !== 'none') e.style.fill = `url(#${id})`; });
     }
+    const fi = b.dataset.fillImage;
+    if (fi) {   // an image fill (data-fill-image): an SVG pattern sized to the box, or to the picture for tile / original size
+      const id = 'fi-' + (b.id || 'x') + '-' + (++gradN), mode = b.dataset.fillScale || 'fill';
+      const pat = el('pattern', { id, patternUnits: 'userSpaceOnUse', x: '0', y: '0', width: w, height: h }), im = el('image', { href: fi, x: '0', y: '0', width: w, height: h,
+        preserveAspectRatio: mode === 'fit' ? 'xMidYMid meet' : mode === 'stretch' ? 'none' : 'xMidYMid slice' });
+      pat.append(im);
+      if (mode === 'tile' || mode === 'original') {
+        const pic = new Image(); pic.onload = () => { const nw = pic.naturalWidth, nh = pic.naturalHeight;
+          if (mode === 'tile') { pat.setAttribute('width', nw); pat.setAttribute('height', nh); im.setAttribute('width', nw); im.setAttribute('height', nh); }
+          else { im.setAttribute('x', (w - nw) / 2); im.setAttribute('y', (h - nh) / 2); im.setAttribute('width', nw); im.setAttribute('height', nh); } };
+        pic.src = fi;
+      }
+      const defs = svg.querySelector(':scope > defs') || svg.insertBefore(el('defs', {}), svg.firstChild); defs.append(pat);
+      out.forEach(e => { if (e.classList.contains('f') && e.style.fill !== 'none') e.style.fill = `url(#${id})`; });
+    }
   }
   /* Gradient fills (Fill colour → Gradient, as Slides; Keynote's Gradient Fill): data-gradient="linear 90 #rrggbb #rrggbb"
      (angle in degrees, CSS's: 90 runs left to right) or "radial #inner #outer". Shapes draw it in their SVG; other boxes
@@ -244,11 +259,17 @@
     const stops = m.slice(radial ? 1 : 2).filter(c => /^#[0-9a-f]{3,8}$/i.test(c));
     return stops.length >= 2 ? { radial, angle: radial ? 0 : +m[1] || 0, stops } : null;
   }
+  /* An image fill (Keynote's Image Fill): data-fill-image="assets/….png", data-fill-scale = fill (default) | fit | stretch |
+     tile | original. Text boxes take both fills as derived CSS (--grad, --fimg, --fsize, --frep). */
+  const FILL_SIZE = { fill: 'cover', fit: 'contain', stretch: '100% 100%', tile: 'auto', original: 'auto' };
   function gradBox(b) {
     if (b.dataset.shape) { renderShape(b); return; }
     const g = gradOf(b);
     if (g) b.style.setProperty('--grad', g.radial ? `radial-gradient(circle, ${g.stops.join(', ')})` : `linear-gradient(${g.angle}deg, ${g.stops.join(', ')})`);
     else b.style.removeProperty('--grad');
+    const fi = b.dataset.fillImage, mode = b.dataset.fillScale || 'fill';
+    if (fi) { b.style.setProperty('--fimg', `url("${fi.replace(/"/g, '%22')}")`); b.style.setProperty('--fsize', FILL_SIZE[mode] || 'cover'); b.style.setProperty('--frep', mode === 'tile' ? 'repeat' : 'no-repeat'); }
+    else ['--fimg', '--fsize', '--frep'].forEach(k => b.style.removeProperty(k));
   }
   window.gradBox = gradBox;
 
@@ -364,7 +385,7 @@
   document.querySelectorAll('.box[data-shadow]').forEach(shadeBox);
   document.querySelectorAll('.box[data-crop]').forEach(cropBox);
   document.querySelectorAll('.box[data-adjust]').forEach(adjustImage);
-  document.querySelectorAll('.box[data-gradient]:not([data-shape])').forEach(gradBox);
+  document.querySelectorAll('.box:is([data-gradient], [data-fill-image]):not([data-shape])').forEach(gradBox);
   const fitAll = () => document.querySelectorAll('.box[data-autofit="shrink"]').forEach(fitText);
   fitAll(); document.fonts?.ready.then(fitAll);   // web fonts change text metrics
   if (window.Reveal?.on) { Reveal.on('ready', fitAll); Reveal.on('slidechanged', fitAll); }   // slides are hidden until shown

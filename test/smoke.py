@@ -775,6 +775,16 @@ def checks(pg, deck: Path, errors):
     g3 = pg.evaluate(f"(() => {{ const b = document.getElementById('{gid[1]}'); return [getComputedStyle(b).backgroundImage.startsWith('linear-gradient'), !cleanBox(b).style.getPropertyValue('--grad')]; }})()")
     pg.click(".swatch[data-for=fill]"); pg.click(".palette-tabs button[data-t=solid]"); pg.click(".palette .cells.std .cell >> nth=1")
     g4 = pg.evaluate(f"[document.getElementById('{gid[1]}').dataset.gradient ?? '', getComputedStyle(document.getElementById('{gid[1]}')).backgroundImage]")
+    png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAADCAYAAAC56t6BAAAAEklEQVR42mP8z8DAwMDAxAAFAA8JAQXc2aaYAAAAAElFTkSuQmCC"
+    pg.evaluate(f"(() => {{ sel = new Set([document.getElementById('{gid[0]}')]); render(); updateToolbar(); }})()")
+    pg.click(".swatch[data-for=fill]"); pg.click(".palette-tabs button[data-t=image]"); itab = pg.evaluate("[...document.querySelectorAll('.img-fill .fs option')].map(o => o.textContent)")
+    pg.keyboard.press("Escape")
+    t0 = pg.evaluate("performance.now()"); pg.evaluate(f"(() => {{ setFillImage('{png}', 'tile'); commit(); }})()"); fi_ms = pg.evaluate(f"Math.round(performance.now() - {t0})"); pg.wait_for_timeout(200)
+    f1 = pg.evaluate(f"(() => {{ const b = document.getElementById('{gid[0]}'), p = b.querySelector('svg.shape pattern'); return [b.dataset.fillScale, !b.dataset.gradient, !!p && /url\\(.#fi-/.test(b.querySelector('svg.shape .f').style.fill), p?.getAttribute('width')]; }})()")
+    pg.evaluate(f"(() => {{ sel = new Set([document.getElementById('{gid[1]}')]); setFillImage('{png}', 'fit'); commit(); }})()")
+    f2 = pg.evaluate(f"(() => {{ const b = document.getElementById('{gid[1]}'), cs = getComputedStyle(b); return [cs.backgroundImage.startsWith('url('), cs.backgroundSize, !cleanBox(b).style.getPropertyValue('--fimg')]; }})()")
+    check(f"Fill colour → Image, as Keynote's Image Fill ({fi_ms} ms): Scale to fill / fit / Stretch / Tile / Original size; a shape tiles it at the picture's size, a text box fits it; derived CSS not saved",
+          itab == ["Scale to fill", "Scale to fit", "Stretch", "Tile", "Original size"] and f1 == ["tile", True, True, "2"] and f2[0] and f2[1].startswith("contain") and f2[2], f"{itab} {f1} {f2}")
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
     check(f"Fill colour → Gradient, as Slides ({gr_ms} ms): presets and a custom radial on a shape (SVG gradient), a text box (CSS, derived --grad not saved); a solid colour removes it",
           g1[0].startswith("linear 180") and g1[1:] == [True, 2] and g2 == "radial true" and g3 == [True, True] and g4 == ["", "none"], f"{g1} {g2} {g3} {g4}")

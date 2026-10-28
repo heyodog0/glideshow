@@ -96,6 +96,7 @@ function openPalette(btn) {
 const gradSpec = b => b?.dataset.gradient || '';
 function setGradient(spec) {
   for (const b of sel) {
+    if (spec !== undefined) { delete b.dataset.fillImage; delete b.dataset.fillScale; }   // one fill at a time
     if (spec) { b.dataset.gradient = spec; b.style.setProperty('--fill', spec.match(/#[0-9a-f]{3,8}/i)?.[0] || '#4a86e8'); } else delete b.dataset.gradient;
     gradBox(b);
   }
@@ -104,10 +105,19 @@ function setGradient(spec) {
 const cssGrad = spec => { const m = spec.split(' '); return m[0] === 'radial' ? `radial-gradient(circle, ${m.slice(1).join(', ')})` : `linear-gradient(${m[1]}deg, ${m.slice(2).join(', ')})`; };
 function gradientTabs(m, solidStart) {
   const solid = [...m.children].slice(solidStart), pane = div('grad-pane'), tabs = div('palette-tabs');
-  tabs.innerHTML = '<button data-t="solid">Solid</button><button data-t="gradient">Gradient</button>';
-  const show = t => { tabs.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.t === t)); solid.forEach(e => { /** @type {HTMLElement} */ (e).hidden = t !== 'solid'; }); pane.hidden = t !== 'gradient'; };
+  tabs.innerHTML = '<button data-t="solid">Solid</button><button data-t="gradient">Gradient</button><button data-t="image">Image</button>';
+  const show = t => { tabs.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.t === t)); solid.forEach(e => { /** @type {HTMLElement} */ (e).hidden = t !== 'solid'; }); pane.hidden = t !== 'gradient'; ipane.hidden = t !== 'image'; };
   tabs.onclick = e => { const t = /** @type {HTMLElement} */ (e.target).closest('button'); if (t) show(t.dataset.t); };
-  const presets = div('cells'), cur = gradSpec([...sel][0]);
+  const presets = div('cells'), cur = gradSpec([...sel][0]), b0 = [...sel][0], ipane = div('img-fill');
+  ipane.innerHTML = `<button class="outlined pick"><span class="icon">image</span> Choose an image…</button>
+    <select class="fs"><option value="fill">Scale to fill</option><option value="fit">Scale to fit</option><option value="stretch">Stretch</option><option value="tile">Tile</option><option value="original">Original size</option></select>
+    <button class="outlined rm">Remove image</button><input type="file" accept="image/*" hidden>`;
+  const fs = /** @type {HTMLSelectElement} */ (ipane.querySelector('.fs')), file = /** @type {HTMLInputElement} */ (ipane.querySelector('input'));
+  fs.value = b0?.dataset.fillScale || 'fill'; /** @type {HTMLElement} */ (ipane.querySelector('.rm')).hidden = !b0?.dataset.fillImage;
+  /** @type {HTMLElement} */ (ipane.querySelector('.pick')).onclick = () => file.click();
+  file.onchange = async () => { const f = file.files?.[0]; if (!f) return; closeMenu(); setStatus('Uploading image…'); const src = await uploadImage(f); setStatus(''); setFillImage(src, fs.value); commit(); };
+  fs.onchange = () => { if (b0?.dataset.fillImage) { setFillImage(b0.dataset.fillImage, fs.value); commit(); } };
+  /** @type {HTMLElement} */ (ipane.querySelector('.rm')).onclick = () => { closeMenu(); setFillImage(null); commit(); };
   for (const kind of ['linear', 'radial']) for (let i = 0; i < 10; i++) {
     const spec = kind === 'linear' ? `linear 180 ${PALETTE[20 + i]} ${PALETTE[60 + i]}` : `radial ${PALETTE[20 + i]} ${PALETTE[50 + i]}`, c = document.createElement('button');
     c.className = 'cell' + (spec === cur ? ' on' : ''); c.style.background = cssGrad(spec); c.dataset.tip = kind === 'linear' ? 'Linear' : 'Radial';
@@ -125,12 +135,21 @@ function gradientTabs(m, solidStart) {
   for (const s of ['.gk', '.ga input', '.g1', '.g2']) { q(s).oninput = apply; q(s).onchange = () => { apply(); commit(); }; }
   const head = div('palette-head'), head2 = div('palette-head'); head.textContent = 'PRESETS'; head2.textContent = 'CUSTOM';
   pane.append(head, presets, head2, custom);
-  m.prepend(tabs); m.append(pane);   // Slides: the two tabs on top
-  show(cur ? 'gradient' : 'solid');
+  m.prepend(tabs); m.append(pane, ipane);   // Slides: the tabs on top
+  show(b0?.dataset.fillImage ? 'image' : cur ? 'gradient' : 'solid');
 }
 document.querySelectorAll('.swatch[data-for]').forEach(btn => { btn.onclick = () => openAnchor === btn ? closeMenu() : openPalette(btn); });
 $('#ed-hilite').onchange = e => hilite(e.target.value);
 $('#ed-fill').oninput = e => { setGradient(null); setVar('--fill', e.target.value); };
+/* …and an Image tab, as Keynote's Image Fill: a picture with a scale (Scale to fill, Scale to fit, Stretch, Tile, Original size). */
+function setFillImage(src, scale) {
+  for (const b of sel) {
+    if (src) { b.dataset.fillImage = src; delete b.dataset.gradient; } else delete b.dataset.fillImage;
+    if (scale && scale !== 'fill' && b.dataset.fillImage) b.dataset.fillScale = scale; else delete b.dataset.fillScale;
+    gradBox(b);
+  }
+  drawOverlay();
+}
 $('#ed-fill').onchange = commit;
 $('#ed-stroke').oninput = e => {
   setVar('--stroke', e.target.value);

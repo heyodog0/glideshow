@@ -12,7 +12,7 @@ function render() {
   paintBg(frame, s);
   ($('#ed-slide-css') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'ed-slide-css' }))).textContent = slideCSS(s) ? `#ed-canvas > section { ${slideCSS(s)} }` : '';
   s.querySelectorAll('img, video').forEach(freshSrc); s.querySelectorAll('video').forEach(stillPoster);
-  s.querySelectorAll('.box').forEach(b => { if (b.dataset.shape) renderShape(b); shadeBox(b); cropBox(b); if (b.dataset.adjust) adjustImage(b); if (b.dataset.gradient && !b.dataset.shape) gradBox(b); fitText(b); });
+  s.querySelectorAll('.box').forEach(b => { if (b.dataset.shape) renderShape(b); shadeBox(b); cropBox(b); if (b.dataset.adjust) adjustImage(b); if ((b.dataset.gradient || b.dataset.fillImage) && !b.dataset.shape) gradBox(b); fitText(b); });
   highlightCode(s); renderMath(s);
   s.querySelectorAll('.box[data-placeholder] > .content').forEach(markPlaceholder);
   drawOverlay(); renderThumbs(); updateToolbar(); updateThemeBar();

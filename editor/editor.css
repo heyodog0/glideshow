@@ -151,6 +151,8 @@ input[type=number] { width: 58px; border-color: var(--divider); padding: 0 4px; 
 .palette-tabs button { flex: 1; height: 28px; border: 0; border-radius: 14px; background: none; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
 .palette-tabs button.on { background: var(--selected); font-weight: 500; }
 .palette [hidden] { display: none !important; }
+.img-fill { display: flex; flex-direction: column; gap: 8px; padding: 6px 12px 8px; width: 222px; }
+.img-fill button { display: flex; align-items: center; justify-content: center; gap: 6px; height: 32px; } .img-fill select { height: 32px; }
 .grad-custom { display: flex; align-items: center; gap: 6px; padding: 4px 12px 6px; font-size: 12px; color: var(--muted); }
 .grad-custom label { display: flex; align-items: center; gap: 4px; } .grad-custom input[type=number] { width: 48px; }
 .grad-custom input[type=color] { width: 28px; height: 24px; padding: 0; border: 1px solid var(--divider); border-radius: 4px; background: none; }

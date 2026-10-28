@@ -6,6 +6,7 @@
 .box { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; }
 .box:not([data-shape]) { background: var(--fill, transparent); border: var(--sw, 0px) solid var(--stroke, transparent); }
 .box:not([data-shape])[data-gradient] { background: var(--grad, var(--fill, transparent)); }
+.box:not([data-shape])[data-fill-image] { background: var(--fimg) center / var(--fsize, cover) var(--frep, no-repeat), var(--fill, transparent); }
 .box > svg.shape { position: absolute; left: 0; top: 0; width: 100%; height: 100%; min-width: 1px; min-height: 1px; overflow: visible; pointer-events: none; }
 .box > svg.shape .f { fill: var(--fill, #4a86e8); stroke: var(--stroke, none); stroke-width: var(--sw, 0px); }
 .box > svg.shape .l { fill: none; stroke: var(--stroke, #333); stroke-width: var(--sw, 4px); stroke-linecap: round; }
