@@ -94,6 +94,27 @@ addEventListener('keydown', e => {
   if (e.key === 'Enter') applySpacing(); else showSpaceDialog(false);
 }, true);
 
+/* Slide → Go to slide (⌃⌘G, Keynote's key): type a slide number, ⏎. */
+const gotoDlg = $('#ed-gotodlg');
+function showGoto(on) {
+  closeMenu(); gotoDlg.hidden = !on; if (!on) return;
+  stopEdit(); $('#ed-goto-of').textContent = `Slide (1–${slides.length})`;
+  const f = $('#ed-goto-n'); f.max = String(slides.length); f.value = String(cur + 1); f.focus(); f.select();
+}
+function gotoSlide() {
+  const n = Math.round(+$('#ed-goto-n').value);
+  showGoto(false); if (n >= 1) go(Math.min(n, slides.length) - 1);
+}
+$('#ed-goto-ok').onclick = gotoSlide;
+$('#ed-goto-cancel').onclick = gotoDlg.querySelector('.sc-close').onclick = () => showGoto(false);
+gotoDlg.addEventListener('pointerdown', e => { if (e.target === gotoDlg) showGoto(false); });
+addEventListener('keydown', e => {
+  if (e.ctrlKey && e.metaKey && !e.shiftKey && !e.altKey && e.code === 'KeyG' && gotoDlg.hidden && Date.now() - guideChord > 2000) { e.preventDefault(); showGoto(true); return; }   // not the second key of ⌃⌘E ⌃⌘G
+  if (gotoDlg.hidden || !['Escape', 'Enter'].includes(e.key)) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  if (e.key === 'Enter') gotoSlide(); else showGoto(false);
+}, true);
+
 /* Insert → Special characters, as Slides: a category grid, search (keyword, LaTeX command or codepoint) and the
    recently used ones; a click inserts at the caret when editing, else into a new text box. */
 const charsDlg = $('#ed-chars'), recentChars = () => { try { return JSON.parse(stored('slides-recent-chars')) || []; } catch { return []; } };

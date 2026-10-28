@@ -654,6 +654,11 @@ def checks(pg, deck: Path, errors):
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
     check("double-click enters a group to pick one member (outline lines up), moving it refits the group, Esc goes back to the group",
           entered == [ids[0], True] and ol and moved == ["100px", "800px", "0px"] and out == [ids[2], None], f"{entered} {ol} {moved} {out}")
+    pg.evaluate("go(0)"); pg.click("#ed-menubar [data-menu=Slide]"); pg.click(".menu-item:has(.menu-label:text-is('Go to slide'))")
+    pg.fill("#ed-goto-n", "2"); t0 = pg.evaluate("performance.now()"); pg.keyboard.press("Enter")
+    went = pg.evaluate(f"[cur, $('#ed-gotodlg').hidden, Math.round(performance.now() - {t0})]")
+    pg.keyboard.press("Control+Meta+g"); pg.fill("#ed-goto-n", "999"); pg.keyboard.press("Enter"); far = pg.evaluate("cur === slides.length - 1"); pg.evaluate("go(0)")
+    check(f"Slide → Go to slide (⌃⌘G): a number, ⏎, there ({went[2]} ms); past the end goes to the last", went[:2] == [1, True] and far, f"{went} {far}")
     ids = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1);
       const a = makeBox({x: 200, y: 200, w: 300, h: 150, html: 'locked'}), b = makeBox({x: 700, y: 200, w: 200, h: 150, shape: 'rect'}); s.append(a, b);
       sel = new Set([a]); render(); updateToolbar(); return [a.id, b.id]; })()""")

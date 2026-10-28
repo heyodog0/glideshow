@@ -188,6 +188,7 @@ addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey && getSelection().anchorNode?.parentElement?.closest('pre')) { e.preventDefault(); document.execCommand('insertText', false, '\n'); return; }   // a new line inside a code block
     if (e.key === 'Enter' && editing.dataset.shape === 'wordart') { e.preventDefault(); const b = editing; stopEdit(); sel = new Set([b]); drawOverlay(); return; }   // word art is one line
     if (e.key === 'Escape') { e.preventDefault(); const b = editing; stopEdit(); if (b.isConnected) { sel = new Set([b]); drawOverlay(); } }
+    if ((e.key === 'PageDown' || e.key === 'PageUp') && !mod) { e.preventDefault(); stopEdit(); go(cur + (e.key === 'PageDown' ? 1 : -1)); return; }   // Keynote: next / previous slide while typing
     if (mod && k === 'z' && !e.shiftKey && content(editing).innerHTML === editStart) { e.preventDefault(); undo(); return; }   // nothing typed yet: undo the last move, as Slides
     return;   // everything else is normal typing (⌘B/⌘I/⌘Z work natively)
 

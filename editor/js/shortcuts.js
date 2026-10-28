@@ -21,6 +21,7 @@ const SHORTCUTS = {
  ['Extend / toggle slide selection', '⇧-click, ⇧↑↓ / ⌘-click'],
     ['Delete / duplicate selected slides', '⌫ / ⌘D'], ['Select all slides', '⌘A'], ['Back to the slide / to the filmstrip', '⏎ / Esc'], ['Move to filmstrip', '⌥⇧⌘F']],
   'Navigation': [['Next / previous slide (nothing selected)', '↓ / ↑'], ['Next / previous slide', 'Page Down / Page Up'],
+    ['Next / previous slide while typing', 'Page Down / Page Up'], ['Go to slide', '⌃⌘G'],
     ['Zoom in', '⌘+'], ['Zoom out', '⌘−'], ['Fit', '⌘0']],
   'Presenting': [['Present from this slide', '⌘↵'], ['Present from beginning', '⇧⌘↵'], ['Next / previous slide', '→ / ← or N / P'], ['Up / down in a stack', '↓ / ↑'],
     ['Next / back in reading order', 'Space / ⇧Space or PgDn / PgUp'], ['First / last slide', 'Home / End'], ['Go to slide n', 'n then ↵'],

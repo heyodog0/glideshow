@@ -149,6 +149,7 @@ const MENUS = {
       { label: 'Move slide to beginning', icon: 'vertical_align_top', key: '⇧⌘↑', run: () => moveSlides('start') },
       { label: 'Move slide to end', icon: 'vertical_align_bottom', key: '⇧⌘↓', run: () => moveSlides('end') },
     ] },
+    { label: 'Go to slide', icon: 'switch_access_shortcut', key: '⌃⌘G', run: () => showGoto(true) },
     '-',
     { label: 'Change background', icon: 'opacity', run: () => showBgDialog(true) },
     { label: 'Apply layout', icon: 'view_quilt', items: layoutItems },
