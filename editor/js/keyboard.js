@@ -120,7 +120,7 @@ stage.addEventListener('drop', async e => {
 });
 
 function deleteSelection() {
-  if (!sel.size) return;
+  if (!sel.size || anyLocked()) return;
   sel.forEach(b => b.remove()); sel.clear();
   drawOverlay(); commit();
 }
@@ -236,7 +236,7 @@ addEventListener('keydown', e => {
     sel = new Set([all[(i + (e.shiftKey ? -1 : 1) + all.length) % all.length]]); drawOverlay(); updateToolbar(); return;
   }
   if (e.altKey && sel.size && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {   // ⌥←/→ rotate 15°, with ⇧ 1°
-    e.preventDefault();
+    e.preventDefault(); if (anyLocked()) return;
     const d = (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 1 : 15);
     sel.forEach(b => { if (!isLine(b)) setRot(b, rot(b) + d); }); drawOverlay(); commit(); return;
   }
@@ -244,6 +244,7 @@ addEventListener('keydown', e => {
   if (arrows[e.key]) {
     e.preventDefault();
     if (!sel.size) { go(cur + (arrows[e.key][0] || arrows[e.key][1])); return; }
+    if (anyLocked()) return;
     const step = e.shiftKey ? 10 : 1, [ax, ay] = arrows[e.key];
     sel.forEach(b => { const g = geo(b); setGeo(b, { ...g, x: g.x + ax * step, y: g.y + ay * step }); });
     drawOverlay(); commit();

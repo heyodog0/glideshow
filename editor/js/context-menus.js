@@ -16,6 +16,7 @@ function objectMenu() {
     ...(sel.size > 1 ? [arrangeItem('Align'), arrangeItem('Distribute')] : []),
     ...(sel.size > 1 ? [{ label: 'Group', icon: 'group_work', key: '⌥⌘G', run: groupSel }] : []),
     ...([...sel].some(isGroup) ? [{ label: 'Ungroup', key: '⇧⌥⌘G', run: ungroupSel }] : []),
+    anyLocked() ? arrangeItem('Unlock') : arrangeItem('Lock'),
     ...(one?.classList.contains('image') ? [] : ['-', { label: 'Link', icon: 'link', key: '⌘K', run: linkText, off: () => sel.size !== 1 }]),   // Slides offers no Link on pictures
     '-',
     { label: 'Animate', icon: 'animation', run: () => $('#ed-animate').click() },

@@ -3,7 +3,7 @@
 /* Enter edit mode. With a point (a double-click), the caret goes there, as Slides; otherwise (Enter, a new
    box) all the text is selected. */
 function startEdit(b, pt) {
-  if (isMedia(b) || isStroke(b) || isGroup(b)) return;
+  if (isMedia(b) || isStroke(b) || isGroup(b) || isLocked(b)) return;
   const who = typingIn(b);   // someone else is typing in it (people.js): theirs until they stop
   if (who) { setStatus(`${who.n} is typing in this box`, 'edit_off'); return; }
   editing = b; sel = new Set([b]);

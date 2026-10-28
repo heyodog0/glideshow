@@ -94,7 +94,7 @@ Rules:
 - Text insets: the editor writes Slides' defaults on new boxes (`padding: 9.6px 19.2px` on `.content`, i.e. 0.05 in / 0.1 in); a `.content` without its own padding gets 8 px / 16 px.
 - Text boxes can also take `--fill`, `--stroke`, `--sw`. A translucent fill is just a colour with alpha (`--fill: #4a86e880`); an image's opacity is an inline `opacity` on its `<img>`. `data-valign="top|bottom"` changes vertical alignment.
 - Optional box attributes (Format → Format options): `data-flip="h|v|hv"` mirrors the box (text stays readable),
-  `data-shadow` adds a drop shadow (tuned by `data-shadow-color` `#rrggbb`, `-opacity` 0–1, `-angle` deg with 90 = down, `-distance` and `-blur` px; defaults #000000, 0.3, 90, 6, 8), `data-lock="aspect"` keeps proportions when resizing,
+  `data-shadow` adds a drop shadow (tuned by `data-shadow-color` `#rrggbb`, `-opacity` 0–1, `-angle` deg with 90 = down, `-distance` and `-blur` px; defaults #000000, 0.3, 90, 6, 8), `data-lock="aspect"` keeps proportions when resizing, `data-locked` (Arrange → Lock) keeps the box from being moved, resized, edited or deleted in the editor (the slideshow ignores it),
   `data-autofit="none|shrink|resize"`: no fitting, shrink the text to fit the box (done at load by `#deck-shapes`), or grow the box to fit the text (the default for text boxes).
 - Text boxes grow to fit their text while editing. `data-minh` is the height the user dragged; the editor never shrinks a box below it (optional; defaults to the current height).
 - Slide transitions: `data-transition` on the `<section>` = `fade` (Dissolve) | `fade-in fade-out` (Fade) | `slide` | `sl-left` | `convex` (Flip) | `concave` (Cube) | `zoom` (Gallery), optional `data-transition-speed="slow|fast"`.

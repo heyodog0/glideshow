@@ -367,6 +367,7 @@ function stepBackward() {
   commit();
 }
 function centerOnPage(axis) {
+  if (anyLocked()) return;
   const g = bbox([...sel].map(aabb)), dx = axis === 'h' ? W / 2 - (g.x + g.w / 2) : 0, dy = axis === 'v' ? H / 2 - (g.y + g.h / 2) : 0;
   sel.forEach(b => { const o = geo(b); setGeo(b, { ...o, x: o.x + dx, y: o.y + dy }); }); drawOverlay(); commit();
 }

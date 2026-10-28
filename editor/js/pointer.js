@@ -79,6 +79,7 @@ function showSpacing(m, others, ax, gap) {
    the original in place, ⌘ turns snapping off. */
 function startMove(e, onClick) {
   const p0 = toCanvas(e), copy = e.altKey;
+  if (anyLocked()) { drag(e, () => {}, () => onClick?.()); return; }   // a locked object stays where it is
   let items = [...sel].map(b => [b, geo(b)]);
   const b0 = bbox([...sel].map(aabb)), nested = [...sel].some(parentBox);   // members of a group move in its frame, without slide snapping
   const others = boxes().filter(b => copy || !sel.has(b)).map(aabb);
@@ -311,6 +312,7 @@ function startMarquee(e) {
     const r = { x: Math.min(p0.x, p.x), y: Math.min(p0.y, p.y), w: Math.abs(p.x - p0.x), h: Math.abs(p.y - p0.y) };
     place(m, r); m.style.borderWidth = 1 / scale + 'px';
     sel = new Set(pickable().filter(b => {
+      if (isLocked(b)) return false;
       const g = aabb(b);
       return g.x < r.x + r.w && g.x + g.w > r.x && g.y < r.y + r.h && g.y + g.h > r.y;
     }));
@@ -396,6 +398,7 @@ const caretAt = (x, y) => {
 };
 canvas.addEventListener('dblclick', e => {
   const b = topBox(e.target);
+  if (b && isLocked(b)) return;
   if (b && b.classList.contains('image')) { enterCrop(b); return; }   // double-click a picture: crop it, as Slides
   if (b && b.classList.contains('live')) { editLive(b); return; }   // a live box: its page
   if (b && isGroup(b)) {   // enter the group: the member under the pointer gets selected (Esc goes back out)

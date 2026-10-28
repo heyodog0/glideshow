@@ -637,6 +637,25 @@ def checks(pg, deck: Path, errors):
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
     check("double-click enters a group to pick one member (outline lines up), moving it refits the group, Esc goes back to the group",
           entered == [ids[0], True] and ol and moved == ["100px", "800px", "0px"] and out == [ids[2], None], f"{entered} {ol} {moved} {out}")
+    ids = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1);
+      const a = makeBox({x: 200, y: 200, w: 300, h: 150, html: 'locked'}), b = makeBox({x: 700, y: 200, w: 200, h: 150, shape: 'rect'}); s.append(a, b);
+      sel = new Set([a]); render(); updateToolbar(); return [a.id, b.id]; })()""")
+    pg.click("#ed-menubar [data-menu=Arrange]"); t0 = pg.evaluate("performance.now()"); pg.click(".menu-item:has(.menu-label:text-is('Lock'))")
+    lock_ms = pg.evaluate(f"Math.round(performance.now() - {t0})")
+    c = box(0); sc = pg.evaluate("scale"); pg.mouse.move(c[0], c[1]); pg.mouse.down(); pg.mouse.move(c[0] + 100 * sc, c[1], steps=4); pg.mouse.up()
+    pg.locator("#ed-stage").focus(); pg.keyboard.press("ArrowRight"); pg.keyboard.press("Delete"); pg.mouse.dblclick(c[0], c[1])
+    held = pg.evaluate("""(() => { const a = document.getElementById('%s'); return [a.isConnected, a.style.left, !!editing, !!document.querySelector('#ed-ui .sel-wrap.locked .handle'),
+      !document.querySelector('#ed-ui .handle.rotate'), getComputedStyle(document.querySelector('#ed-ui .sel-wrap.locked .handle')).pointerEvents]; })()""" % ids[0])
+    pg.keyboard.press("Escape"); pg.mouse.move(c[0] - 200 * sc, c[1] - 150 * sc); pg.mouse.down(); pg.mouse.move(c[0] + 700 * sc, c[1] + 150 * sc, steps=4); pg.mouse.up()
+    marq = pg.evaluate("[...sel].map(b => b.id)")
+    pg.mouse.click(c[0], c[1], button="right"); rmenu = pg.evaluate("[...document.querySelectorAll('.menu .menu-label')].map(e => e.textContent)"); pg.keyboard.press("Escape")
+    pg.wait_for_timeout(700); saved = 'data-locked' in deck.read_text()
+    pg.evaluate("closeMenu()"); pg.mouse.click(c[0], c[1]); pg.click("#ed-menubar [data-menu=Arrange]"); pg.click(".menu-item:has(.menu-label:text-is('Unlock'))")
+    pg.mouse.move(c[0], c[1]); pg.mouse.down(); pg.mouse.move(c[0] + 100 * sc, c[1], steps=4); pg.mouse.up()
+    freed = pg.evaluate("(() => { const a = document.getElementById('%s'); return [a.hasAttribute('data-locked'), a.style.left]; })()" % ids[0])
+    pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
+    check(f"Arrange → Lock ({lock_ms} ms): grey handles that don't drag, no move / nudge / delete / text editing, a drag-select passes over it, saved; right-click offers Unlock, which frees it",
+          held == [True, "200px", False, True, True, "none"] and marq == [ids[1]] and "Unlock" in rmenu and saved and freed == [False, "300px"], f"{held} {marq} {rmenu} {saved} {freed}")
     pg.click("#ed-menubar [data-menu=View]"); pg.hover(".menu-item:has-text('Guides')"); pg.click(".menu-item:has-text('Add vertical guide')")
     rule = pg.locator("#ed-rules .rule.v").bounding_box(); sc = pg.evaluate("scale")
     pg.mouse.move(rule["x"] + rule["width"] / 2, rule["y"] + 200); pg.mouse.down(); pg.mouse.move(rule["x"] + rule["width"] / 2 + 300 * sc, rule["y"] + 200, steps=4); pg.mouse.up()

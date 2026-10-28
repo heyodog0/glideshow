@@ -222,15 +222,16 @@ function drawOverlay() {
     }
   }
   if (editing || !sel.size) return;
+  const locked = [...sel].some(isLocked);   // Keynote: grey handles that can't be dragged
   if (sel.size > 1) {   // Slides: one box with resize handles around the whole selection (no rotation knob)
-    const g = bbox([...sel].map(aabb)), wrap = div('sel-wrap'), box = div('sel-box');
+    const g = bbox([...sel].map(aabb)), wrap = div('sel-wrap' + (locked ? ' locked' : '')), box = div('sel-box');
     place(wrap, g); place(box, { x: 0, y: 0, w: g.w, h: g.h }); box.style.setProperty('--k', k + 'px'); wrap.append(box);
     const cur = { n: 'ns', s: 'ns', e: 'ew', w: 'ew', ne: 'nesw', sw: 'nesw', nw: 'nwse', se: 'nwse' };
     addHandles(wrap, g, ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'], d => cur[d] + '-resize', k, false);
     ui.append(wrap); return;
   }
   const b = [...sel][0], g = geo(b), sz = 10 * k;   // Slides: 10px round corner handles, pill-shaped side handles
-  const wrap = div('sel-wrap'); place(wrap, g); wrap.style.transform = b.style.transform; wrap.style.scale = flipXY(b).join(' ');   // handles rotate and flip with the box
+  const wrap = div('sel-wrap' + (locked ? ' locked' : '')); place(wrap, g); wrap.style.transform = b.style.transform; wrap.style.scale = flipXY(b).join(' ');   // handles rotate and flip with the box
   const dirs = !isLine(b) ? ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] : b.dataset.dir === 'up' ? ['sw', 'ne'] : ['nw', 'se'];
   if (cropping === b) {   // Slides' crop marks: black L corners and bars, dragged to cut the picture
     for (const d of ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) {
@@ -242,6 +243,7 @@ function drawOverlay() {
     frameFor(b).append(wrap); return;
   }
   addHandles(wrap, g, dirs, d => resizeCursor(b, d), k, isLine(b));
+  if (locked) { frameFor(b).append(wrap); return; }
   if (isLine(b)) [b.dataset.from, b.dataset.to].forEach((at, i) => at && wrap.querySelector(`.handle[data-dir="${dirs[i]}"]`)?.classList.add('linked'));   // attached ends: filled, as Slides
   const host = frameFor(b);
   (shapeAdjust(b) || []).forEach((adj, i) => {   // Slides' yellow diamonds, where the OOXML preset puts its handles
