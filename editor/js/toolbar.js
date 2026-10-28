@@ -45,10 +45,10 @@ function rememberColor(c) {
 function setColor(input, c) { input.value = c; input.dispatchEvent(new Event('input')); input.dispatchEvent(new Event('change')); }
 function openPalette(btn) {
   closeMenu();
-  const input = $('#ed-' + btn.dataset.for), cur = input.value.toLowerCase(), m = div('menu palette');
+  const input = $('#ed-' + btn.dataset.for), now = input.value.toLowerCase(), m = div('menu palette');
   const cell = c => {
     const e = document.createElement('button');
-    e.className = 'cell' + (c === cur ? ' on' : ''); e.style.background = c; e.dataset.color = c; e.dataset.tip = c;
+    e.className = 'cell' + (c === now ? ' on' : ''); e.style.background = c; e.dataset.color = c; e.dataset.tip = c;
     e.onclick = () => { closeMenu(); setColor(input, c); };
     return e;
   };
@@ -85,7 +85,8 @@ function openPalette(btn) {
     range.onchange = commit;
     m.append(div('menu-sep'), row);
   }
-  if (btn.dataset.for === 'fill' && sel.size) gradientTabs(m, solidStart);
+  if (btn.dataset.for === 'fill' && sel.size) gradientTabs(m, solidStart, { get: () => gradSpec([...sel][0]), set: setGradient, image: true });
+  if (btn.dataset.for === 'bg' && slides[cur]) gradientTabs(m, solidStart, { get: () => specOfCss(slides[cur].dataset.backgroundGradient || ''), set: setBgGradient });
   document.body.append(m);
   const r = btn.getBoundingClientRect();
   m.style.left = Math.min(r.left, innerWidth - m.offsetWidth - 8) + 'px'; m.style.top = r.bottom + 2 + 'px';
@@ -103,12 +104,19 @@ function setGradient(spec) {
   drawOverlay();
 }
 const cssGrad = spec => { const m = spec.split(' '); return m[0] === 'radial' ? `radial-gradient(circle, ${m.slice(1).join(', ')})` : `linear-gradient(${m[1]}deg, ${m.slice(2).join(', ')})`; };
-function gradientTabs(m, solidStart) {
+/* The slide background's gradient (data-background-gradient, a CSS value as reveal's): a picture or video takes its place. */
+const specOfCss = css => { const m = css.match(/^(linear|radial)-gradient\((?:(\d+)deg, )?(?:circle, )?(#[0-9a-f]{3,8}), (#[0-9a-f]{3,8})\)$/i); return !m ? '' : m[1] === 'radial' ? `radial ${m[3]} ${m[4]}` : `linear ${m[2] || 180} ${m[3]} ${m[4]}`; };
+function setBgGradient(spec) {
+  const s = slides[cur];
+  if (spec) { clearBgMedia(s); s.dataset.backgroundGradient = cssGrad(spec); s.dataset.backgroundColor = spec.match(/#[0-9a-f]{3,8}/i)?.[0] || '#ffffff'; } else delete s.dataset.backgroundGradient;
+  paintBg(frame, s); syncBgDialog();
+}
+function gradientTabs(m, solidStart, target) {
   const solid = [...m.children].slice(solidStart), pane = div('grad-pane'), tabs = div('palette-tabs');
-  tabs.innerHTML = '<button data-t="solid">Solid</button><button data-t="gradient">Gradient</button><button data-t="image">Image</button>';
+  tabs.innerHTML = '<button data-t="solid">Solid</button><button data-t="gradient">Gradient</button>' + (target.image ? '<button data-t="image">Image</button>' : '');
   const show = t => { tabs.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.t === t)); solid.forEach(e => { /** @type {HTMLElement} */ (e).hidden = t !== 'solid'; }); pane.hidden = t !== 'gradient'; ipane.hidden = t !== 'image'; };
   tabs.onclick = e => { const t = /** @type {HTMLElement} */ (e.target).closest('button'); if (t) show(t.dataset.t); };
-  const presets = div('cells'), cur = gradSpec([...sel][0]), b0 = [...sel][0], ipane = div('img-fill');
+  const presets = div('cells'), cur = target.get(), b0 = target.image ? [...sel][0] : null, ipane = div('img-fill');
   ipane.innerHTML = `<button class="outlined pick"><span class="icon">image</span> Choose an image…</button>
     <select class="fs"><option value="fill">Scale to fill</option><option value="fit">Scale to fit</option><option value="stretch">Stretch</option><option value="tile">Tile</option><option value="original">Original size</option></select>
     <button class="outlined rm">Remove image</button><input type="file" accept="image/*" hidden>`;
@@ -121,7 +129,7 @@ function gradientTabs(m, solidStart) {
   for (const kind of ['linear', 'radial']) for (let i = 0; i < 10; i++) {
     const spec = kind === 'linear' ? `linear 180 ${PALETTE[20 + i]} ${PALETTE[60 + i]}` : `radial ${PALETTE[20 + i]} ${PALETTE[50 + i]}`, c = document.createElement('button');
     c.className = 'cell' + (spec === cur ? ' on' : ''); c.style.background = cssGrad(spec); c.dataset.tip = kind === 'linear' ? 'Linear' : 'Radial';
-    c.onclick = () => { closeMenu(); setGradient(spec); commit(); }; presets.append(c);
+    c.onclick = () => { closeMenu(); target.set(spec); commit(); }; presets.append(c);
   }
   const [k0 = 'linear', ...rest] = (cur || `linear 180 ${PALETTE[26]} ${PALETTE[66]}`).split(' '), angle0 = k0 === 'radial' ? '180' : rest[0], [c1, c2] = k0 === 'radial' ? rest : rest.slice(1);
   const custom = div('grad-custom');
@@ -130,12 +138,12 @@ function gradientTabs(m, solidStart) {
   const q = s => /** @type {HTMLInputElement} */ (custom.querySelector(s));
   q('.gk').value = k0; q('.ga input').value = angle0; q('.g1').value = c1 || PALETTE[26]; q('.g2').value = c2 || PALETTE[66];
   const apply = () => { const radial = q('.gk').value === 'radial'; q('.ga').hidden = radial;
-    setGradient(radial ? `radial ${q('.g1').value} ${q('.g2').value}` : `linear ${(+q('.ga input').value || 0) % 360} ${q('.g1').value} ${q('.g2').value}`); };
+    target.set(radial ? `radial ${q('.g1').value} ${q('.g2').value}` : `linear ${(+q('.ga input').value || 0) % 360} ${q('.g1').value} ${q('.g2').value}`); };
   q('.ga').hidden = k0 === 'radial';
   for (const s of ['.gk', '.ga input', '.g1', '.g2']) { q(s).oninput = apply; q(s).onchange = () => { apply(); commit(); }; }
   const head = div('palette-head'), head2 = div('palette-head'); head.textContent = 'PRESETS'; head2.textContent = 'CUSTOM';
   pane.append(head, presets, head2, custom);
-  m.prepend(tabs); m.append(pane, ipane);   // Slides: the tabs on top
+  m.prepend(tabs); m.append(pane); if (target.image) m.append(ipane);   // Slides: the tabs on top
   show(b0?.dataset.fillImage ? 'image' : cur ? 'gradient' : 'solid');
 }
 document.querySelectorAll('.swatch[data-for]').forEach(btn => { btn.onclick = () => openAnchor === btn ? closeMenu() : openPalette(btn); });

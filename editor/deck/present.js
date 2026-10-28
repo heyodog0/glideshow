@@ -216,8 +216,7 @@
   document.head.append(css);
   // Each slide paints its own background colour, so the area around it stays black.
   const paint = () => document.querySelectorAll('.reveal .slides section').forEach(s => {
-    s.style.background = s.dataset.backgroundColor || '#fff';
-    if (s.dataset.backgroundImage) Object.assign(s.style, { backgroundImage: `url("${s.dataset.backgroundImage}")`, backgroundSize: 'cover', backgroundPosition: 'center' });
+    s.style.background = ''; Object.assign(s.style, window.bgCss ? window.bgCss(s) : { background: s.dataset.backgroundColor || '#fff' });   // shapes.js: colour, gradient, picture
   });
 
   const icon = d => `<svg viewBox="0 0 24 24"><path d="${d}"/></svg>`;

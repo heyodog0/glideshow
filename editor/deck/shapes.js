@@ -272,6 +272,24 @@
     else ['--fimg', '--fsize', '--frep'].forEach(k => b.style.removeProperty(k));
   }
   window.gradBox = gradBox;
+  /* A slide's background as CSS, for the editor and the slideshow: data-background-color, then (reveal's names)
+     data-background-gradient (a CSS gradient), or data-background-image with data-background-size (cover by default) and
+     -repeat, and Keynote's data-background-opacity (the picture over the colour, 0…1) and data-background-tint (a colour
+     laid over the picture, #rrggbbaa). */
+  function bgCss(s) {
+    const d = s.dataset, color = d.backgroundColor || '#fff', out = { background: color };
+    if (d.backgroundImage) {
+      const layers = [], sizes = [], reps = [], hex = /^#[0-9a-f]{6}$/i.test(color) ? color : '#ffffff', op = d.backgroundOpacity === undefined ? 1 : Math.max(0, Math.min(1, +d.backgroundOpacity));
+      const flat = c => `linear-gradient(${c}, ${c})`;
+      if (d.backgroundTint) { layers.push(flat(d.backgroundTint)); sizes.push('auto'); reps.push('no-repeat'); }
+      if (op < 1) { layers.push(flat(hex + Math.round((1 - op) * 255).toString(16).padStart(2, '0'))); sizes.push('auto'); reps.push('no-repeat'); }   // fade the picture into the colour
+      layers.push(`url("${d.backgroundImage.replace(/"/g, '%22')}")`); sizes.push(d.backgroundSize || 'cover'); reps.push(d.backgroundRepeat || 'no-repeat');
+      Object.assign(out, { backgroundColor: color, backgroundImage: layers.join(', '), backgroundSize: sizes.join(', '), backgroundRepeat: reps.join(', '), backgroundPosition: 'center' });
+      delete out.background;
+    } else if (d.backgroundGradient) Object.assign(out, { background: d.backgroundGradient });
+    return out;
+  }
+  window.bgCss = bgCss;
 
   /* A drop shadow is drawn in the box's own frame (filter runs before transform), so counter-rotate
      its offset to keep it falling straight down the page whatever the box's rotate/flip. */

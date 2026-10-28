@@ -70,7 +70,7 @@ function ungroupSel() {
 function toFront() { boxes().filter(b => sel.has(b)).forEach(b => slides[cur].append(b)); commit(); }
 function toBack() { boxes().filter(b => sel.has(b)).reverse().forEach(b => slides[cur].prepend(b)); commit(); }
 function flipLines() { sel.forEach(b => { if (isLine(b)) { b.dataset.dir = b.dataset.dir === 'up' ? 'down' : 'up'; renderShape(b); } }); commit(); }
-$('#ed-bg').oninput = e => { slides[cur].dataset.backgroundColor = e.target.value; paintBg(frame, slides[cur]); syncBgDialog(); };
+$('#ed-bg').oninput = e => { slides[cur].dataset.backgroundColor = e.target.value; delete slides[cur].dataset.backgroundGradient; delete slides[cur].dataset.backgroundImage; paintBg(frame, slides[cur]); syncBgDialog(); };
 $('#ed-bg').onchange = commit;
 $('#ed-title').oninput = scheduleSave;
 $('#ed-date').onchange = scheduleSave;

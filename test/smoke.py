@@ -775,16 +775,26 @@ def checks(pg, deck: Path, errors):
     g3 = pg.evaluate(f"(() => {{ const b = document.getElementById('{gid[1]}'); return [getComputedStyle(b).backgroundImage.startsWith('linear-gradient'), !cleanBox(b).style.getPropertyValue('--grad')]; }})()")
     pg.click(".swatch[data-for=fill]"); pg.click(".palette-tabs button[data-t=solid]"); pg.click(".palette .cells.std .cell >> nth=1")
     g4 = pg.evaluate(f"[document.getElementById('{gid[1]}').dataset.gradient ?? '', getComputedStyle(document.getElementById('{gid[1]}')).backgroundImage]")
-    png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAADCAYAAAC56t6BAAAAEklEQVR42mP8z8DAwMDAxAAFAA8JAQXc2aaYAAAAAElFTkSuQmCC"
+    tiny_png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAADCAYAAAC56t6BAAAAEklEQVR42mP8z8DAwMDAxAAFAA8JAQXc2aaYAAAAAElFTkSuQmCC"
     pg.evaluate(f"(() => {{ sel = new Set([document.getElementById('{gid[0]}')]); render(); updateToolbar(); }})()")
     pg.click(".swatch[data-for=fill]"); pg.click(".palette-tabs button[data-t=image]"); itab = pg.evaluate("[...document.querySelectorAll('.img-fill .fs option')].map(o => o.textContent)")
     pg.keyboard.press("Escape")
-    t0 = pg.evaluate("performance.now()"); pg.evaluate(f"(() => {{ setFillImage('{png}', 'tile'); commit(); }})()"); fi_ms = pg.evaluate(f"Math.round(performance.now() - {t0})"); pg.wait_for_timeout(200)
+    t0 = pg.evaluate("performance.now()"); pg.evaluate(f"(() => {{ setFillImage('{tiny_png}', 'tile'); commit(); }})()"); fi_ms = pg.evaluate(f"Math.round(performance.now() - {t0})"); pg.wait_for_timeout(200)
     f1 = pg.evaluate(f"(() => {{ const b = document.getElementById('{gid[0]}'), p = b.querySelector('svg.shape pattern'); return [b.dataset.fillScale, !b.dataset.gradient, !!p && /url\\(.#fi-/.test(b.querySelector('svg.shape .f').style.fill), p?.getAttribute('width')]; }})()")
-    pg.evaluate(f"(() => {{ sel = new Set([document.getElementById('{gid[1]}')]); setFillImage('{png}', 'fit'); commit(); }})()")
+    pg.evaluate(f"(() => {{ sel = new Set([document.getElementById('{gid[1]}')]); setFillImage('{tiny_png}', 'fit'); commit(); }})()")
     f2 = pg.evaluate(f"(() => {{ const b = document.getElementById('{gid[1]}'), cs = getComputedStyle(b); return [cs.backgroundImage.startsWith('url('), cs.backgroundSize, !cleanBox(b).style.getPropertyValue('--fimg')]; }})()")
     check(f"Fill colour → Image, as Keynote's Image Fill ({fi_ms} ms): Scale to fill / fit / Stretch / Tile / Original size; a shape tiles it at the picture's size, a text box fits it; derived CSS not saved",
           itab == ["Scale to fill", "Scale to fit", "Stretch", "Tile", "Original size"] and f1 == ["tile", True, True, "2"] and f2[0] and f2[1].startswith("contain") and f2[2], f"{itab} {f1} {f2}")
+    pg.evaluate(f"(() => {{ sel.clear(); render(); slides[cur].dataset.backgroundImage = '{tiny_png}'; render(); showBgDialog(true); }})()")
+    pg.select_option("#ed-bg-size", "auto repeat"); pg.fill("#ed-bg-opacity", "50"); pg.dispatch_event("#ed-bg-opacity", "input"); pg.dispatch_event("#ed-bg-opacity", "change")
+    pg.fill("#ed-bg-tint", "#ff0000"); pg.dispatch_event("#ed-bg-tint", "input")
+    pg.locator("#ed-bgdlg .dialog").screenshot(path=str(HERE / "background-dialog.png"))
+    b1 = pg.evaluate("(() => { const d = slides[cur].dataset, cs = getComputedStyle($('#ed-frame')); return [d.backgroundRepeat, d.backgroundSize, d.backgroundOpacity, d.backgroundTint, cs.backgroundImage.split('gradient').length - 1, cs.backgroundRepeat]; })()")
+    pg.click("#ed-bg-color"); pg.click(".palette-tabs button[data-t=gradient]"); notab = pg.evaluate("!document.querySelector('.palette-tabs [data-t=image]')"); pg.click(".grad-pane .cells .cell >> nth=12")
+    b2 = pg.evaluate("(() => { const d = slides[cur].dataset; return [d.backgroundGradient?.startsWith('radial-gradient(circle, #'), !d.backgroundImage, !d.backgroundTint, getComputedStyle($('#ed-frame')).backgroundImage.startsWith('radial-gradient')]; })()")
+    pg.evaluate("showBgDialog(false)")
+    check("Change background: a picture's scale (Tile), opacity and tint as Keynote's; a gradient from the colour menu's Gradient tab (no Image tab), which replaces the picture",
+          b1 == ["repeat", "auto", "0.5", "#ff000066", 2, "no-repeat, no-repeat, repeat"] and notab and b2 == [True, True, True, True], f"{b1} {notab} {b2}")
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
     check(f"Fill colour → Gradient, as Slides ({gr_ms} ms): presets and a custom radial on a shape (SVG gradient), a text box (CSS, derived --grad not saved); a solid colour removes it",
           g1[0].startswith("linear 180") and g1[1:] == [True, 2] and g2 == "radial true" and g3 == [True, True] and g4 == ["", "none"], f"{g1} {g2} {g3} {g4}")
@@ -1608,6 +1618,8 @@ def checks(pg, deck: Path, errors):
     v.evaluate("Reveal.nextFragment()"); v.wait_for_timeout(1500); auto2 = v.evaluate("Reveal.getIndices().f")
     v.evaluate("(() => { ['tm-0', 'tm-1', 'tm-2'].forEach(id => document.getElementById(id).remove()); Reveal.sync(); Reveal.slide(0); })()")
     check("slideshow: a build After transition plays by itself, the next waits for a click, an After previous one follows it", auto1 == 0 and auto2 == 2, f"{auto1} {auto2}")
+    vbg = v.evaluate("(() => { const s = document.createElement('section'); s.dataset.backgroundGradient = 'linear-gradient(90deg, #ff0000, #0000ff)'; return window.bgCss?.(s).background; })()")
+    check("the slideshow paints background gradients through shapes.js's bgCss", vbg == "linear-gradient(90deg, #ff0000, #0000ff)", str(vbg))
     check("decks carry present.js (Slides' presenting keys)", v.evaluate("!!document.getElementById('deck-present') && !Reveal.getConfig().keyboard[79] && Reveal.getConfig().keyboard[79] === null"))
     check("viewer loads the notes plugin (S = speaker view)", v.evaluate("!!(window.Reveal && Reveal.hasPlugin('notes'))"))
     v.screenshot(path=str(HERE / "viewer.png"))

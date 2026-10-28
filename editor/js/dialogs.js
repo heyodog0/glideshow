@@ -1,8 +1,7 @@
 /* Slide → Change background: Slides' dialog with a colour, an image (reveal's data-background-image, cover), and ours:
    a video (data-background-video, muted and looping) or a web page (data-background-iframe), then Reset. */
 function paintBg(el, s) {
-  el.style.background = s.dataset.backgroundColor || '#fff';
-  if (s.dataset.backgroundImage) Object.assign(el.style, { backgroundImage: `url("${s.dataset.backgroundImage}")`, backgroundSize: 'cover', backgroundPosition: 'center' });
+  el.style.background = ''; Object.assign(el.style, bgCss(s));   // colour, gradient, picture with its scale, opacity and tint (shapes.js)
   // a video or web page behind the slide: playing on the canvas, a still frame or a placeholder in thumbnails
   const media = fresh(s.dataset.backgroundVideo || '') || s.dataset.backgroundIframe || '', live = el === frame, old = el.querySelector(':scope > .bg-media');
   if (!media) return old?.remove();
@@ -20,6 +19,11 @@ const bgDlg = $('#ed-bgdlg');
 function syncBgDialog() {
   const s = slides[cur]; if (!s) return;
   $('#ed-bg-color .chip').style.background = s.dataset.backgroundColor || '#fff';
+  const d = s.dataset; bgDlg.querySelectorAll('.bg-img-opt').forEach(r => { /** @type {HTMLElement} */ (r).hidden = !d.backgroundImage; });
+  $('#ed-bg-size').value = d.backgroundRepeat === 'repeat' ? 'auto repeat' : d.backgroundSize || '';
+  $('#ed-bg-opacity').value = $('#ed-bg-opacity-n').textContent = String(Math.round((d.backgroundOpacity === undefined ? 1 : +d.backgroundOpacity) * 100));
+  $('#ed-bg-tint').value = (d.backgroundTint || '#000000').slice(0, 7);
+  $('#ed-bg-color .chip').style.background = d.backgroundGradient && !d.backgroundImage ? d.backgroundGradient : d.backgroundColor || '#fff';
   $('#ed-bg-reset').disabled = !s.dataset.backgroundImage && !s.dataset.backgroundVideo && !s.dataset.backgroundIframe && /^(#fff(fff)?)?$/i.test(s.dataset.backgroundColor || '');
 }
 function showBgDialog(on) { closeMenu(); bgDlg.hidden = !on; if (on) syncBgDialog(); }
@@ -33,9 +37,17 @@ $('#ed-bg-file').onchange = async e => {
   file = await shrinkPicture(file);
   const ext = (file.type.split('/')[1] || 'png').replace('jpeg', 'jpg').replace('svg+xml', 'svg');
   const { src } = await (await fetch('/api/upload?ext=' + ext, { method: 'POST', body: file })).json();
-  slides[cur].dataset.backgroundImage = src; render(); syncBgDialog(); commit();
+  delete slides[cur].dataset.backgroundGradient; slides[cur].dataset.backgroundImage = src; render(); syncBgDialog(); commit();
 };
-const clearBgMedia = s => { for (const k of ['backgroundImage', 'backgroundVideo', 'backgroundVideoLoop', 'backgroundVideoMuted', 'backgroundIframe', 'backgroundInteractive']) delete s.dataset[k]; };
+/* The picture's scale, opacity and tint (Keynote's Advanced Image Fill on the background): live while dragging, one commit. */
+const bgSet = (k, v) => { const s = slides[cur]; if (v == null || v === '') delete s.dataset[k]; else s.dataset[k] = v; paintBg(frame, s); };
+$('#ed-bg-size').onchange = () => { const v = $('#ed-bg-size').value; bgSet('backgroundRepeat', v === 'auto repeat' ? 'repeat' : null); bgSet('backgroundSize', v === 'auto repeat' ? 'auto' : v); commit(); };
+$('#ed-bg-opacity').oninput = () => { const v = +$('#ed-bg-opacity').value; $('#ed-bg-opacity-n').textContent = String(v); bgSet('backgroundOpacity', v >= 100 ? null : String(v / 100)); };
+$('#ed-bg-opacity').onchange = commit;
+$('#ed-bg-tint').oninput = () => bgSet('backgroundTint', $('#ed-bg-tint').value + '66');   // a 40 % veil of the colour
+$('#ed-bg-tint').onchange = commit;
+$('#ed-bg-tint-off').onclick = () => { bgSet('backgroundTint', null); commit(); };
+const clearBgMedia = s => { for (const k of ['backgroundImage', 'backgroundSize', 'backgroundRepeat', 'backgroundOpacity', 'backgroundTint', 'backgroundGradient', 'backgroundVideo', 'backgroundVideoLoop', 'backgroundVideoMuted', 'backgroundIframe', 'backgroundInteractive']) delete s.dataset[k]; };
 $('#ed-bg-video').onclick = () => $('#ed-bg-vfile').click();
 $('#ed-bg-vfile').onchange = async e => {
   const file = e.target.files[0]; e.target.value = ''; if (!file) return;

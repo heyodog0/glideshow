@@ -266,6 +266,9 @@
     <header><h2>Background</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
     <div class="bg-row"><span>Color</span><button id="ed-bg-color" class="bg-swatch" data-for="bg" title="Color"><span class="chip"></span><span class="icon">arrow_drop_down</span></button></div>
     <div class="bg-row"><span>Image</span><button id="ed-bg-image" class="outlined">Choose image</button><input type="file" id="ed-bg-file" accept="image/*" hidden></div>
+    <div class="bg-row bg-img-opt"><span>Scale</span><select id="ed-bg-size"><option value="">Scale to fill</option><option value="contain">Scale to fit</option><option value="100% 100%">Stretch</option><option value="auto repeat">Tile</option><option value="auto">Original size</option></select></div>
+    <div class="bg-row bg-img-opt"><span>Opacity</span><span class="unit slider"><input type="range" id="ed-bg-opacity" min="0" max="100" step="1"> <span id="ed-bg-opacity-n">100</span>%</span></div>
+    <div class="bg-row bg-img-opt"><span>Tint</span><span><input type="color" id="ed-bg-tint" class="color-chip"> <button id="ed-bg-tint-off" class="outlined">None</button></span></div>
     <div class="bg-row"><span>Video</span><button id="ed-bg-video" class="outlined">Choose video</button><input type="file" id="ed-bg-vfile" accept="video/mp4,video/webm,video/quicktime,.mov" hidden></div>
     <div class="bg-row"><span>Web page</span><button id="ed-bg-page" class="outlined">Choose page</button></div>
     <div class="bg-row"><span>Reset to theme</span><button id="ed-bg-reset" class="outlined">Reset</button></div>
