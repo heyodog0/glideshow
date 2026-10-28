@@ -377,6 +377,7 @@ body.notes-off #ed-splitter { display: block; }
 .anim-head .chev { font-size: 20px; color: var(--muted); }
 .anim-row.open .anim-head .chev { rotate: 90deg; }
 .anim-head .eff { white-space: pre; }
+.anim-head .step { min-width: 20px; height: 20px; padding: 0 4px; box-sizing: border-box; border-radius: 10px; background: var(--hover); color: var(--ink); font-size: 12px; line-height: 20px; text-align: center; }   /* Keynote's build number */
 .anim-head .what { flex: 1; min-width: 0; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .anim-body { display: none; flex-direction: column; gap: 10px; padding: 4px 16px 16px 40px; }
 .anim-row.open .anim-body { display: flex; }

@@ -93,33 +93,38 @@ function renderAnims() {
   $('#ed-anim-play').disabled = kind === 'none' && !animBoxes().length;
   trans.classList.toggle('no-trans', kind === 'none');
   const t = TRANSITIONS.find(x => x[0] === kind); $('#ed-t-name').textContent = t ? t[1] : 'None';
-  host.replaceChildren(...animBoxes().map((b, i) => {
-    const open = sel.has(b) || openAnims.has(b), start = startOf(b);
+  const all = animBoxes();
+  host.replaceChildren(...all.map((b, i) => {
+    const open = sel.has(b) || openAnims.has(b), start = startOf(b), step = +(b.dataset.fragmentIndex ?? i) + 1;
+    // Keynote's Build Order: ⌘- or ⇧-click rows to edit several builds at once; a change in one open row goes to all of them
+    const each = fn => { (sel.has(b) && sel.size > 1 ? all.filter(x => sel.has(x)) : [b]).forEach(fn); };
     const r = div('anim-row' + (sel.has(b) ? ' on' : '') + (open ? ' open' : '')); r.draggable = true; r.dataset.i = String(i);
     r.innerHTML = `<div class="anim-head"><span class="n icon" title="Drag to reorder">drag_indicator</span><span class="icon chev">chevron_right</span>
-      <span class="eff"></span><span class="what"></span><button title="Delete animation"><span class="icon">delete</span></button></div>
+      <span class="step" title="Build ${step}">${step}</span><span class="eff"></span><span class="what"></span><button title="Delete animation"><span class="icon">delete</span></button></div>
       <div class="anim-body"><select class="e">${EFFECTS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <select class="t">${Object.entries(START_LABEL).filter(([v]) => v !== 'transition' || !i).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <div class="timing"><label>Duration (s)<input class="dur" type="number" min="0.1" max="20" step="0.1" placeholder="0.5"></label>
       <label>Delay (s)<input class="del" type="number" min="0" max="60" step="0.1" placeholder="0"></label></div>
       <select class="ease">${EASES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <label class="para chk"><input type="checkbox"> By paragraph</label></div>`;
-    r.querySelector('.eff').textContent = `${EFFECTS.find(e => e[0] === effectOf(b))[1]}${b.dataset.build === 'paragraph' ? ' by paragraph' : ''}  (${START_LABEL[start] || 'On click'})`;
+    const when = start === 'with' ? `With build ${step}` : start === 'after' && i ? `After build ${step - 1}` : START_LABEL[start] || 'On click';   // Keynote names the build it follows
+    r.querySelector('.eff').textContent = `${EFFECTS.find(e => e[0] === effectOf(b))[1]}${b.dataset.build === 'paragraph' ? ' by paragraph' : ''}  (${when})`;
     r.querySelector('.what').textContent = animLabel(b);
     const se = r.querySelector('select.e'), tr = r.querySelector('select.t'); se.value = effectOf(b); tr.value = start;
-    se.onchange = () => { setEffect(b, se.value); commit(); renderAnims(); };
-    tr.onchange = () => { setStart(b, tr.value); renumber(animBoxes()); commit(); renderAnims(); };
+    se.onchange = () => { each(x => setEffect(x, se.value)); commit(); renderAnims(); };
+    tr.onchange = () => { each(x => setStart(x, tr.value === 'transition' && x !== all[0] ? 'after' : tr.value)); renumber(animBoxes()); commit(); renderAnims(); };
     const num = (cls, key) => { const f = /** @type {HTMLInputElement} */ (r.querySelector(cls)); f.value = b.dataset[key] ?? '';
-      f.onchange = () => { const v = parseFloat(f.value); if (v >= 0 && isFinite(v)) b.dataset[key] = String(Math.round(v * 100) / 100); else delete b.dataset[key]; commit(); }; };
+      f.onchange = () => { const v = parseFloat(f.value); each(x => { if (v >= 0 && isFinite(v)) x.dataset[key] = String(Math.round(v * 100) / 100); else delete x.dataset[key]; }); commit(); renderAnims(); }; };
     num('.dur', 'duration'); num('.del', 'delay');
     const ez = /** @type {HTMLSelectElement} */ (r.querySelector('select.ease')); ez.value = b.dataset.ease || '';
-    ez.onchange = () => { if (ez.value) b.dataset.ease = ez.value; else delete b.dataset.ease; commit(); };
+    ez.onchange = () => { each(x => { if (ez.value) x.dataset.ease = ez.value; else delete x.dataset.ease; }); commit(); renderAnims(); };
     const para = /** @type {HTMLInputElement} */ (r.querySelector('.para input')), textual = !isMedia(b) && !isStroke(b) && !!content(b)?.textContent.trim();
     /** @type {HTMLElement} */ (r.querySelector('.para')).hidden = !textual; para.checked = b.dataset.build === 'paragraph';   // Slides' "By paragraph": one step per paragraph or bullet
     para.onchange = () => { if (para.checked) b.dataset.build = 'paragraph'; else delete b.dataset.build; commit(); renderAnims(); };
     r.querySelector('.anim-head button').onclick = () => removeAnim(b);
     r.querySelector('.anim-head').onclick = e => {
       if (e.target.closest('button')) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey) { if (sel.has(b)) sel.delete(b); else sel.add(b); drawOverlay(); updateToolbar(); renderAnims(); return; }
       if (open && !sel.has(b)) openAnims.delete(b); else openAnims.add(b);
       sel = new Set([b]); drawOverlay(); updateToolbar(); renderAnims();
     };
