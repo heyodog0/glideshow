@@ -550,7 +550,7 @@ def _same_picture(a: bytes, b: bytes) -> bool:
     return a == b or pixels(a) == pixels(b)
 
 
-FIGURE_DEP = "glideshow @ git+https://github.com/heyodog0/glideshow"   # (PyPI's "glideshow" once it is published there)
+FIGURE_DEP = "glideshow"   # (from PyPI)
 
 
 def mplstyle(th: dict) -> str:
