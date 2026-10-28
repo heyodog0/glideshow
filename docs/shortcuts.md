@@ -68,6 +68,7 @@ Also ⌥⇧⌘F moves focus to the filmstrip (verified in Google's list).
 - [x] type a number then ⏎ to jump to that slide
 - [x] B black screen; W white screen (toggle)
 - [x] L laser pointer toggle (a red dot following the cursor)
+- [x] Keynote's where Slides has none: ⇧→ / ⇧↓ next slide skipping its builds (no transition), ⇧← / ⇧↑ back one build, Z back through the slides as viewed, C hide / show the pointer, ? or / the keys, Q end the show; reveal's H / J / K are off
 - [x] S open speaker notes (presenter view in a new window, reveal's notes plugin)
 - [x] M note for the AI at the pointer (ours, not Slides': only when presenting from the editor; ⏎ keeps it on the slide as a `.box.note`, Esc drops it)
 - [ ] A toggle auto-advance *(verify)*; F toggle fullscreen (opt-in; presenting starts windowed, see BACKLOG) — F done (reveal's own, works in the in-place frame too); A not yet verified/implemented

@@ -185,6 +185,11 @@ P = [
   ("Laser pointer", "l", "[...document.body.children].some(e => e.style.borderRadius === '50%' && e.style.display !== 'none')"),
   ("Full screen", "f", "true"),
   ("Speaker view", "s", "window.__opened !== undefined"),
+  ("Next slide, skipping builds", "Shift+ArrowRight", "Reveal.getIndices().h === 1 && Reveal.getIndices().v === 1"),
+  ("Previous build", "Shift+ArrowLeft", "Reveal.getIndices().h === 0"),
+  ("Back through viewed slides", ["End", "z"], "Reveal.getIndices().h === 1"),
+  ("Show / hide the pointer", "c", "document.documentElement.style.cursor === 'none'"),
+  ("Show the keys", "Shift+Slash", "!!document.querySelector('.sl-pop.sl-keys')"),
 ]
 
 
@@ -226,8 +231,9 @@ def main():
             pg.mouse.move(700, 450); pg.keyboard.press("m"); pg.wait_for_timeout(100)
             memo = fr.evaluate("!!document.querySelector('textarea')"); pg.keyboard.type("Check this"); pg.keyboard.press("Enter"); pg.wait_for_timeout(300)
             note = pg.evaluate("[...slides[1].querySelectorAll('.box.note')].some(b => b.textContent.includes('Check this'))")
-            pg.keyboard.press("Escape"); pg.wait_for_timeout(300)
-            for row, good in (("Note for the AI (presenting from the editor)", memo and note), ("Exit", pg.evaluate("!presenting()"))):
+            pg.keyboard.press("Escape"); pg.wait_for_timeout(300); esc_out = pg.evaluate("!presenting()")
+            pg.keyboard.press("Meta+Enter"); pg.wait_for_timeout(1500); pg.keyboard.press("q"); pg.wait_for_timeout(300)   # Keynote's Q ends the show too
+            for row, good in (("Note for the AI (presenting from the editor)", memo and note), ("Exit", esc_out and pg.evaluate("!presenting()"))):
                 print(("PASS " if good else "FAIL ") + row + " [presenting in the editor]"); (passed_rows if good else failed_rows).add(("Presenting", row))
                 if not good: failures.append(row)
             # the slideshow on its own

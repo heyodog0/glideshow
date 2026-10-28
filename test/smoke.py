@@ -1620,6 +1620,15 @@ def checks(pg, deck: Path, errors):
     check("slideshow: a build After transition plays by itself, the next waits for a click, an After previous one follows it", auto1 == 0 and auto2 == 2, f"{auto1} {auto2}")
     vbg = v.evaluate("(() => { const s = document.createElement('section'); s.dataset.backgroundGradient = 'linear-gradient(90deg, #ff0000, #0000ff)'; return window.bgCss?.(s).background; })()")
     check("the slideshow paints background gradients through shapes.js's bgCss", vbg == "linear-gradient(90deg, #ff0000, #0000ff)", str(vbg))
+    v.evaluate("""(() => { const s = Reveal.getSlides()[0]; for (const i of [0, 1]) { const b = document.createElement('div'); b.className = 'box fragment fade-in'; b.dataset.fragmentIndex = i; b.id = 'kb-' + i; s.append(b); }
+      Reveal.sync(); Reveal.slide(0, 0, 1); })()"""); v.wait_for_timeout(200)
+    v.keyboard.press("Shift+ArrowLeft"); back1 = v.evaluate("[Reveal.getIndices().h, Reveal.getIndices().f]")
+    v.keyboard.press("h"); v.keyboard.press("k"); still = v.evaluate("Reveal.getIndices().h")
+    t0 = v.evaluate("performance.now()"); v.keyboard.press("Shift+ArrowRight"); skip = v.evaluate(f"[Reveal.getIndices().h, Math.round(performance.now() - {t0})]")
+    v.keyboard.press("Shift+Slash"); v.wait_for_timeout(100); v.screenshot(path=str(HERE / "show-keys.png")); v.keyboard.press("Escape")
+    v.evaluate("(() => { ['kb-0', 'kb-1'].forEach(id => document.getElementById(id).remove()); Reveal.sync(); Reveal.slide(0); })()")
+    check(f"slideshow keys as Keynote: ⇧← takes back one build, ⇧→ goes to the next slide past the rest ({skip[1]} ms), reveal's H / K do nothing",
+          back1 == [0, 0] and still == 0 and skip[0] == 1, f"{back1} {still} {skip}")
     check("decks carry present.js (Slides' presenting keys)", v.evaluate("!!document.getElementById('deck-present') && !Reveal.getConfig().keyboard[79] && Reveal.getConfig().keyboard[79] === null"))
     check("viewer loads the notes plugin (S = speaker view)", v.evaluate("!!(window.Reveal && Reveal.hasPlugin('notes'))"))
     v.screenshot(path=str(HERE / "viewer.png"))

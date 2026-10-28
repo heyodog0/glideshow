@@ -115,6 +115,20 @@
     if (document.fullscreenElement) { document.exitFullscreen(); return; }
     if (embedded) parent.postMessage({ slides: 'exit', h: Reveal.getIndices().h, v: Reveal.getIndices().v }, '*');
   };
+  /* Keynote's show keys where Slides has none (D3): ⇧→ / ⇧↓ next slide without its builds or transition, ⇧← / ⇧↑ back one
+     build, Z back through the slides as viewed, C hide / show the pointer, ? or / the keys, Q end the show. */
+  const seen = []; let zBack = false, pointerOff = false;
+  Reveal.on('slidechanged', e => { if (!zBack && e.previousSlide) seen.push(e.previousSlide); zBack = false; });
+  const toSlide = (s, f) => { if (!s) return; const i = Reveal.getIndices(s); Reveal.slide(i.h, i.v, f); };
+  const instant = fn => { document.documentElement.classList.add('sl-instant'); fn(); requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.remove('sl-instant'))); };
+  const KEYS = [['→ ↓ Space ↵ or click', 'Next build or slide'], ['← ↑', 'Previous slide'], ['⇧→', 'Next slide, skipping builds'], ['⇧←', 'Previous build'],
+    ['Home / End', 'First / last slide'], ['n then ↵', 'Go to slide n'], ['Z', 'Back through viewed slides'], ['B / W', 'Black / white screen'], ['L', 'Laser pointer'],
+    ['C', 'Show / hide the pointer'], ['S', 'Speaker notes'], ['F', 'Full screen'], ['?', 'These keys'], ['Esc or Q', 'Exit']];
+  const showKeys = () => {
+    if (pop?.classList.contains('sl-keys')) return closePop();
+    openPop(null, KEYS.map(([k, l]) => [null, l, () => {}, { key: k }]));
+    pop.classList.add('sl-keys'); pop.style.left = (innerWidth - pop.offsetWidth) / 2 + 'px'; pop.style.top = Math.max(8, (innerHeight - pop.offsetHeight) / 2) + 'px';
+  };
   addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;   // typing in a field on the page (a comment box) is not a slideshow key
@@ -128,6 +142,17 @@
       typed = ''; return;
     }
     typed = '';
+    if (pop && e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); closePop(); return; }
+    if (e.shiftKey && /^Arrow(Right|Down|Left|Up)$/.test(e.key)) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (/Right|Down/.test(e.key)) { const all = Reveal.getSlides(); instant(() => toSlide(all[all.indexOf(Reveal.getCurrentSlide()) + 1], -1)); }
+      else if (!Reveal.prevFragment()) Reveal.prev();
+      return;
+    }
+    if (k === 'z' && !e.shiftKey) { e.preventDefault(); e.stopImmediatePropagation(); const s = seen.pop(); if (s) { zBack = true; toSlide(s); } return; }
+    if (k === 'c' && !e.shiftKey) { e.preventDefault(); e.stopImmediatePropagation(); pointerOff = !pointerOff; document.documentElement.style.cursor = pointerOff || laser ? 'none' : ''; return; }
+    if (e.key === '?' || e.key === '/') { e.preventDefault(); e.stopImmediatePropagation(); showKeys(); return; }
+    if (k === 'q' && !e.shiftKey) { e.preventDefault(); e.stopImmediatePropagation(); exit(); return; }
     if (k === 'b' || k === 'w') { e.preventDefault(); e.stopImmediatePropagation(); cover(k === 'b' ? '#000' : '#fff'); }
     else if (k === 'l') { e.preventDefault(); e.stopImmediatePropagation(); toggleLaser(); }
     else if ((k === 'n' || k === 'p') && !e.shiftKey) { e.preventDefault(); e.stopImmediatePropagation(); k === 'n' ? Reveal.right() : Reveal.left(); }   // Slides: N / P = → / ←, past a stack
@@ -158,7 +183,7 @@
   };
   Reveal.on('slidechanged', cue); Reveal.on('fragmentshown', cue); Reveal.on('fragmenthidden', () => clearTimeout(autoT));
   Reveal.isReady() ? cue() : Reveal.on('ready', cue);
-  Reveal.configure({ keyboard: { 79: null, 86: null, 191: null, 190: null, 27: null } });   // O, V, ?, ., Esc
+  Reveal.configure({ keyboard: { 79: null, 86: null, 191: null, 190: null, 27: null, 72: null, 74: null, 75: null } });   // O, V, ?, ., Esc, and H / J / K (neither Slides' nor Keynote's)
   if (embedded) Reveal.on('ready', () => window.focus());
   if (/print-pdf/.test(location.search)) {   // PDF, as Slides prints it: one page per slide, edge to edge, no numbers, colours kept
     Reveal.configure({ slideNumber: false, margin: 0, pdfSeparateFragments: false, pdfMaxPagesPerSlide: 1, showNotes: false });
@@ -184,6 +209,7 @@
   const css = document.createElement('style');
   css.textContent = `
     html, body, .reveal { background: #000 !important; }
+    .sl-instant .reveal .slides section, .sl-instant .reveal .slides .fragment { transition: none !important; }
     .reveal .box[data-link] { cursor: pointer; }
     .reveal .slides .box.fragment.gs-seq { opacity: 1 !important; visibility: inherit !important; transform: none !important; }
     .reveal .gs-seq .gs-w { display: inline-block; opacity: 0; transform: var(--gs-from); transition: opacity var(--gs-d) var(--gs-ease), transform var(--gs-d) var(--gs-ease); transition-delay: calc(var(--i) * var(--gs-step)); }
@@ -249,7 +275,7 @@
     m.onmouseenter = () => { if (m !== pop) clearTimeout(subTimer); };   // the pointer crossed the parent on its way into the submenu
     document.body.append(m); place(m); return m;
   };
-  const openPop = (btn, items) => { closePop(); pop = menu(items, m => { const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, r.right - m.offsetWidth) + 'px'; m.style.top = r.top - m.offsetHeight - 4 + 'px'; }); };
+  const openPop = (btn, items) => { closePop(); pop = menu(items, m => { if (!btn) return; const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, r.right - m.offsetWidth) + 'px'; m.style.top = r.top - m.offsetHeight - 4 + 'px'; }); };
   let autoMs = 0, loop = false;
   const setAuto = (ms, lp = loop) => { autoMs = ms; loop = lp; Reveal.configure({ autoSlide: ms, loop: lp }); };
   const isFull = () => !!document.fullscreenElement;
@@ -275,7 +301,7 @@
   // Toolbar and cursor fade after 3 s without the mouse moving, as Slides.
   let idleTimer = 0;
   const wake = () => {
-    bar.classList.remove('idle'); if (!laser) document.documentElement.style.cursor = '';
+    bar.classList.remove('idle'); if (!laser && !pointerOff) document.documentElement.style.cursor = '';
     clearTimeout(idleTimer);
     idleTimer = setTimeout(() => { if (pop) return; bar.classList.add('idle'); if (!laser) document.documentElement.style.cursor = 'none'; }, 3000);
   };

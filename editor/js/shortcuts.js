@@ -25,7 +25,9 @@ const SHORTCUTS = {
     ['Zoom in', '⌘+'], ['Zoom out', '⌘−'], ['Fit', '⌘0'], ['Zoom to selection', '⇧⌘0'], ['Zoom to fit content', '⌥⇧⌘0']],
   'Presenting': [['Present from this slide', '⌘↵'], ['Present from beginning', '⇧⌘↵'], ['Next / previous slide', '→ / ← or N / P'], ['Up / down in a stack', '↓ / ↑'],
     ['Next / back in reading order', 'Space / ⇧Space or PgDn / PgUp'], ['First / last slide', 'Home / End'], ['Go to slide n', 'n then ↵'],
-    ['Black / white screen', 'B / W'], ['Laser pointer', 'L'], ['Full screen', 'F'], ['Speaker view', 'S'], ['Note for the AI (presenting from the editor)', 'M'], ['Exit', 'Esc']],
+    ['Next slide, skipping builds', '⇧→'], ['Previous build', '⇧←'], ['Back through viewed slides', 'Z'],
+    ['Black / white screen', 'B / W'], ['Laser pointer', 'L'], ['Show / hide the pointer', 'C'], ['Full screen', 'F'], ['Speaker view', 'S'], ['Show the keys', '?'],
+    ['Note for the AI (presenting from the editor)', 'M'], ['Exit', 'Esc or Q']],
 };
 /* Keys drawn as keycaps, Google-style: ⇧⌘V → [⌘][Shift][V]; alternatives joined with "or"; "+ drag" stays text. */
 function keycaps(k) {
