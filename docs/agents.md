@@ -22,7 +22,7 @@ outline and `check` show both where they differ (`9 = 8.1`).
 | `glideshow find <words>` | prints the folder of the deck that best matches; nothing is opened |
 | `glideshow slides <deck> --outline` | one line per slide: its number, layout, title, each box's id and first words, notes for you in full |
 | `glideshow slides <deck> [N …]` | those slides' HTML (numbered, with their line in `deck.html`) |
-| `glideshow put <deck> N` | replaces slide N with the `<section>`s on stdin; `--after N` inserts (0: first), `--delete N …` removes |
+| `glideshow put <deck> N` | replaces slide N with the `<section>`s on stdin; `--after N` inserts (0: first), `--delete N …` removes, `--all` replaces every slide |
 | `glideshow layout [NAME]` | the layouts' exact placeholder boxes; with a name, a slide in that layout to fill in |
 | `glideshow check <deck> [N …]` | only the problems, in about two seconds; exit status 1 when there are any |
 | `glideshow render <deck> [N …]` | each slide as a 960 × 540 PNG (one path per line; `--full`: 1920 × 1080), then the problems |
@@ -118,7 +118,9 @@ EOF
 ```
 `put` prints the new slide's outline line and the `check` to run. To change a slide, `glideshow slides <deck> N`, edit
 that, and `glideshow put <deck> N` it back (its `data-sid` is kept). It refuses, writing nothing, when a `<div>` isn't
-closed, an id is already used elsewhere in the deck, or a slide carries another slide's `data-sid`.
+closed, an id is already used elsewhere in the deck, or a slide carries another slide's `data-sid`. A script that builds
+the whole deck prints its `<section>`s and pipes them into `glideshow put <deck> --all`; don't let it rewrite `deck.html`
+(a pattern that cuts the file at the wrong `</div>` leaves slides outside the deck).
 
 **Boxes in a row, a column or a grid** (no pixels to work out): give the boxes the same `data-flow` and leave out their
 `left / top / width / height`; `put` lays them out in the slide's body area, equal sizes 40 px apart, and writes their

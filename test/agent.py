@@ -157,6 +157,14 @@ try:
     t = (deck_p / "deck.html").read_text()
     check("put --delete removes slides", code == 0 and 'id="p2b"' not in t and 'id="p3"' not in t and 'id="r1"' in t, (out, err))
     code, out, _ = gs("slides", str(deck_p), "--outline")
+    outline = out
+    code, out, err = gs("put", str(deck_p), "--all", input=f'<section>{box("all1")}</section><section><section>{box("all2")}</section><section>{box("all3")}</section></section>')
+    code2, out2, err2 = gs("put", str(deck_p), "--all", input=f'<section>{box("all1")}</section><section><section>{box("all2")}</section><section>{box("all3")}</section></section>')
+    t = (deck_p / "deck.html").read_text()
+    check("put --all replaces every slide, and running it again (a deck-building script re-run) leaves exactly one copy",
+          code == 0 and code2 == 0 and t.count('id="all1"') == 1 and t.count("<section") == 4 and 'id="r1"' not in t and 'id="title"' not in t
+          and gs("check", str(deck_p))[1].endswith("no problems found"), (out2, err2))
+    out = outline
     check("slides --outline is a line or two per slide: number, layout, title, each box's id and first words, lines counted",
           code == 0 and out.splitlines()[0].startswith("2 slides") and re.search(r"^2  blank\n   #r1 \"r1\" · #r2 \"r2\" · #r3 \"r3\" · 1 line$", out, re.M), out)
 

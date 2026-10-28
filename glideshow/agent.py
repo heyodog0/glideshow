@@ -226,6 +226,7 @@ def slides_cmd(args: list[str]):
 PUT_HELP = """glideshow put DECK N            replace slide N with the <section>(s) on stdin (or --file F)
 glideshow put DECK --after N    insert them after slide N (0: before the first; inside N's stack if it is in one)
 glideshow put DECK --delete N … remove those slides
+glideshow put DECK --all        replace every slide with them (a script that builds the whole deck: pipe its output in)
 N is the number `glideshow slides DECK --outline` gives (9, or the deck's own 8.1). The input is only <section>s; it is
 checked before anything is written (every <div> closed, ids unique in the deck, no other slide's data-sid). A replaced
 slide keeps its data-sid if the new one has none. deck.html is written in one go, so an open editor reloads it.
@@ -289,7 +290,7 @@ def put_cmd(args: list[str]):
     text = (deck / "deck.html").read_text()
     found, problems = scan(text)
     if problems: raise SystemExit("put: deck.html has structure problems; fix those first (by hand):\n  " + "\n  ".join(problems))
-    rest = [a for i, a in enumerate(args[1:], 1) if args[i - 1] != "--file" and a not in ("--after", "--delete", "--file")]
+    rest = [a for i, a in enumerate(args[1:], 1) if args[i - 1] != "--file" and a not in ("--after", "--delete", "--file", "--all")]
     if "--delete" in args:
         gone = sorted({slide_number(text, a) for a in rest}, reverse=True)
         if not gone: raise SystemExit("usage: glideshow put DECK --delete N …")
@@ -321,7 +322,11 @@ def put_cmd(args: list[str]):
             tag = re.sub(r'\sstyle="[^"]*"', "", m.group())[:-1] + f' style="left: 0px; top: 0px; width: 0px; height: 0px;{" " + style if style else ""}">'
             new = new[:m.start()] + tag + new[m.end():]
         else: raise SystemExit(f"put: #{at.get('id', '?')} has no place: give it left / top / width / height in px, or data-flow")
-    if "--after" in args:
+    if "--all" in args:   # every slide replaced (a script that builds the whole deck pipes it all in)
+        if found: a, z = (found[0]["stack"] or (found[0]["a"],))[0], max((x["stack"] or (0, x["z"]))[1] for x in found)
+        else: a = z = text.find(">", text.find('<div class="slides"')) + 1
+        first = 1
+    elif "--after" in args:
         after = _opt(args, "--after")
         if not after: raise SystemExit("usage: glideshow put DECK --after N (0: before the first slide)")
         n = slide_number(text, after) if after != "0" else 0
@@ -353,7 +358,7 @@ def put_cmd(args: list[str]):
     now = scan(text)[0]
     mine = now[first - 1:first - 1 + len(made)]
     for s in mine: print(outline_line(text, s))
-    print(f"{'inserted' if '--after' in args else 'replaced'}; `glideshow check {args[0]} {' '.join(str(s['n']) for s in mine)}` checks {'them' if len(mine) > 1 else 'it'}")
+    print(f"{'inserted' if '--after' in args else 'replaced every slide' if '--all' in args else 'replaced'}; `glideshow check {args[0]} {' '.join(str(s['n']) for s in mine)}` checks {'them' if len(mine) > 1 else 'it'}")
 
 
 # ---------- figures ----------

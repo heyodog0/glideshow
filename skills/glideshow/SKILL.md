@@ -34,7 +34,8 @@ say so and stop.
 - Find an existing deck: `glideshow find <words from its name>` prints its folder (nothing is opened).
 - Write slides with **put**: `glideshow put <deck> --after N <<'EOF' … EOF` inserts the `<section>`s (several at once is
   fine; `--after 0` puts them first), `glideshow put <deck> N` replaces slide N (edit what `slides <deck> N` printed and
-  send it back), `glideshow put <deck> --delete N …` removes slides. It refuses, writing nothing, on an unclosed `<div>`,
+  send it back), `glideshow put <deck> --delete N …` removes slides, `glideshow put <deck> --all` replaces every slide
+  (a script that builds the whole deck pipes its slides into it; never let a script rewrite `deck.html` itself). It refuses, writing nothing, on an unclosed `<div>`,
   an id the deck already uses or a copied `data-sid`; fix and send again.
 - Use the **layouts**: `glideshow layout <name> --prefix <slide-name> --deck <deck>` prints a slide in that layout (its
   placeholder boxes at their exact places, with ids the deck doesn't use yet); replace the placeholders' text and put it. `glideshow layout` lists the layouts. Free boxes are fine for diagrams and figures. A deck imported from Google

@@ -18,7 +18,7 @@
     glideshow layout [NAME]           the layouts' exact placeholder boxes; with NAME, a slide in that layout to paste
     glideshow slides <deck> [N ...]   only the deck's <section>s (no inlined CSS / JS), each with its line in deck.html;
                                       --outline: one line per slide (its layout, title, boxes' ids and first words)
-    glideshow put <deck> N            replace slide N with the <section>s on stdin (--after N inserts, --delete N removes)
+    glideshow put <deck> N            replace slide N with the <section>s on stdin (--after N inserts, --delete N removes, --all replaces every slide)
     glideshow figure add|refresh|size a picture placed or replaced in place, remembering the command that made it (see
                                       `glideshow figure`); refresh re-runs those commands; size gives matplotlib settings
     glideshow comments <deck>         the open comments, each on the slide it's on now (--all, --json)
