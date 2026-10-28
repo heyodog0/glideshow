@@ -275,6 +275,18 @@
     <footer><button id="ed-sp-cancel" class="outlined">Cancel</button><button id="ed-sp-apply" class="done">Apply</button></footer>
   </div>
 </div>
+<div id="ed-linkdlg" class="backdrop" hidden>
+  <div class="dialog bg-dialog" role="dialog" aria-label="Link">
+    <header><h2>Link</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <div class="bg-row"><span>Link to</span><select id="ed-link-to"><option value="web">Webpage</option><option value="slide">Slide</option><option value="email">Email</option><option value="phone">Phone number</option><option value="exit">Exit slideshow</option></select></div>
+    <div class="bg-row" data-for="web"><span>Link</span><input id="ed-link-url" type="url" placeholder="https://"></div>
+    <div class="bg-row" data-for="slide"><span>Slide</span><select id="ed-link-slide"></select></div>
+    <div class="bg-row" data-for="email"><span>To</span><input id="ed-link-mail" type="email"></div>
+    <div class="bg-row" data-for="email"><span>Subject</span><input id="ed-link-subject"></div>
+    <div class="bg-row" data-for="phone"><span>Number</span><input id="ed-link-tel" type="tel"></div>
+    <footer><button id="ed-link-remove" class="outlined">Remove link</button><button id="ed-link-cancel" class="outlined">Cancel</button><button id="ed-link-ok" class="done">Apply</button></footer>
+  </div>
+</div>
 <div id="ed-gotodlg" class="backdrop" hidden>
   <div class="dialog bg-dialog" role="dialog" aria-label="Go to slide">
     <header><h2>Go to slide</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>

@@ -122,8 +122,7 @@ def checks(pg, deck: Path, errors):
     check("Format → Text → Capitalization rewrites to Title Case; Letter spacing sets letter-spacing", tc == ["Hello World", "0.1em"], str(tc))
     check("Custom spacing dialog: 12pt after (32px) and line spacing 1.5 (CSS 1.725), Enter applies and closes", cs == ["32px", "1.725", True], str(cs))
     check("paragraph spacing: Add space before paragraph puts 10pt (26.67px) above each paragraph and toggles to Remove", sp == ["26.67px", "26.67px"] and lbl and gone == "", f"{sp} {lbl} {gone!r}")
-    pg.once("dialog", lambda d: d.accept("https://example.com"))
-    pg.keyboard.press("Meta+k")
+    pg.keyboard.press("Meta+k"); pg.fill("#ed-link-url", "example.com"); pg.keyboard.press("Enter")
     check("⌘K links the box text", pg.evaluate("[...document.querySelectorAll('#ed-canvas .box')].pop().querySelector('.content a')?.getAttribute('href')") == "https://example.com")
     pg.click("#ed-ul"); pg.click("#ed-ul")   # off, then on again over a fully linked text: the link must end up inside the item
     check("list toggle keeps link inside items", pg.evaluate("(() => { const c = [...document.querySelectorAll('#ed-canvas .box')].pop().querySelector('.content'); return !c.querySelector('a > ul, a > ol') && !!c.querySelector('li a'); })()"))
@@ -131,6 +130,21 @@ def checks(pg, deck: Path, errors):
     pg.keyboard.press("Meta+\\")
     cleared = pg.evaluate("(() => { const c = [...document.querySelectorAll('#ed-canvas .box')].pop().querySelector('.content'); return !c.querySelector('a, span, [style]') && !c.style.lineHeight; })()")
     check("⌘\\ clears formatting", cleared)
+    lk = pg.evaluate("""(() => { window.__cur = cur; const s = blankSlide(); slides.push(s); const t = makeBox({x: 100, y: 100, w: 400, h: 100, html: 'mail me'}), im = makeBox({x: 600, y: 100, w: 200, h: 200, cls: 'image', html: '<img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">'}); s.append(t, im);
+      go(slides.length - 1); sel = new Set([t]); render(); updateToolbar(); return [im.id, slides[0].dataset.sid]; })()""")
+    pg.keyboard.press("Meta+k"); pg.select_option("#ed-link-to", "email"); pg.fill("#ed-link-mail", "a@b.org"); pg.fill("#ed-link-subject", "the talk"); pg.locator("#ed-linkdlg .dialog").screenshot(path=str(HERE / "link-dialog.png")); pg.click("#ed-link-ok")
+    mail = pg.evaluate("boxes()[0].querySelector('a')?.getAttribute('href')")
+    pg.evaluate(f"(() => {{ sel = new Set([document.getElementById('{lk[0]}')]); render(); }})()")
+    t0 = pg.evaluate("performance.now()"); pg.keyboard.press("Meta+k"); dlg_ms = pg.evaluate(f"Math.round(performance.now() - {t0})")
+    opts = pg.evaluate("[...$('#ed-link-to').options].map(o => o.textContent)")
+    pg.select_option("#ed-link-to", "slide"); pg.select_option("#ed-link-slide", f"#slide={lk[1]}"); pg.click("#ed-link-ok")
+    obj = pg.evaluate(f"document.getElementById('{lk[0]}').dataset.link")
+    pg.keyboard.press("Meta+k"); back = [pg.evaluate("$('#ed-link-to').value"), pg.evaluate("$('#ed-link-slide').value")]; pg.click("#ed-link-remove")
+    gone = pg.evaluate(f"document.getElementById('{lk[0]}').hasAttribute('data-link')")
+    pg.evaluate("(() => { slides.pop(); go(__cur); sel.clear(); render(); commit(); })()")
+    check(f"Link dialog ({dlg_ms} ms): Webpage / Slide / Email / Phone number / Exit slideshow; an email with subject on text; a picture links to a slide by its id, reopens on it, Remove link",
+          opts == ["Webpage", "Slide", "Email", "Phone number", "Exit slideshow"] and mail == "mailto:a@b.org?subject=the%20talk" and obj == f"#slide={lk[1]}"
+          and back == ["slide", f"#slide={lk[1]}"] and gone is False, f"{opts} {mail} {obj} {back} {gone}")
     pg.keyboard.press("Backspace")
     pg.evaluate("(() => { const b = [...document.querySelectorAll('#ed-canvas .box')].pop(); b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 0, clientY: 0 })); })()")
     pg.mouse.up()
@@ -908,8 +922,8 @@ def checks(pg, deck: Path, errors):
     pg.evaluate("resetImage(boxes()[0])"); pg.wait_for_timeout(200); rst = pg.evaluate("[boxes()[0].dataset.crop || '', boxes()[0].style.width]")
     pg.evaluate("imageToBackground(boxes()[0])"); bg = pg.evaluate("[boxes().length, (slides[cur].dataset.backgroundImage || '').startsWith('data:image/png')]")
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
-    check("pictures, as Slides: right-click ends with Crop / Replace / Reset image / Set image as background (no Link); Format → Image; Reset image undoes the crop",
-          {"Crop image", "Replace image", "Reset image", "Set image as background"} <= set(ctx) and "Link" not in ctx and all(k in fm for k in ("Crop image", "Replace image", "Reset image"))
+    check("pictures, as Slides: right-click ends with Crop / Replace / Reset image / Set image as background (and Link, as Keynote); Format → Image; Reset image undoes the crop",
+          {"Crop image", "Replace image", "Reset image", "Set image as background"} <= set(ctx) and "Link" in ctx and all(k in fm for k in ("Crop image", "Replace image", "Reset image"))
           and rst == ["", "40px"] and bg == [0, True], f"{ctx} | {fm!r} | {rst} {bg}")
     n0 = pg.evaluate("(() => { go(slides.length - 1); sel.clear(); render(); return slides.length; })()")
     pg.locator("#ed-stage").focus(); pg.keyboard.press("Meta+Shift+m"); pg.keyboard.press("Meta+Shift+m"); pg.keyboard.press("Meta+m")
@@ -1513,6 +1527,14 @@ def checks(pg, deck: Path, errors):
     v.evaluate("Reveal.slide(0)")
     check(f"a click on the slide advances, as Keynote and Slides ({clicked[1]} ms); a drag doesn't, nor the click that lifts the black screen or closes the menu",
           clicked[0] == 1 and dragged == 1 and lifted == [False, 1] and closed == [False, 1], f"{clicked} {dragged} {lifted} {closed}")
+    v.evaluate("""(() => { const s = Reveal.getSlides(), a = document.createElement('a'); a.href = '#last'; a.textContent = 'to the end'; a.id = 'lk-last';
+      a.style.cssText = 'position:absolute;left:0;top:0;font-size:60px'; s[0].append(a);
+      const b = document.createElement('div'); b.className = 'box'; b.dataset.link = '#slide=' + s[1].dataset.sid; b.id = 'lk-box'; b.style.cssText = 'position:absolute;left:0;top:300px;width:200px;height:200px;background:#09f';
+      s.at(-1).append(b); Reveal.slide(0); })()"""); v.wait_for_timeout(300)
+    v.click("#lk-last"); v.wait_for_timeout(200); at_last = v.evaluate("Reveal.getSlides().indexOf(Reveal.getCurrentSlide()) === Reveal.getSlides().length - 1")
+    v.click("#lk-box"); v.wait_for_timeout(200); at_sid = v.evaluate("Reveal.getSlides().indexOf(Reveal.getCurrentSlide())")
+    v.evaluate("(() => { document.getElementById('lk-last').remove(); document.getElementById('lk-box').remove(); Reveal.slide(0); })()")
+    check("in the slideshow a #last text link and a linked box (#slide=<sid>) go there, and the click doesn't also advance", at_last and at_sid == 1, f"{at_last} {at_sid}")
     check("decks carry present.js (Slides' presenting keys)", v.evaluate("!!document.getElementById('deck-present') && !Reveal.getConfig().keyboard[79] && Reveal.getConfig().keyboard[79] === null"))
     check("viewer loads the notes plugin (S = speaker view)", v.evaluate("!!(window.Reveal && Reveal.hasPlugin('notes'))"))
     v.screenshot(path=str(HERE / "viewer.png"))

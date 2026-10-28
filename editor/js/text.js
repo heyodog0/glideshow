@@ -350,9 +350,17 @@ function setListStyle(tag, type) {
 }
 
 /* ⌘K: link the selected text (whole box if not editing). An empty URL removes the link. */
+/* Insert → Link (⌘K), with Keynote's targets: a webpage, a slide (next, previous, first, last or one by its data-sid, so
+   the link follows the slide when slides move), an email, a phone number, or the end of the slideshow (present.js
+   follows the # ones). Text gets an <a>; pictures, lines, drawings and groups link as a whole (data-link). */
+const objLinked = b => b.classList.contains('image') || isStroke(b) || isGroup(b);
 function linkText() {
   const b = editing || (sel.size === 1 ? [...sel][0] : null);
-  if (!b || isMedia(b) || isLine(b)) return;
+  if (!b || (isMedia(b) && !b.classList.contains('image'))) return;
+  if (objLinked(b) && !editing) {
+    openLinkDialog(b.dataset.link || '', href => { if (href) b.dataset.link = href; else delete b.dataset.link; commit(); });
+    return;
+  }
   const was = !!editing;
   if (!was) startEdit(b);
   else if (lastRange) { const s = getSelection(); s.removeAllRanges(); s.addRange(lastRange); }
@@ -360,14 +368,51 @@ function linkText() {
   if (!s.rangeCount || s.isCollapsed) { if (!was) stopEdit(); return; }
   const range = s.getRangeAt(0).cloneRange();
   const cur = s.anchorNode?.parentElement?.closest('a')?.getAttribute('href') || '';
-  const url = prompt('Link URL', cur || 'https://');
-  if (url === null) { if (!was) stopEdit(); return; }
-  s.removeAllRanges(); s.addRange(range);   // the prompt may have cleared the selection
-  if (url.trim() && url.trim() !== 'https://') document.execCommand('createLink', false, url.trim());
-  else document.execCommand('unlink');
-  if (s.rangeCount) lastRange = s.getRangeAt(0).cloneRange();
-  if (!was) stopEdit();
+  openLinkDialog(cur, href => {
+    s.removeAllRanges(); s.addRange(range);   // the dialog took the focus and the selection
+    if (href) document.execCommand('createLink', false, href); else document.execCommand('unlink');
+    if (s.rangeCount) lastRange = s.getRangeAt(0).cloneRange();
+    if (!was) stopEdit(); else fitHeight(b);
+  }, () => { if (!was) stopEdit(); else { s.removeAllRanges(); s.addRange(range); } });
 }
+const linkDlg = $('#ed-linkdlg'), LF = k => /** @type {HTMLInputElement} */ ($('#ed-link-' + k));
+let linkDone = null, linkCancel = null;
+function openLinkDialog(href, done, cancel = () => {}) {
+  closeMenu(); linkDone = done; linkCancel = cancel;
+  LF('slide').replaceChildren(...[['#next', 'Next slide'], ['#previous', 'Previous slide'], ['#first', 'First slide'], ['#last', 'Last slide'],
+    ...slides.map((s, i) => ['#slide=' + s.dataset.sid, `Slide ${i + 1}${s.querySelector('.box .content')?.textContent.trim() ? ': ' + s.querySelector('.box .content').textContent.trim().slice(0, 40) : ''}`])]
+    .map(([v, t]) => Object.assign(document.createElement('option'), { value: v, textContent: t })));
+  const m = href.match(/^#\/(\d+)/), to = /^mailto:/.test(href) ? 'email' : /^tel:/.test(href) ? 'phone' : href === '#exit' ? 'exit'
+    : /^#(next|previous|first|last|slide=)/.test(href) || m ? 'slide' : 'web';
+  LF('to').value = to; LF('url').value = to === 'web' ? href : '';
+  if (to === 'slide') LF('slide').value = m ? '#slide=' + (slides[+m[1]]?.dataset.sid || '') : href;
+  const [mail, q = ''] = to === 'email' ? href.slice(7).split('?') : ['', ''];
+  LF('mail').value = decodeURIComponent(mail); LF('subject').value = new URLSearchParams(q).get('subject') || ''; LF('tel').value = to === 'phone' ? href.slice(4) : '';
+  $('#ed-link-remove').hidden = !href;
+  linkDlg.hidden = false; showLinkFields(); (to === 'web' ? LF('url') : LF('to')).focus();
+}
+function showLinkFields() { linkDlg.querySelectorAll('[data-for]').forEach(r => { r.hidden = r.dataset.for !== LF('to').value; }); }
+function linkHref() {
+  const to = LF('to').value, url = LF('url').value.trim();
+  if (to === 'web') return !url || url === 'https://' ? '' : /^[a-z][\w+.-]*:|^#/i.test(url) ? url : 'https://' + url;
+  if (to === 'slide') return LF('slide').value;
+  if (to === 'email') return LF('mail').value.trim() ? 'mailto:' + LF('mail').value.trim() + (LF('subject').value.trim() ? '?subject=' + encodeURIComponent(LF('subject').value.trim()) : '') : '';
+  if (to === 'phone') return LF('tel').value.trim() ? 'tel:' + LF('tel').value.replace(/[^\d+]/g, '') : '';
+  return '#exit';
+}
+function closeLink(href) {
+  linkDlg.hidden = true; const d = linkDone, c = linkCancel; linkDone = linkCancel = null;
+  if (href === null) c?.(); else d?.(href);
+}
+LF('to').onchange = showLinkFields;
+$('#ed-link-ok').onclick = () => closeLink(linkHref());
+$('#ed-link-remove').onclick = () => closeLink('');
+$('#ed-link-cancel').onclick = linkDlg.querySelector('.sc-close').onclick = () => closeLink(null);
+linkDlg.addEventListener('pointerdown', e => { if (e.target === linkDlg) closeLink(null); });
+addEventListener('keydown', e => {
+  if (linkDlg.hidden || !['Escape', 'Enter'].includes(e.key)) return;
+  e.preventDefault(); e.stopImmediatePropagation(); closeLink(e.key === 'Enter' ? linkHref() : null);
+}, true);
 
 /* ⌘\: clear formatting. On a selection: the browser's removeFormat + unlink. On whole boxes: drop the
    text styles set on .content and unwrap every inline styling element, keeping lists and line breaks. */

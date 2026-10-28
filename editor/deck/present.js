@@ -126,6 +126,7 @@
   const css = document.createElement('style');
   css.textContent = `
     html, body, .reveal { background: #000 !important; }
+    .reveal .box[data-link] { cursor: pointer; }
     .reveal .backgrounds { display: none; }
     .sl-bar { position: fixed; left: 20px; bottom: 20px; z-index: 102; display: flex; align-items: center; height: 36px; padding: 0 4px;
       background: #f8fafd; border-radius: 18px; color: #444746; font: 14px Roboto, -apple-system, Arial, sans-serif;
@@ -225,11 +226,25 @@
     if (pop && !e.target.closest?.('.sl-pop')) { closePop(); return; }
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || memo) return;
     if (screen) { screen.remove(); screen = null; return; }
-    if (e.target.closest?.('a, button, input, textarea, select, video, audio, iframe, [contenteditable], .sl-bar, .sl-pop')) return;
+    if (e.target.closest?.('a, [data-link], button, input, textarea, select, video, audio, iframe, [contenteditable], .sl-bar, .sl-pop')) return;
     if (!e.target.closest?.('.reveal')) return;
     down = { x: e.clientX, y: e.clientY };
   });
+  /* Links (Insert → Link): # targets are slides or the end of the show; a linked picture, line or group (data-link)
+     opens its link as a whole. A slide by data-sid follows that slide wherever it moved. */
+  const follow = href => {
+    const all = Reveal.getSlides(), at = all.indexOf(Reveal.getCurrentSlide()), to = s => { if (s) { const i = Reveal.getIndices(s); Reveal.slide(i.h, i.v); } };
+    if (href === '#next') to(all[at + 1]); else if (href === '#previous') to(all[at - 1]);
+    else if (href === '#first') to(all[0]); else if (href === '#last') to(all.at(-1));
+    else if (href === '#exit') exit();
+    else if (href.startsWith('#slide=')) to(all.find(s => s.dataset.sid === href.slice(7)));
+    else if (href.startsWith('#')) location.hash = href;
+    else if (/^https?:/i.test(href)) window.open(href, '_blank', 'noopener');
+    else location.href = href;   // mailto:, tel:
+  };
   addEventListener('click', e => {
+    const a = e.target.closest?.('.reveal a[href^="#"]:not([href^="#/"]), .reveal .box[data-link]');
+    if (a && !e.defaultPrevented) { e.preventDefault(); down = null; follow(a.getAttribute('href') ?? a.dataset.link); return; }
     const d = down; down = null;
     if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4 || String(getSelection())) return;
     Reveal.next();

@@ -65,7 +65,7 @@ E = [
   ("Common actions", "Delete", "box", "Backspace", "!A() && boxes().length === 1"),
   ("Common actions", "Delete", "box", "Delete", "!A() && boxes().length === 1"),
   ("Common actions", "Select all", "none", "Meta+a", "sel.size === 2"),
-  ("Common actions", "Insert or edit link", "edit", "Meta+k", "/href=\"https:\\/\\/example.org\"/.test(html())"),
+  ("Common actions", "Insert or edit link", "edit", ["Meta+k", "js:$('#ed-link-url').value = 'https://example.org'", "Enter"], "/href=\"https:\\/\\/example.org\"/.test(html())"),
   ("Common actions", "New slide", "none", "Control+m", "slides.length === __n + 1 && cur === 2"),
   ("Common actions", "New slide", "none", "Meta+m", "slides.length === __n + 1 && cur === 2"),
   ("Common actions", "New sub-slide below", "none", "Meta+Shift+m", "slides.length === __n + 1 && cur === 2 && !!slides[2].dataset.edStack && slides[1].dataset.edStack === slides[2].dataset.edStack"),

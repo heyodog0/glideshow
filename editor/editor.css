@@ -72,7 +72,9 @@ input#ed-title:hover, input#ed-title:focus { border-color: var(--divider); outli
 #ed-share .icon { font-size: 18px; }
 #ed-share.on .icon { color: var(--blue); }
 .share-dialog { width: 480px; }
-.bg-row[hidden] { display: none; }   /* its display: flex would otherwise show a hidden row (the share link before there is one) */
+.bg-row[hidden], .bg-dialog footer button[hidden] { display: none; }
+#ed-linkdlg .bg-row > :is(input, select) { width: 210px; height: 32px; box-sizing: border-box; }
+#ed-linkdlg footer #ed-link-remove { margin-right: auto; }   /* its display: flex would otherwise show a hidden row (the share link before there is one) */
 .share-dialog .bg-row > .share-exp { flex-direction: row; padding-right: 0; }   /* the date and its × side by side, not stacked as the row's text is */
 .share-dialog .bg-row > span { display: flex; flex-direction: column; gap: 4px; padding-right: 16px; }
 .share-dialog small { color: var(--muted); font-size: 12px; line-height: 16px; }

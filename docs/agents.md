@@ -217,6 +217,8 @@ Mark the claim with a short `[1]` in the text if there are several.
   get today's).
 - Every box has a unique `id` (`check` reports any without one); ids starting with `ed-` are reserved for the editor.
 - Don't write SVG or `--tx-*` / `--sh*` style variables: they are derived when the deck loads.
+- A link to another slide: `<a href="#slide=<that section's data-sid>">` (or `data-link` on a picture's box), not
+  `#/3`, so it survives reordering; `#next`, `#previous`, `#first`, `#last` and `#exit` also work (deck-format.md).
 - The editor commits every save to git when the deck is in a repo, so `git log` / `git diff` show what the person
   changed. Don't commit yourself.
 - Your own test library, apart from the user's: `GLIDESHOW_HOME=/tmp/x/decks GLIDESHOW_CACHE=/tmp/x/cache
