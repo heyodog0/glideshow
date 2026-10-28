@@ -25,11 +25,14 @@ def new_deck(path: Path, title: str = "") -> None:
     write_agents_md(path.parent)
 
 
-def docs_text() -> str:
-    """`glideshow docs` and AGENTS.md: the authoring recipes (docs/agents.md, with the layouts' table written from the
-    editor's own) and the format reference (docs/deck-format.md)."""
+def docs_text(part: str = "") -> str:
+    """AGENTS.md: the guide and recipes (docs/agents.md, with the layouts' table written from the editor's own) and the
+    format reference (docs/deck-format.md); `glideshow docs` prints the first ("guide"), `glideshow docs reference` the
+    second, so an agent reads the reference only when it needs it."""
     from .agent import layout_table
-    return (DOCS / "agents.md").read_text().replace("{{LAYOUTS}}", layout_table()).rstrip() + "\n\n" + (DOCS / "deck-format.md").read_text()
+    guide = (DOCS / "agents.md").read_text().replace("{{LAYOUTS}}", layout_table()).rstrip()
+    ref = (DOCS / "deck-format.md").read_text()
+    return {"guide": guide, "reference": ref}.get(part) or guide + "\n\n" + ref
 
 
 def write_agents_md(deck: Path) -> None:

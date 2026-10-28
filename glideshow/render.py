@@ -5,9 +5,10 @@
 agent looking at its work) and test/snap.py (references) all run this. A uv script, so Playwright comes with it and the
 package keeps no dependencies.
 
-    uv run glideshow/render.py DECK_DIR OUT_DIR [N ...] [--check] [--json] [--morph]
+    uv run glideshow/render.py DECK_DIR OUT_DIR [N ...] [--check] [--json] [--morph] [--full] [--sheet]
 
-Writes OUT_DIR/slide-NN.png and prints each path, then one line per problem found ("slide 3: ..."): text spilling out
+Writes OUT_DIR/slide-NN.png (960 × 540; --full: 1920 × 1080) and prints each path (--sheet: contact sheets of nine
+slides each, OUT_DIR/sheet-K.png, instead), then one line per problem found ("slide 3: ..."): text spilling out
 of its box, code cut off, a box off the slide, text overlapping other text (or partly over a picture, or crossed by a
 line), text under 24 px or hard to see against its background, a picture that didn't load, has no alt text or is
 squeezed into a box of another shape, a box without an id (or a duplicate), a line attached to a box that isn't there
@@ -18,7 +19,7 @@ message}]}. --morph adds, for each Morph step, which boxes pair with the slide b
 recolour or fade, and a picture halfway through the animation (slide-NN-morph.png). Serves DECK_DIR over http so assets
 and fonts load as in a browser.
 """
-import functools, http.server, json, signal, sys, threading
+import base64, functools, http.server, json, os, signal, sys, threading
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -49,7 +50,8 @@ CHECK_JS = r"""([i, ids, authored]) => {
   const S = sec.getBoundingClientRect(), k = S.width / W || 1;
   const toCanvas = r => ({ x: (r.left - S.left) / k, y: (r.top - S.top) / k, w: r.width / k, h: r.height / k });
   const px = (e, key) => parseFloat(e.style[key]) || 0, name = b => b.id ? '#' + b.id : `box ${[...sec.querySelectorAll('.box')].indexOf(b) + 1} (no id)`;
-  const say = (b, kind, message) => out.push({ slide: i + 1, box: b?.id || '', kind, message });
+  const at = Reveal.getIndices(sec), label = at.v ? `${at.h + 1}.${at.v}` : String(at.h + 1);   // the deck's own number (8.1: a stack's sub-slide)
+  const say = (b, kind, message) => out.push({ slide: i + 1, label, box: b?.id || '', kind, message });
   const text = b => (b.querySelector(':scope > .content')?.textContent || '').replace(/\s+/g, ' ').trim();
   const quote = b => { const t = text(b); return t ? ` ("${t.slice(0, 40)}${t.length > 40 ? '…' : ''}")` : ''; };
   const isLine = b => /^(line|arrowline|elbow|curve|path)$/.test(b.dataset.shape || '');
@@ -154,6 +156,28 @@ CHECK_JS = r"""([i, ids, authored]) => {
   return out;
 }"""
 
+# Inside figures saved with glideshow.figure.save (a PNG with OUT.json beside it): where its text lands on the slide.
+FIGURE_JS = r"""async (i) => {
+  const sec = Reveal.getCurrentSlide(), at = Reveal.getIndices(sec), label = at.v ? `${at.h + 1}.${at.v}` : String(at.h + 1), out = [], say = (b, kind, message) => out.push({ slide: i + 1, label, box: b.id || '', kind, message });
+  for (const b of sec.querySelectorAll('.box.image')) {
+    const im = b.querySelector('img'); if (!im || b.dataset.crop || /^data:/.test(im.src)) continue;
+    let f; try { const r = await fetch(im.src + '.json'); if (!r.ok) continue; f = await r.json(); } catch { continue; }
+    const w = parseFloat(b.style.width), h = parseFloat(b.style.height), k = Math.min(w / (f.inches[0] * 192), h / (f.inches[1] * 192));   // slide px per figure px at 192/in
+    const name = '#' + (b.id || '?'), q = t => `"${t.text.slice(0, 30)}"`, T = f.texts || [];
+    if (f.missing?.length) say(b, 'figure', `the figure in ${name} has characters its font lacks, drawn as empty boxes: ${f.missing.join(' ')} (use words, or a font that has them)`);
+    const cut = T.filter(t => t.x < -0.002 || t.y < -0.002 || t.x + t.w > 1.002 || t.y + t.h > 1.002);
+    if (cut.length) say(b, 'figure', `in the figure in ${name}, ${cut.map(q).join(', ')} ${cut.length > 1 ? 'are' : 'is'} cut off at the figure's edge (layout="constrained" keeps labels inside)`);
+    const small = T.filter(t => t.pt * 2.667 * k < 23.5);
+    if (small.length) { const s = small.reduce((a, z) => a.pt < z.pt ? a : z); say(b, 'figure', `text in the figure in ${name} shows at ${Math.round(s.pt * 2.667 * k)} px on the slide (${q(s)}, ${s.pt} pt${k < 0.99 ? `, shrunk to ${Math.round(k * 100)}% to fit its box` : ''}); under 24 px is hard to read when presenting`); }
+    for (let a = 0; a < T.length; a++) for (let z = a + 1; z < T.length; z++) {
+      const A = T[a], B = T[z], ow = Math.min(A.x + A.w, B.x + B.w) - Math.max(A.x, B.x), oh = Math.min(A.y + A.h, B.y + B.h) - Math.max(A.y, B.y);
+      if (ow * w > 2 && oh * h > 2) say(b, 'figure', `in the figure in ${name}, ${q(A)} and ${q(B)} overlap`);
+    }
+  }
+  return out;
+}"""
+
+
 # A Morph step's pairs, from the slide before: what moves, resizes or recolours into place, what fades in, what fades out.
 MORPH_JS = r"""(i) => {
   const all = Reveal.getSlides(), sec = all[i], prev = all[i - 1], out = [];
@@ -189,7 +213,7 @@ def main():
     if hasattr(signal, "SIGPIPE"): signal.signal(signal.SIGPIPE, signal.SIG_DFL)   # `glideshow render … | head` just stops, no traceback
     flags = {a for a in sys.argv[1:] if a.startswith("--")}
     argv = [a for a in sys.argv[1:] if not a.startswith("--")]
-    check_only, as_json, morph = "--check" in flags, "--json" in flags, "--morph" in flags
+    check_only, as_json, morph, full, sheet = "--check" in flags, "--json" in flags, "--morph" in flags, "--full" in flags, "--sheet" in flags
     deck, out = Path(argv[0]).expanduser().resolve(), Path(argv[1]).expanduser().resolve()
     only = {int(a) for a in argv[2:]}
     if not (deck / "deck.html").exists(): raise SystemExit(f"no deck.html in {deck}")
@@ -198,11 +222,12 @@ def main():
         for old in out.glob("slide-*.png"):   # this render's slides replace their old pictures; others stay
             if not only or int(old.stem.split("-")[1]) in only: old.unlink()
     port = serve(deck)
-    paths, problems, morphs = [], [], []
+    paths, morphs, tiles = [], [], []
+    problems = [{"slide": 0, "label": "", "box": "", "kind": "structure", "message": m} for m in json.loads(os.environ.get("GLIDESHOW_STRUCTURE") or "[]")]   # (cli.py reads them from the file)
     with sync_playwright() as p:
         try: browser = p.chromium.launch()   # Playwright's Chromium, as the fidelity references were measured with
         except Exception: browser = p.chromium.launch(channel="chrome")   # not downloaded: the installed Chrome
-        pg = browser.new_page(viewport={"width": 1920, "height": 1080})
+        pg = browser.new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=1 if full or check_only else 0.5)   # 960 × 540 pictures unless --full
         pg.goto(f"http://127.0.0.1:{port}/deck.html")
         pg.wait_for_function("window.Reveal && Reveal.isReady()")
         pg.evaluate("Reveal.configure({margin: 0, controls: false, progress: false, slideNumber: false, transition: 'none', backgroundTransition: 'none', autoAnimate: false})")
@@ -222,10 +247,12 @@ def main():
             pg.evaluate(SETTLE_JS)
             pg.wait_for_timeout(100)
             problems += pg.evaluate(CHECK_JS, [i, ids, bool(authored[i]) if i < len(authored) else False])
+            problems += pg.evaluate(FIGURE_JS, i)
             if check_only: continue
             path = out / f"slide-{i + 1:02d}.png"
             pg.screenshot(path=str(path)); paths.append(str(path))
-            if not as_json: print(path, flush=True)
+            at = pg.evaluate("Reveal.getIndices()"); tiles.append((i + 1, f"{at['h'] + 1}.{at['v']}" if at.get("v") else str(at["h"] + 1), path))
+            if not as_json and not sheet: print(path, flush=True)
         if morph:   # each Morph step: its pairs, and a picture halfway through the animation from the slide before
             for i in range(1, n):
                 if (only and i + 1 not in only) or not (i < len(authored) and authored[i]): continue
@@ -237,12 +264,22 @@ def main():
                 if not check_only: pg.screenshot(path=str(mid))
                 pg.wait_for_timeout(int(dur * 600)); pg.evaluate("Reveal.configure({ autoAnimate: false })")
                 morphs.append({"slide": i + 1, "pairs": pairs, "midway": "" if check_only else str(mid)})
+        if sheet and tiles:   # contact sheets: nine slides to a picture, each labelled with its number
+            for old in out.glob("sheet-*.png"): old.unlink()
+            pg2 = browser.new_page(viewport={"width": 1920, "height": 300})   # (full_page: as tall as its rows)
+            for k in range(0, len(tiles), 9):
+                cells = "".join(f'<div><img src="data:image/png;base64,{base64.b64encode(Path(f).read_bytes()).decode()}"><b>{n if lab == str(n) else f"{n} = {lab}"}</b></div>' for n, lab, f in tiles[k:k + 9])
+                pg2.set_content('<style>body{margin:0;background:#9aa0a6;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:8px;width:1920px;box-sizing:border-box}'
+                                'div{position:relative;aspect-ratio:16/9}img{width:100%;height:100%;display:block}b{position:absolute;right:0;bottom:0;background:#202124d0;color:#fff;font:600 24px/1 Arial;padding:5px 10px}</style>' + cells)
+                pg2.wait_for_load_state("load")
+                path = out / f"sheet-{k // 9 + 1}.png"; pg2.screenshot(path=str(path), full_page=True); paths.append(str(path))
+                if not as_json: print(path, f"(slides {tiles[k][0]}–{tiles[min(k + 8, len(tiles) - 1)][0]})", flush=True)
         browser.close()
     if as_json: print(json.dumps({"slides": paths, "problems": problems, **({"morph": morphs} if morph else {})}, indent=2))
     else:
         for m in morphs: print(f"slide {m['slide']} (Morph from slide {m['slide'] - 1}):" + "".join(f"\n  {p}" for p in m["pairs"]) + (f"\n  halfway: {m['midway']}" if m["midway"] else ""))
         if not n: print(f"{deck / 'deck.html'} has no slides")
-        for q in problems: print(f"slide {q['slide']}: {q['message']}")
+        for q in problems: print(q["message"] if not q["slide"] else f"slide {q['slide']}{'' if q['label'] == str(q['slide']) else ' = ' + q['label']}: {q['message']}")
         print(f"{len(problems)} problem{'s' if len(problems) != 1 else ''} found" if problems else "no problems found")
     if check_only and problems: sys.exit(1)
 

@@ -3,14 +3,15 @@ it): the exact placeholder boxes of each layout, a deck's slides without the 180
 finding a deck, figures that remember the script that made them, and stopping the server.
 
     glideshow layout [NAME] [--deck DECK]      a layout's slide, ready to paste (no NAME: the table of layouts)
-    glideshow slides DECK [N ...]              the <section>s only, each headed by its number and line in deck.html
+    glideshow slides DECK [N ...] [--outline]  the <section>s only, each headed by its number and line in deck.html
+    glideshow put DECK N | --after N | --delete N   replace, insert or remove slides (the new <section>s on stdin)
     glideshow find WORDS                       the folder of the deck that best matches (nothing is opened)
     glideshow figure add DECK FILE --slide N [--replace ID | --at body|x,y,w,h] [--id ID] [--alt TEXT] [--source CMD]
     glideshow figure refresh DECK [ID ...]     re-run each figure's data-source and put the new picture in place
     glideshow figure size DECK --slide N [--box ID | --at …]   the matplotlib figsize / dpi / font sizes for that space
     glideshow stop                             stop the background server
 """
-import datetime, html as htmllib, json, re, shlex, subprocess, sys
+import datetime, html as htmllib, json, re, shlex, subprocess, sys, time
 from pathlib import Path
 
 from .decks import EDITOR, image_size
@@ -107,7 +108,7 @@ def layout_table() -> str:
 def layout_cmd(args: list[str]):
     deck = Path(args[args.index("--deck") + 1]).expanduser() if "--deck" in args else None
     names = [a for i, a in enumerate(args) if not a.startswith("--") and (i == 0 or args[i - 1] not in ("--deck", "--prefix", "--like"))]
-    like_arg = _opt(args, "--like"); like = int(like_arg) if like_arg else None
+    like_arg = _opt(args, "--like"); like = slide_number((deck / "deck.html").read_text(), like_arg) if like_arg and deck else (int(like_arg) if like_arg else None)
     if names: return print(layout_section(names[0], deck, _opt(args, "--prefix") or "", like))
     rows = ["layout                  placeholders: role x,y w×h (pt, vertical align, text align)"]
     for n, label, boxes in layouts(deck):
@@ -119,33 +120,245 @@ def layout_cmd(args: list[str]):
 
 # ---------- a deck's slides only ----------
 
-def sections(text: str) -> list:
-    """[(number, start offset, end offset), …] for each slide: top-level <section>s, and the inner ones of a stack."""
+def scan(text: str) -> tuple:
+    """The deck's slides and what is wrong with its structure: ([{n, a, z, label, stack}, …], [problem, …]). Slides are the
+    leaf <section>s inside <div class="slides"> (a stack's sub-slides too), numbered n in order; label is the deck's own
+    number (reveal's: main slide 8, its sub-slides 8.1, 8.2); stack is the span of the stack a sub-slide sits in."""
     start = text.find('<div class="slides"')
-    if start < 0: return []
-    out, depth, open_at, n = [], 0, [], 0
-    for m in re.finditer(r"<section\b[^>]*>|</section>", text[start:]):
+    if start < 0: return [], []
+    line = lambda at: text.count("\n", 0, at) + 1
+    depth, end = 0, len(text)   # where .slides closes: its own </div>
+    for m in re.finditer(r"<div\b[^>]*>|</div>", text[start:]):
+        depth += -1 if m.group() == "</div>" else 1
+        if depth == 0: end = start + m.end(); break
+    slides, problems, open_at, h = [], [], [], 0
+    for m in re.finditer(r"<section\b[^>]*>|</section>", text[start:end]):
         at = start + m.start()
         if m.group().startswith("</"):
-            depth -= 1; s = open_at.pop()
-            if s[1]: n += 1; out.append((n, s[0], at + len("</section>")))   # a slide (a leaf section)
+            if not open_at: problems.append(f"deck.html line {line(at)}: a </section> that closes nothing"); continue
+            s = open_at.pop()
+            if s["leaf"]:
+                stack = (open_at[-1]["a"], None) if open_at else None
+                slides.append({"n": len(slides) + 1, "a": s["a"], "z": at + len("</section>"), "label": s["label"], "stack": stack})
+            elif not open_at:   # a stack closing: its sub-slides learn where it ends
+                for sl in slides:
+                    if sl["stack"] and sl["stack"][0] == s["a"]: sl["stack"] = (s["a"], at + len("</section>"))
         else:
-            if open_at: open_at[-1][1] = False   # its parent is a stack, not a slide
-            open_at.append([at, True]); depth += 1
-    return out
+            if open_at:
+                parent = open_at[-1]; parent["leaf"] = False
+                v = parent["kids"]; parent["kids"] += 1
+                label = parent["label"] + (f".{v}" if v else "")
+            else:
+                h += 1; label = str(h)
+            open_at.append({"a": at, "leaf": True, "kids": 0, "label": label})
+    for s in open_at: problems.append(f"deck.html line {line(s['a'])}: a <section> that is never closed")
+    for sl in slides:
+        body = text[sl["a"]:sl["z"]]
+        extra = len(re.findall(r"<div\b", body)) - body.count("</div>")
+        if extra: problems.append(f"slide {sl['n']} (deck.html line {line(sl['a'])}): {abs(extra)} <div> {'never closed' if extra > 0 else 'closed too often'}; boxes after it land on the wrong slide or outside the deck")
+    tail = text[end:]; tail = tail[:min([i for i in (tail.find("<script"), tail.find("</body>")) if i >= 0] or [len(tail)])]
+    if "<section" in tail: problems.append(f"deck.html line {line(end)}: {tail.count('<section')} <section>s after the end of the slides (<div class=\"slides\"> closed early): they never show; remove them, or move them inside")
+    return slides, problems
+
+
+def sections(text: str) -> list:
+    """[(number, start offset, end offset), …] for each slide: top-level <section>s, and the inner ones of a stack."""
+    return [(s["n"], s["a"], s["z"]) for s in scan(text)[0]]
+
+
+def slide_number(text: str, arg: str) -> int:
+    """A slide named by its number in the file (9) or the deck's own (8.1, a stack's sub-slide), as a number in the file."""
+    if re.fullmatch(r"\d+", arg): return int(arg)
+    hit = next((s["n"] for s in scan(text)[0] if s["label"] == arg), None)
+    if hit is None: raise SystemExit(f"there is no slide {arg} (`glideshow slides DECK --outline` lists them)")
+    return hit
+
+
+def _name(s: dict) -> str:
+    return f"{s['n']}" if s["label"] == str(s["n"]) else f"{s['n']} = {s['label']}"
+
+
+def _words(html: str, n: int = 40) -> str:
+    t = " ".join(htmllib.unescape(re.sub(r"<[^>]+>", " ", html)).split())
+    return t[:n] + ("…" if len(t) > n else "")
+
+
+def outline_line(text: str, s: dict) -> str:
+    """One slide in a line or two: its numbers, layout, title, then each box's id and first words (pictures by their alt;
+    lines counted; notes for the AI in full, as they are instructions)."""
+    a, z = s["a"], s["z"]; body = text[a:z]
+    lay = re.search(r'\bdata-layout="([^"]+)"', body.split(">", 1)[0])
+    boxes, lines, notes, title, bare = [], 0, [], "", 0
+    for m in _boxes(body):
+        at = _attrs(m.group()); bid = at.get("id", "(no id)"); cls = at.get("class", "").split()
+        inner = body[m.start():_close_box(body, m.start())]
+        if "note" in cls: notes.append(f"  NOTE #{bid}: {_words(inner, 400)}"); continue
+        if re.match(r"(line|arrowline|elbow|curve|path)$", at.get("data-shape", "")): lines += 1; continue
+        if "image" in cls:
+            alt = re.search(r'\balt="([^"]*)"', inner); boxes.append(f"#{bid} [picture: {_words(alt.group(1) if alt else '', 30)}]"); continue
+        words = _words(inner)
+        if at.get("data-role") == "title" and not title: title = _words(inner, 60); continue
+        if not words and at.get("data-role"): boxes.append(f"#{bid} (empty placeholder)"); continue
+        if not words: bare += 1; continue   # a shape with no words (a dot, a bar): counted, not listed
+        boxes.append(f'#{bid} "{words}"')
+    extra = ([f"{bare} shape{'s' if bare > 1 else ''} without text"] if bare else []) + ([f"{lines} line{'s' if lines > 1 else ''}"] if lines else []) + (["notes"] if "<aside" in body else [])
+    head = f"{_name(s)}  {lay.group(1) if lay else '-'}" + (f'  "{title}"' if title else "")
+    return "\n".join([head + "\n   " + " · ".join(boxes + extra) if boxes or extra else head] + notes)
 
 
 def slides_cmd(args: list[str]):
-    if not args: raise SystemExit("usage: glideshow slides DECK [N ...]")
-    from .cli import match
-    deck = Path(args[0]).expanduser() if (Path(args[0]).expanduser() / "deck.html").exists() else match(args[0])
+    if not args: raise SystemExit("usage: glideshow slides DECK [N ...] [--outline]")
+    deck = _deck(args[0])
     ensure_server(deck)   # so what the agent then writes is kept as versions
-    text, want = (deck / "deck.html").read_text(), {int(a) for a in args[1:] if a.isdigit()}
-    found = sections(text)
-    for n, a, z in found:
-        if want and n not in want: continue
-        print(f"<!-- slide {n}: deck.html line {text.count(chr(10), 0, a) + 1} -->\n{text[a:z]}\n")
+    text = (deck / "deck.html").read_text()
+    found, problems = scan(text)
+    want = {slide_number(text, a) for a in args[1:] if not a.startswith("--")}
+    if "--outline" in args:
+        print(f"{len(found)} slides (N = the number to use; \"9 = 8.1\": a stack's sub-slide, 8.1 in the editor). Full HTML: glideshow slides {args[0]} N")
+    for s in found:
+        if want and s["n"] not in want: continue
+        if "--outline" in args: print(outline_line(text, s)); continue
+        print(f"<!-- slide {_name(s)}: deck.html line {text.count(chr(10), 0, s['a']) + 1} -->\n{text[s['a']:s['z']]}\n")
     if not found: print(f"{deck / 'deck.html'} has no slides")
+    for p in problems: print(f"problem: {p}", file=sys.stderr)
+
+
+PUT_HELP = """glideshow put DECK N            replace slide N with the <section>(s) on stdin (or --file F)
+glideshow put DECK --after N    insert them after slide N (0: before the first; inside N's stack if it is in one)
+glideshow put DECK --delete N … remove those slides
+glideshow put DECK --all        replace every slide with them (a script that builds the whole deck: pipe its output in)
+N is the number `glideshow slides DECK --outline` gives (9, or the deck's own 8.1). The input is only <section>s; it is
+checked before anything is written (every <div> closed, ids unique in the deck, no other slide's data-sid). A replaced
+slide keeps its data-sid if the new one has none. deck.html is written in one go, so an open editor reloads it.
+Boxes may leave their place to put: data-flow="row" (or "column", "grid 3"; then an area, body or x,y,w,h, and "gap N")
+lays out the boxes sharing that value in the layout's body area, equal sizes 40 px apart, and writes their pixels."""
+
+
+def _top_sections(html: str) -> tuple:
+    """The top-level <section>…</section> spans of a fragment, and whatever else is in it (comments aside)."""
+    spans, depth, at = [], 0, 0
+    for m in re.finditer(r"<section\b[^>]*>|</section>", html):
+        if m.group().startswith("</"):
+            depth -= 1
+            if depth == 0: spans.append((at, m.end()))
+            if depth < 0: raise SystemExit("put: a </section> that closes nothing")
+        else:
+            if depth == 0: at = m.start()
+            depth += 1
+    if depth: raise SystemExit("put: a <section> that is never closed")
+    rest, last = [], 0
+    for a, z in spans: rest.append(html[last:a]); last = z
+    rest.append(html[last:])
+    return spans, re.sub(r"<!--.*?-->", "", "".join(rest), flags=re.S).strip()
+
+
+def arrange(html: str) -> str:
+    """Boxes with data-flow, solved into plain left/top/width/height (put does this before writing, so the deck itself
+    only ever holds pixels). data-flow="row|column|grid C [AREA] [gap N]": the boxes of a slide sharing one data-flow
+    value share its AREA (body, the layout's body area, the default; or x,y,w,h) in that order: side by side, one under
+    another, or C to a row; equal sizes, N px apart (default 40)."""
+    def one(sec: str) -> str:
+        lay = re.search(r'\bdata-layout="([\w-]+)"', sec.split(">", 1)[0])
+        body = next((b[1:5] for n, _, boxes in layouts() if lay and n == lay.group(1) for b in boxes if b[0] == "body"), REGION)
+        groups = {}
+        for m in _boxes(sec):
+            flow = _attrs(m.group()).get("data-flow")
+            if flow: groups.setdefault(flow, []).append(m.group())
+        for flow, tags in groups.items():
+            words = flow.split()
+            kind, cols = words[0], int(words[1]) if words[0] == "grid" and len(words) > 1 and words[1].isdigit() else 0
+            if kind not in ("row", "column", "grid") or (kind == "grid" and not cols): raise SystemExit(f'put: data-flow="{flow}": row, column or grid C, then an area (body or x,y,w,h) and gap N, as in "row body gap 40"')
+            rest = words[2 if cols else 1:]
+            gap = float(rest[rest.index("gap") + 1]) if "gap" in rest and rest.index("gap") + 1 < len(rest) else 40
+            area = next((w for w in rest if re.fullmatch(r"[\d.]+(,[\d.]+){3}", w)), None)
+            x, y, w, h = (float(v) for v in area.split(",")) if area else body
+            n = len(tags); c = n if kind == "row" else 1 if kind == "column" else cols; r = -(-n // c)
+            cw, ch = (w - gap * (c - 1)) / c, (h - gap * (r - 1)) / r
+            for k, tag in enumerate(tags):
+                geo = f"left: {round(x + (k % c) * (cw + gap))}px; top: {round(y + (k // c) * (ch + gap))}px; width: {round(cw)}px; height: {round(ch)}px;"
+                style = re.sub(r"\b(left|top|width|height):\s*[^;]*;?\s*", "", _attrs(tag).get("style", "")).strip()
+                new = re.sub(r'\s+data-flow="[^"]*"', "", tag)
+                new = re.sub(r'\sstyle="[^"]*"', "", new)[:-1] + f' style="{geo}{" " + style if style else ""}">'
+                sec = sec.replace(tag, new, 1)
+        return sec
+    return re.sub(r"<section\b.*?</section>", lambda m: one(m.group()), html, flags=re.S) if "data-flow" in html else html
+
+
+def put_cmd(args: list[str]):
+    if not args or args[0] in ("-h", "--help", "help"): return print(PUT_HELP)
+    deck = _deck(args[0]); ensure_server(deck)
+    text = (deck / "deck.html").read_text()
+    found, problems = scan(text)
+    if problems: raise SystemExit("put: deck.html has structure problems; fix those first (by hand):\n  " + "\n  ".join(problems))
+    rest = [a for i, a in enumerate(args[1:], 1) if args[i - 1] != "--file" and a not in ("--after", "--delete", "--file", "--all")]
+    if "--delete" in args:
+        gone = sorted({slide_number(text, a) for a in rest}, reverse=True)
+        if not gone: raise SystemExit("usage: glideshow put DECK --delete N …")
+        if any(n > len(found) for n in gone): raise SystemExit(f"put: the deck has {len(found)} slides")
+        cut = []
+        for n in gone:
+            s = found[n - 1]
+            kin = [x for x in found if s["stack"] and x["stack"] == s["stack"]]
+            if kin and all(x["n"] in gone for x in kin): cut.append(s["stack"])   # every sub-slide of a stack: the stack goes too
+            else: cut.append((s["a"], s["z"]))
+        for a, z in sorted(set(cut), reverse=True):
+            if text[z:z + 1] == "\n": z += 1
+            text = text[:a] + text[z:]
+        _write(deck, text)
+        return print(f"deleted slide{'s' if len(gone) > 1 else ''} {', '.join(map(str, sorted(gone)))}; the deck has {len(scan(text)[0])} slides")
+    src = _opt(args, "--file")
+    new = Path(src).expanduser().read_text() if src else sys.stdin.read()
+    spans, junk = _top_sections(new)
+    if not spans: raise SystemExit("put: no <section> on stdin (or --file)")
+    if junk: raise SystemExit(f"put: only <section>s, please; this is outside them: {junk[:120]!r}")
+    new = "\n".join(new[a:z].strip() for a, z in spans)
+    made, bad = scan(f'<div class="slides">\n{new}\n</div>')
+    if bad: raise SystemExit("put: " + "; ".join(re.sub(r"deck\.html line \d+: | \(deck\.html line \d+\)", "", b) for b in bad))
+    new = arrange(new)
+    for m in reversed(list(_boxes(new))):   # every box has its place: attached lines get one at load (written as zeros)
+        at = _attrs(m.group()); style = at.get("style", "")
+        if all(re.search(rf"\b{k}:\s*-?[\d.]+px", style) for k in ("left", "top", "width", "height")): continue
+        if at.get("data-from") and at.get("data-to"):
+            tag = re.sub(r'\sstyle="[^"]*"', "", m.group())[:-1] + f' style="left: 0px; top: 0px; width: 0px; height: 0px;{" " + style if style else ""}">'
+            new = new[:m.start()] + tag + new[m.end():]
+        else: raise SystemExit(f"put: #{at.get('id', '?')} has no place: give it left / top / width / height in px, or data-flow")
+    if "--all" in args:   # every slide replaced (a script that builds the whole deck pipes it all in)
+        if found: a, z = (found[0]["stack"] or (found[0]["a"],))[0], max((x["stack"] or (0, x["z"]))[1] for x in found)
+        else: a = z = text.find(">", text.find('<div class="slides"')) + 1
+        first = 1
+    elif "--after" in args:
+        after = _opt(args, "--after")
+        if not after: raise SystemExit("usage: glideshow put DECK --after N (0: before the first slide)")
+        n = slide_number(text, after) if after != "0" else 0
+        if n > len(found): raise SystemExit(f"put: the deck has {len(found)} slides")
+        if n: a = z = found[n - 1]["z"]
+        elif found: a = z = found[0]["a"]
+        else: a = z = text.find(">", text.find('<div class="slides"')) + 1
+        first = n + 1
+    else:
+        if len(rest) != 1: raise SystemExit(PUT_HELP)
+        n = slide_number(text, rest[0])
+        if not 1 <= n <= len(found): raise SystemExit(f"put: there is no slide {rest[0]} (the deck has {len(found)})")
+        a, z = found[n - 1]["a"], found[n - 1]["z"]; first = n
+        old_sid = re.search(r'\bdata-sid="([^"]+)"', text[a:a + 400].split(">", 1)[0])
+        if old_sid and not re.search(r'\bdata-sid="', new.split(">", 1)[0]):
+            new = re.sub(r"<section\b", f'<section data-sid="{old_sid.group(1)}"', new, count=1)
+    start = text.find('<div class="slides"'); end = max(x["z"] for x in found) if found else a
+    others = text[start:a] + text[z:end]
+    ids = re.findall(r'\bid="([^"]+)"', new)
+    dup = sorted({i for i in ids if ids.count(i) > 1})
+    if dup: raise SystemExit(f"put: these ids are used twice in what you sent: {', '.join(dup)}")
+    taken = sorted({i for i in ids if re.search(rf'\bid="{re.escape(i)}"', others)})
+    if taken: raise SystemExit(f"put: the deck already has boxes with these ids: {', '.join(taken)} (ids are unique in the whole deck; give the new slide's boxes a prefix of their own)")
+    sids = [x for x in re.findall(r'\bdata-sid="([^"]+)"', new) if f'data-sid="{x}"' in others]
+    if sids: raise SystemExit(f"put: data-sid {', '.join(sids)} belongs to another slide; leave data-sid out of new slides")
+    pre = "" if text[:a].endswith("\n") else "\n"
+    text = text[:a] + pre + new + ("\n" if a == z and not text[z:].startswith("\n") else "") + text[z:]
+    _write(deck, text)
+    now = scan(text)[0]
+    mine = now[first - 1:first - 1 + len(made)]
+    for s in mine: print(outline_line(text, s))
+    print(f"{'inserted' if '--after' in args else 'replaced every slide' if '--all' in args else 'replaced'}; `glideshow check {args[0]} {' '.join(str(s['n']) for s in mine)}` checks {'them' if len(mine) > 1 else 'it'}")
 
 
 # ---------- figures ----------
@@ -241,6 +454,8 @@ def figure_add(args: list[str]):
     while (deck / "assets" / name).exists() and (deck / "assets" / name).read_bytes() != data and f"assets/{name}" != old_src:
         name, n = f"{stem}-{n}{ext}", n + 1
     if (deck / "assets" / name).resolve() != src.resolve(): (deck / "assets" / name).write_bytes(data)
+    side = src.with_name(src.name + ".json")   # where the figure's labels are (glideshow.figure.save), for check
+    if side.is_file() and side.resolve() != (deck / "assets" / f"{name}.json").resolve(): (deck / "assets" / f"{name}.json").write_bytes(side.read_bytes())
     w0, h0 = image_size(data) or (1600, 900)
     alt = _opt(args, "--alt") or re.sub(r"[-_]+", " ", src.stem).strip().capitalize()
     source, made = _opt(args, "--source"), datetime.datetime.now().isoformat(timespec="seconds")
@@ -257,7 +472,7 @@ def figure_add(args: list[str]):
         _write(deck, text)
         if old_src and old_src != f"assets/{name}" and old_src.startswith("assets/") and old_src not in text: (deck / old_src).unlink(missing_ok=True)
         return print(f"replaced #{replace} on slide {_slide_of(text, a)} with assets/{name} ({w}×{h} at {x},{y})")
-    n_slide = int(slide) if slide else len(sections(text))
+    n_slide = slide_number(text, slide) if slide else len(sections(text))
     a, z = _slide_span(text, n_slide)
     x, y, w, h = _fit(w0, h0, _region(text, a, z, _opt(args, "--at")))
     bid = _unique_id(text, _opt(args, "--id") or stem)
@@ -303,11 +518,18 @@ def figure_refresh(args: list[str]):
         out = img.group(1) if img else f"assets/{bid}.png"
         run = cmd.replace("{out}", shlex.quote(out))
         print(f"#{bid}: {run}", flush=True)
+        before = (deck / out).read_bytes() if (deck / out).is_file() else None
         r = subprocess.run(run, shell=True, cwd=deck, capture_output=True, text=True)
+        glyphs = sorted({chr(int(g)) for g in re.findall(r"Glyph (\d+)\b[^\n]*?missing from", r.stdout + r.stderr)})
+        if glyphs: print(f"#{bid}: the figure's font has no {' '.join(glyphs)}: they are drawn as empty boxes (use words, or a font that has them)")
         if r.returncode:
             failed += 1; print(f"#{bid}: `{run}` failed (exit {r.returncode}):\n{(r.stderr or r.stdout).strip()[-800:]}", file=sys.stderr); continue
         if not (deck / out).is_file(): failed += 1; print(f"#{bid}: `{run}` ran but wrote no {out}", file=sys.stderr); continue
+        side = deck / f"{out}.json"   # glideshow.figure.save keeps matplotlib's warnings there
+        lacks = sorted(set(json.loads(side.read_text()).get("missing", [])) - set(glyphs)) if side.is_file() and side.stat().st_mtime >= time.time() - 600 else []
+        if lacks: print(f"#{bid}: the figure's font has no {' '.join(lacks)}: they are drawn as empty boxes (use words, or a font that has them)")
         new_alt = _opt(args, "--alt")
+        if before is not None and not new_alt and _same_picture(before, (deck / out).read_bytes()): print(f"#{bid}: unchanged"); continue
         figure_add([str(deck), str(deck / out), "--replace", bid] + (["--alt", new_alt] if new_alt else []))
         text = (deck / "deck.html").read_text()
         at = _box(text, bid).start(); alt = re.search(r'\balt="([^"]*)"', text[at:_close_box(text, at)])
@@ -315,12 +537,56 @@ def figure_refresh(args: list[str]):
     if failed: raise SystemExit(1)
 
 
+def _same_picture(a: bytes, b: bytes) -> bool:
+    """Do two pictures have the same pixels? PNGs by their header and image data only (not the metadata a save adds)."""
+    def pixels(d: bytes):
+        if d[:8] != b"\x89PNG\r\n\x1a\n": return d
+        out, i = [], 8
+        while i + 8 <= len(d):
+            n, kind = int.from_bytes(d[i:i + 4], "big"), d[i + 4:i + 8]
+            if kind in (b"IHDR", b"PLTE", b"IDAT"): out.append(d[i + 8:i + 8 + n])
+            i += 12 + n
+        return b"".join(out)
+    return a == b or pixels(a) == pixels(b)
+
+
+FIGURE_DEP = "glideshow @ git+https://github.com/heyodog0/glideshow"   # (PyPI's "glideshow" once it is published there)
+
+
+def mplstyle(th: dict) -> str:
+    """deck.mplstyle: the deck's theme for matplotlib (font, ink, accents, sizes that read on a slide, KaTeX's maths font)."""
+    font = (th.get("font") or "Arial").split(",")[0].strip("'\" ")
+    ink, title = (th.get("text") or "#595959").lstrip("#"), (th.get("title") or "#000000").lstrip("#")
+    return f"""# This deck's look for matplotlib (written by `glideshow figure size`): plt.style.use("deck.mplstyle")
+font.family: sans-serif
+font.sans-serif: {font}, Arial, Helvetica, DejaVu Sans
+font.size: 14
+axes.titlesize: 16
+axes.labelsize: 14
+xtick.labelsize: 12
+ytick.labelsize: 12
+legend.fontsize: 12
+legend.frameon: False
+text.color: {ink}
+axes.labelcolor: {ink}
+axes.titlecolor: {title}
+axes.edgecolor: {ink}
+xtick.color: {ink}
+ytick.color: {ink}
+axes.spines.top: False
+axes.spines.right: False
+axes.prop_cycle: cycler('color', ['1a73e8', 'd93025', '188038', 'f9ab00', '9334e6', '12b5cb', 'e8710a', '5f6368'])
+mathtext.fontset: cm
+savefig.dpi: 384
+"""
+
+
 def figure_size(args: list[str]):
     """matplotlib settings for a figure that fills a space exactly: 1 in of figure = 192 px of slide, so a point in the
     figure is a point on the slide (and the 24 px reading floor is 9 pt)."""
     if not args: raise SystemExit("usage: glideshow figure size DECK --slide N [--box ID | --at body|x,y,w,h]")
     deck = _deck(args[0]); text = (deck / "deck.html").read_text()
-    box_id, slide_n = _opt(args, "--box"), int(_opt(args, "--slide") or len(sections(text)))
+    box_id, slide_n = _opt(args, "--box"), slide_number(text, _opt(args, "--slide") or str(len(sections(text))))
     if box_id:
         m = _box(text, box_id); x, y, w, h = _box_geo(m.group()); slide_n = _slide_of(text, m.start())
     else:
@@ -329,18 +595,19 @@ def figure_size(args: list[str]):
     m = re.search(r"/\* slides-theme (\{.*?\}) \*/", text)
     try: th = json.loads(m.group(1)) if m else {}
     except ValueError: th = {}
-    font = (th.get("font") or "Arial, Helvetica, sans-serif").split(",")[0].strip("'\" ")
-    print(f"""# the space: {w:g}×{h:g} px at {x:g},{y:g} on the slide
-import matplotlib.pyplot as plt
-plt.rcParams.update({{"font.family": "{font}", "font.size": 14, "axes.titlesize": 16, "axes.labelsize": 14,
-                     "xtick.labelsize": 12, "ytick.labelsize": 12, "legend.fontsize": 12,
-                     "text.color": "{th.get('text', '#595959')}", "axes.labelcolor": "{th.get('text', '#595959')}",
-                     "axes.spines.top": False, "axes.spines.right": False}})
+    (deck / "deck.mplstyle").write_text(mplstyle(th))
+    print(f"""# the space: {w:g}×{h:g} px at {x:g},{y:g} on slide {slide_n}; wrote {deck / "deck.mplstyle"} (the deck's font, colours, sizes)
+# a script in the deck's folder (e.g. src/plot.py, run there by `uv run src/plot.py --out assets/NAME.png`):
+# /// script
+# dependencies = ["matplotlib", "{FIGURE_DEP}"]
+# ///
+import sys, matplotlib.pyplot as plt
+from glideshow.figure import save
+plt.style.use("deck.mplstyle")
 fig, ax = plt.subplots(figsize=({w / 192:.2f}, {h / 192:.2f}), layout="constrained")   # 192 px of slide per inch: 1 pt here = 1 pt on the slide
-# … plot …   (constrained layout keeps the axis labels inside the figure)
-fig.savefig("assets/NAME.png", dpi=384)   # 2× the slide's pixels: sharp when presenting; no bbox_inches="tight" (it changes the shape)
-# then (scripts live in the deck's folder, e.g. src/plot.py, and run there; or give an absolute path):
-# glideshow figure add {deck} assets/NAME.png --slide {slide_n} --at {x:g},{y:g},{w:g},{h:g} --id NAME --alt "WHAT IT SHOWS" --source "uv run src/plot.py --out {{out}}"
+# … plot …   (constrained layout keeps the axis labels inside the figure; no bbox_inches="tight", it changes the shape)
+save(fig, sys.argv[sys.argv.index("--out") + 1])   # the PNG at 2× the slide's pixels, and beside it where its labels are, for glideshow check
+# then: glideshow figure add {deck} assets/NAME.png --slide {slide_n} --at {x:g},{y:g},{w:g},{h:g} --id NAME --alt "WHAT IT SHOWS" --source "uv run src/plot.py --out {{out}}"
 # text under 9 pt (24 px) is hard to read when presenting; 12–16 pt reads well""")
 
 

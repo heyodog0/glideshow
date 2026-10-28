@@ -2014,13 +2014,13 @@ def cli_checks(b):
               {"Journal club", "Lab Meeting"} <= set(titles) and shown == 1 and "Copy of Lab Meeting" in after and len(after) == len(titles) + 1
               and made, f"{titles} {shown} {after} {blank}")
         # for agents: the format reference, the slides as pictures, and the skill linked into Claude Code
-        docs = run("docs"); shots = Path(tempfile.mkdtemp(prefix="slides-render-"))
+        docs = run("docs") + run("docs", "reference"); shots = Path(tempfile.mkdtemp(prefix="slides-render-"))
         rendered = [ln for ln in run("render", "lab", "1", "-o", str(shots)).splitlines() if ln.endswith(".png")]   # the paths, then any problems
         fake = Path(tempfile.mkdtemp(prefix="slides-user-"))
         subprocess.run([str(ROOT / "bin" / "glideshow"), "skill"], env={**env, "HOME": str(fake)}, capture_output=True, text=True, timeout=120)
         link = fake / ".claude" / "skills" / "glideshow"
-        check("glideshow docs prints the recipes and the format reference; glideshow render <deck> 1 writes slide 1 and prints its path; glideshow skill links the skill into ~/.claude/skills",
-              "# Writing slides as an agent" in docs and "Deck format" in docs and rendered == [str((shots / "slide-01.png").resolve())] and (shots / "slide-01.png").stat().st_size > 5000
+        check("glideshow docs prints the recipes, docs reference the format reference; glideshow render <deck> 1 writes slide 1 and prints its path; glideshow skill links the skill into ~/.claude/skills",
+              "# Writing slides as an agent" in docs and "Deck format" in docs and rendered == [str((shots / "slide-01.png").resolve())] and (shots / "slide-01.png").stat().st_size > 1500
               and link.is_symlink() and "name: glideshow" in (link / "SKILL.md").read_text(), f"{rendered} {link.is_symlink()}")
     finally:
         subprocess.run(["pkill", "-f", f"glideshow.server.*{home}"])
