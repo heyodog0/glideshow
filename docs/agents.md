@@ -1,13 +1,18 @@
 # Writing slides as an agent
 
-A deck is one folder: `deck.html` (reveal.js) plus `assets/`. Edit `deck.html` directly; the editor reloads it live and
-keeps whatever you write. Every slide is a `<section>` inside `<div class="slides">`; everything on it is an absolutely
-positioned `<div class="box">` whose inline `left / top / width / height` are px on a 1920 × 1080 canvas (192 px = 1 in,
-1 pt = 2.667 px). The full attribute reference is the **Deck format** section at the end of this file.
+A deck is one folder: `deck.html` (reveal.js) plus `assets/`. Every slide is a `<section>` inside `<div class="slides">`;
+everything on it is an absolutely positioned `<div class="box">` whose inline `left / top / width / height` are px on a
+1920 × 1080 canvas (192 px = 1 in, 1 pt = 2.667 px). The full attribute reference is `glideshow docs reference` (the
+**Deck format** section of AGENTS.md).
 
-`deck.html` also carries about 180 KB of inlined CSS and JS (`#deck-base`, `#deck-shapes`, `#deck-present`): don't read
-or edit those. `glideshow slides <deck> [N …]` prints only the slides, each headed by its number and its line in
-`deck.html`.
+`deck.html` also carries about 180 KB of inlined CSS and JS: don't read it. Read a deck with `glideshow slides <deck>
+--outline` (one line per slide: its layout, title, and each box's id and first words), then `glideshow slides <deck> N`
+for the slides you change. Write slides with `glideshow put` (below): it sends only the `<section>`, checks it, and
+writes `deck.html` in one go; the editor reloads it live and keeps what you write.
+
+**Slide numbers.** N is a slide's number in the file (1, 2, 3 …, a stack's sub-slides counted in order). The editor
+numbers a stack's sub-slides 8.1, 8.2; every command takes that form too (`glideshow slides <deck> 8.1`), and the
+outline and `check` show both where they differ (`9 = 8.1`).
 
 ## The commands you need
 
@@ -15,12 +20,15 @@ or edit those. `glideshow slides <deck> [N …]` prints only the slides, each he
 |---|---|
 | `glideshow new "Title" --no-open` | makes `~/decks/<slug>-<date>/` from the template and prints the folder; the user's editor is left alone |
 | `glideshow find <words>` | prints the folder of the deck that best matches; nothing is opened |
-| `glideshow slides <deck> [N …]` | the slides only (numbered, with their line in `deck.html`) |
-| `glideshow layout [NAME]` | the layouts' exact placeholder boxes; with a name, a slide in that layout to paste |
-| `glideshow render <deck> [N …]` | each slide as a 1920 × 1080 PNG (one path per line), then every problem it finds |
+| `glideshow slides <deck> --outline` | one line per slide: its number, layout, title, each box's id and first words, notes for you in full |
+| `glideshow slides <deck> [N …]` | those slides' HTML (numbered, with their line in `deck.html`) |
+| `glideshow put <deck> N` | replaces slide N with the `<section>`s on stdin; `--after N` inserts (0: first), `--delete N …` removes |
+| `glideshow layout [NAME]` | the layouts' exact placeholder boxes; with a name, a slide in that layout to fill in |
 | `glideshow check <deck> [N …]` | only the problems, in about two seconds; exit status 1 when there are any |
+| `glideshow render <deck> [N …]` | each slide as a 960 × 540 PNG (one path per line; `--full`: 1920 × 1080), then the problems |
+| `glideshow render <deck> --sheet` | nine slides to a picture, each labelled with its number: a whole deck in a few pictures |
 | `glideshow figure add <deck> <png> --slide N` | places a picture (or `--replace <id>` swaps one in place), recording `--source "<command>"` |
-| `glideshow figure size <deck> --slide N` | matplotlib settings for a figure that fits that space exactly |
+| `glideshow figure size <deck> --slide N` | the figure size that fits that space exactly, a script to start from, and the deck's `deck.mplstyle` |
 | `glideshow figure refresh <deck> [id …]` | re-runs each figure's recorded command and puts the new picture in place |
 | `glideshow selection` | what the user is looking at and has selected in the editor (exit 1 if no editor window reports) |
 | `glideshow comments <deck>` | the open comments, each on the slide it's on now |
@@ -31,10 +39,12 @@ spilling out of its box, code cut off, boxes reaching off the slide, text overla
 with words of its own too), text partly over a picture or crossed by a line, text under 24 px or hard to see against its
 background, pictures that didn't load, lack alt text or are squeezed into a box of another shape, boxes without ids or
 with duplicate ids, lines attached to boxes that aren't there (or to a side that isn't t/r/b/l), Morph pairings with no
-partner, and notes for the AI still on a slide. Fix what they report, then look at the PNGs: a check can't see inside a
-picture (a clipped axis label) or judge balance.
+partner, notes for the AI still on a slide, and broken structure (a `<div>` or `<section>` left open or closed twice).
+Inside a figure saved with `glideshow.figure.save` they also report labels that overlap or are cut off at its edge, text
+under 24 px on the slide and characters its font lacks. Fix what they report, then look: `render <deck> --sheet` for the
+whole deck (balance, alignment), single slides only for the ones you changed.
 
-**Versions.** `glideshow new --no-open` and `glideshow figure add / refresh` start the background server if it isn't
+**Versions.** `glideshow new --no-open`, `slides`, `put` and `figure add / refresh` start the background server if it isn't
 running (nothing opens). It commits every change you make to a deck as its own version, a few seconds after you stop
 writing, so nothing you do is lost and the user can step back through it.
 
@@ -46,8 +56,8 @@ writing, so nothing you do is lost and the user can step back through it.
   Change that box (find it by `id`), not a guess. Nothing selected means the whole slide. If it exits 1, no editor window
   is open: ask the user which slide they mean.
 - **Your edit shows up at once:** the editor reloads, goes to the first changed slide (if the one on show didn't change),
-  flashes the changed slides in the filmstrip and outlines the changed boxes. Write the whole file in one go (write a
-  temporary file and rename it over `deck.html`), not piece by piece.
+  flashes the changed slides in the filmstrip and outlines the changed boxes. `put` writes the whole file in one go; if you
+  write `deck.html` yourself, do the same (a temporary file renamed over it), not piece by piece.
 - **The user can take it back:** your edit is one undo step in the editor (⌘Z), and the server commits it as its own
   version (`outside the editor: slide 3: …`) a few seconds after you stop writing, apart from the user's own changes.
 - **The user's unsaved change:** the editor saves when its window loses focus, so what the user just did is on disk
@@ -77,7 +87,7 @@ Text sizes come from the theme (`--th-title-size`, `--th-body-size`); don't over
 
 {{LAYOUTS}}
 
-`glideshow layout title-body --prefix results` prints a whole slide in that layout, ready to paste, its ids starting
+`glideshow layout title-body --prefix results` prints a whole slide in that layout, ready to fill in and `put`, its ids starting
 `results-` (ids must be unique in the whole deck; with `--deck <deck>` it also avoids ids the deck already uses, and
 follows a theme that edits its layouts). Replace each placeholder's text, keep its box, and give every box you add its
 own unique id.
@@ -96,13 +106,29 @@ inherits them. Accents that sit well with it: blue `#1a73e8` (fill `#e8f0fe`), r
 
 ## Recipes
 
-**Title and bullets** (from `glideshow layout title-body --prefix results`):
-```html
+**Title and bullets** (from `glideshow layout title-body --prefix results`), added after slide 3:
+```sh
+glideshow put <deck> --after 3 <<'EOF'
 <section data-background-color="#ffffff" data-layout="title-body">
   <div class="box" id="results-title" data-placeholder="Click to add title" data-role="title" data-valign="top" style="left: 65px; top: 93px; width: 1790px; height: 122px;"><div class="content" style="font-size: calc(var(--th-title-size, 74.67px) * 1); text-align: left; padding: 9.6px 19.2px;">Results</div></div>
   <div class="box" id="results-body" data-placeholder="Click to add text" data-role="body" data-valign="top" style="left: 65px; top: 242px; width: 1790px; height: 721px;"><div class="content" style="font-size: calc(var(--th-body-size, 48px) * 1); text-align: left; padding: 9.6px 19.2px;">
     <ul><li>Agents learn the task in 2 k steps</li><li>Transfer holds across seeds</li></ul></div></div>
 </section>
+EOF
+```
+`put` prints the new slide's outline line and the `check` to run. To change a slide, `glideshow slides <deck> N`, edit
+that, and `glideshow put <deck> N` it back (its `data-sid` is kept). It refuses, writing nothing, when a `<div>` isn't
+closed, an id is already used elsewhere in the deck, or a slide carries another slide's `data-sid`.
+
+**Boxes in a row, a column or a grid** (no pixels to work out): give the boxes the same `data-flow` and leave out their
+`left / top / width / height`; `put` lays them out in the slide's body area, equal sizes 40 px apart, and writes their
+pixels. `data-flow="row"`, `"column"` or `"grid 3"` (3 to a row), then optionally an area (`body`, or `x,y,w,h`) and a
+gap: `data-flow="row 65,400,1790,240 gap 120"`. Boxes with another `data-flow` value form another group. Lines attached
+with `data-from` / `data-to` need no place either.
+```html
+<div class="box" id="p-collect" data-shape="roundrect" data-flow="row 65,400,1790,240 gap 120" style="--fill: #e8f0fe;"><div class="content" style="font-size: 40px;">Collect</div></div>
+<div class="box" id="p-train" data-shape="roundrect" data-flow="row 65,400,1790,240 gap 120" style="--fill: #e8f0fe;"><div class="content" style="font-size: 40px;">Train</div></div>
+<div class="box" id="p-arrow" data-shape="line" data-end="fill-arrow" data-from="p-collect:r" data-to="p-train:l" style="--stroke: #5f6368; --sw: 5px;"><div class="content"></div></div>
 ```
 
 **Two columns:** `glideshow layout two-columns --prefix compare` (two body placeholders, `compare-body` and `compare-body-2`).
@@ -127,15 +153,20 @@ their heads for you:
 **A plot from a script.** Size the figure for its space, save it into the deck's `assets/`, and place it with the command
 that made it, so it can be remade when the data changes:
 ```sh
-glideshow figure size <deck> --slide 4            # prints figsize / dpi / font sizes that fit the body area exactly
-uv run src/plot.py --out assets/curves.png        # your script, with those settings
+glideshow figure size <deck> --slide 4            # the figsize that fits the body area exactly, and a script to start from
+uv run src/plot.py --out assets/curves.png        # your script (in the deck's folder), from that start
 glideshow figure add <deck> assets/curves.png --slide 4 --id curves --alt "Return over training, 10 seeds" \
   --source "uv run src/plot.py --out {out}"
 glideshow figure refresh <deck> curves            # later: new data → re-run, new picture in the same place
 glideshow figure add <deck> other.png --replace curves   # or swap in a different picture, keeping the box's place
 ```
+The script it starts you on declares its own dependencies (`matplotlib` and `glideshow`, so `uv run` needs no setup),
+uses the deck's `deck.mplstyle` (`figure size` writes it: the theme's font and colours, accents that suit it, sizes that
+read on a slide, and KaTeX's maths font) and saves with `glideshow.figure.save(fig, out)`. That writes the picture at 2×
+the slide's pixels and, beside it, where each piece of its text is (`curves.png.json`), so `check` can see inside it.
 `figure add` keeps the file's name, gives the box an id and alt text, fits the picture into the slide's body area (or
-`--at x,y,w,h`), and records `data-source` (`{out}` stands for the picture's path) and `data-made`. In matplotlib, a
+`--at x,y,w,h`), and records `data-source` (`{out}` stands for the picture's path) and `data-made`. `figure refresh` says
+when a picture came out the same (and leaves the deck alone) and when its font lacks a character. In matplotlib, a
 figure 1 in wide fills 192 px of slide, so a point in the figure is a point on the slide: labels at 12–16 pt read well.
 
 **An equation.** Any box: `<div class="content" style="font-size: 48px; text-align: center;">$$\mathcal{L} = -\sum_t \log \pi_\theta(a_t \mid h_{<t})$$</div>`.

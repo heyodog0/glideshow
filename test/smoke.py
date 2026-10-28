@@ -2014,7 +2014,7 @@ def cli_checks(b):
               {"Journal club", "Lab Meeting"} <= set(titles) and shown == 1 and "Copy of Lab Meeting" in after and len(after) == len(titles) + 1
               and made, f"{titles} {shown} {after} {blank}")
         # for agents: the format reference, the slides as pictures, and the skill linked into Claude Code
-        docs = run("docs"); shots = Path(tempfile.mkdtemp(prefix="slides-render-"))
+        docs = run("docs") + run("docs", "reference"); shots = Path(tempfile.mkdtemp(prefix="slides-render-"))
         rendered = [ln for ln in run("render", "lab", "1", "-o", str(shots)).splitlines() if ln.endswith(".png")]   # the paths, then any problems
         fake = Path(tempfile.mkdtemp(prefix="slides-user-"))
         subprocess.run([str(ROOT / "bin" / "glideshow"), "skill"], env={**env, "HOME": str(fake)}, capture_output=True, text=True, timeout=120)

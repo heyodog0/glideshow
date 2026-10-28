@@ -9,8 +9,10 @@ agent to use it, in a library, cache and port of its own (the user's server and 
 Covers: a quiet CLI (new --no-open and find leave the open editor alone; selection says when nothing reports, and how
 old a report is; stop; a test server on its own port records itself apart), exact layouts (glideshow layout, the docs'
 table written from the editor's own), the slides without the inlined CSS/JS, figures (placed with the command that made
-them, refreshed, replaced in place), render / check (every problem kind, Morph slides never caught mid-animation, -o
-keeping other slides, a stack's sub-slides), and connectors that follow their shapes when a deck loads (in the slideshow and the editor),
+them, refreshed, replaced in place; deck.mplstyle; inside a figure saved with glideshow.figure.save), put (insert,
+replace, delete, data-flow, refusing broken input) and the outline, render / check (every problem kind, Morph slides
+never caught mid-animation, -o keeping other slides, a stack's sub-slides and the editor's numbers for them, contact
+sheets, broken structure), and connectors that follow their shapes when a deck loads (in the slideshow and the editor),
 including U-shaped feedback edges.
 """
 import functools, http.server, json, os, re, struct, subprocess, sys, tempfile, threading, time, urllib.request, zlib
@@ -31,8 +33,8 @@ def check(name, ok, detail: object = ""):
     if not ok: failures.append(name)
 
 
-def gs(*args, timeout=180):
-    r = subprocess.run(["uv", "run", "--quiet", "--project", str(ROOT), "python", "-m", "glideshow", *args], env=ENV, capture_output=True, text=True, timeout=timeout)
+def gs(*args, timeout=180, input=None):
+    r = subprocess.run(["uv", "run", "--quiet", "--project", str(ROOT), "python", "-m", "glideshow", *args], env=ENV, capture_output=True, text=True, timeout=timeout, input=input)
     return r.returncode, r.stdout.strip(), r.stderr.strip()
 
 
@@ -125,6 +127,39 @@ try:
           code == 0 and [h[0] for h in heads] == ["1", "2"] and all(lines[int(n) - 1].lstrip().startswith("<section") for _, n in heads)
           and "deck-base" not in out and len(out) < 6000, (heads, len(out)))
 
+    # ---------- put: slides written without reading deck.html ----------
+    code, p_out, _ = gs("new", "Put", "--no-open"); deck_p = Path(p_out.splitlines()[0]) if p_out else Path()
+    box = lambda i, extra="": f'<div class="box" id="{i}"{extra} style="left: 100px; top: 100px; width: 800px; height: 100px;"><div class="content">Words of {i}</div></div>'
+    code, out, err = gs("put", str(deck_p), "--after", "1", input=f'<section data-layout="blank">{box("p2")}</section>\n<!-- a comment -->\n<section data-layout="blank">{box("p3")}</section>')
+    t = (deck_p / "deck.html").read_text()
+    check("put --after inserts the <section>s from stdin, printing each one's outline line and the check to run",
+          code == 0 and t.index('id="p2"') < t.index('id="p3"') and '#p2 "Words of p2"' in out and f"glideshow check {deck_p} 2 3" in out, (code, out, err))
+    t = t.replace('<section data-layout="blank"><div class="box" id="p2"', '<section data-layout="blank" data-sid="s-p2"><div class="box" id="p2"'); (deck_p / "deck.html").write_text(t)
+    code, out, err = gs("put", str(deck_p), "2", input=f'<section data-layout="blank">{box("p2b")}</section>')
+    t = (deck_p / "deck.html").read_text()
+    check("put N replaces slide N, keeping its data-sid when the new one has none", code == 0 and 'id="p2"' not in t and re.search(r'<section data-sid="s-p2" data-layout="blank"><div class="box" id="p2b"', t), (out, err))
+    before = t
+    refused = [gs("put", str(deck_p), "3" if "s-p2" in h else "2", input=h) for h in (f'<section>{box("p3")}</section>', f'<section>{box("x1")}<div class="box" id="x2"></section>',
+               f'<section data-sid="s-p2">{box("x3")}</section>', f'<p>loose</p><section>{box("x4")}</section>', f'<section>{box("x5", " data-x")}</section><section>{box("x5")}</section>')]
+    check("put refuses, writing nothing, an id the deck has, an unclosed <div>, another slide's data-sid, anything outside <section>s, an id twice",
+          all(c == 1 for c, _, _ in refused) and (deck_p / "deck.html").read_text() == before and "already has boxes with these ids: p3" in refused[0][2]
+          and "never closed" in refused[1][2] and "s-p2" in refused[2][2] and "only <section>s" in refused[3][2] and "used twice" in refused[4][2], [r[2][-120:] for r in refused])
+    row = lambda i: f'<div class="box" id="{i}" data-shape="roundrect" data-flow="row 100,400,1700,200 gap 100"><div class="content">{i}</div></div>'
+    code, out, err = gs("put", str(deck_p), "--after", "3", input=f'<section data-layout="blank">{row("r1")}{row("r2")}{row("r3")}'
+                        '<div class="box" id="r12" data-shape="line" data-from="r1:r" data-to="r2:l"><div class="content"></div></div></section>')
+    t = (deck_p / "deck.html").read_text()
+    check("put lays out boxes sharing a data-flow (a row here, 100 px apart) and gives attached lines a place; no data-flow is left in the file",
+          code == 0 and [geo(boxtag(deck_p, i)) for i in ("r1", "r2", "r3")] == [[100, 400, 500, 200], [700, 400, 500, 200], [1300, 400, 500, 200]]
+          and geo(boxtag(deck_p, "r12")) == [0, 0, 0, 0] and "data-flow" not in t, (out, err))
+    code, out, err = gs("put", str(deck_p), "--after", "4", input='<section><div class="box" id="lost"><div class="content">x</div></div></section>')
+    check("…and refuses a box with no place", code == 1 and "#lost has no place" in err, err)
+    code, out, err = gs("put", str(deck_p), "--delete", "2", "3")
+    t = (deck_p / "deck.html").read_text()
+    check("put --delete removes slides", code == 0 and 'id="p2b"' not in t and 'id="p3"' not in t and 'id="r1"' in t, (out, err))
+    code, out, _ = gs("slides", str(deck_p), "--outline")
+    check("slides --outline is a line or two per slide: number, layout, title, each box's id and first words, lines counted",
+          code == 0 and out.splitlines()[0].startswith("2 slides") and re.search(r"^2  blank\n   #r1 \"r1\" · #r2 \"r2\" · #r3 \"r3\" · 1 line$", out, re.M), out)
+
     # ---------- figures ----------
     (deck_b / "src").mkdir()
     (deck_b / "src" / "plot.py").write_text("import json, struct, sys, zlib\nw, h = json.load(open('src/size.json'))\nout = sys.argv[sys.argv.index('--out') + 1]\n"
@@ -134,7 +169,10 @@ try:
     (deck_b / "assets").mkdir(exist_ok=True)
     subprocess.run(["uv", "run", "--no-project", "python", "src/plot.py", "--out", "assets/curves.png"], cwd=deck_b, check=True)
     code, size, _ = gs("figure", "size", str(deck_b), "--slide", "2")
-    check("figure size gives matplotlib settings that fit the slide's body area (1 in = 192 px)", code == 0 and "figsize=(9.32, 3.76)" in size and "dpi=384" in size, size[:300])
+    style = (deck_b / "deck.mplstyle").read_text() if (deck_b / "deck.mplstyle").exists() else ""
+    check("figure size gives the figure size that fits the slide's body area (1 in = 192 px), a script to start from, and the deck's deck.mplstyle",
+          code == 0 and "figsize=(9.32, 3.76)" in size and "from glideshow.figure import save" in size and "# dependencies = [" in size
+          and "mathtext.fontset: cm" in style and "text.color: 595959" in style and "savefig.dpi: 384" in style, size[:300])
     code, out, err = gs("figure", "add", str(deck_b), "assets/curves.png", "--slide", "2", "--id", "curves", "--alt", "Return over training",
                         "--source", "uv run --no-project python src/plot.py --out {out}")
     tag = boxtag(deck_b, "curves")
@@ -153,6 +191,9 @@ try:
     check("…saying which command it ran, and that the alt text may be stale; refresh --alt updates it",
           "#curves: uv run --no-project python src/plot.py --out assets/curves.png" in refresh_out and "its alt text is still" in refresh_out
           and gs("figure", "refresh", str(deck_b), "curves", "--alt", "Return over training, 16 seeds")[0] == 0 and 'alt="Return over training, 16 seeds"' in (deck_b / "deck.html").read_text(), refresh_out)
+    t_before = (deck_b / "deck.html").read_text()
+    code, out, err = gs("figure", "refresh", str(deck_b), "curves")
+    check("figure refresh says when the picture came out the same, and leaves deck.html alone", code == 0 and "#curves: unchanged" in out and (deck_b / "deck.html").read_text() == t_before, (out, err))
     code, out, err = gs("figure")
     check("glideshow figure alone prints the whole usage", code == 1 and all(f"glideshow figure {w}" in out for w in ("add", "refresh", "size")), out[:200])
     (TMP / "seeds10.png").write_bytes(png(400, 200, (217, 48, 37)))
@@ -275,7 +316,40 @@ try:
     check("render shows a stack's sub-slides themselves (numbered in deck order), not the slide above them again",
           code == 0 and all(shots) and len(set(shots)) == 4, (code, [len(s) for s in shots], err[-300:]))
     code, out, err = gs("check", str(deck_s))
-    check("…and check looks at them: a sub-slide's overflow is reported under its own number", code == 1 and "slide 4: text in #st-long" in out, out)
+    check("…and check looks at them: a sub-slide's overflow is reported under its number and the editor's (4 = 2.2)", code == 1 and "slide 4 = 2.2: text in #st-long" in out, out)
+    code, out, err = gs("check", str(deck_s), "2.2")
+    code2, out2, _ = gs("slides", str(deck_s), "2.1", "--outline")
+    check("commands take the editor's numbers too (2.2: a stack's second sub-slide)", code == 1 and "#st-long" in out and "#st-main" not in out and re.search(r"^3 = 2.1 ", out2, re.M), (out, out2))
+    code, out, err = gs("render", str(deck_s), "--sheet", "-o", str(TMP / "sheet"))
+    sheet = TMP / "sheet" / "sheet-1.png"
+    check("render --sheet makes one picture of up to nine slides and prints only its path; single renders are 960 × 540 (--full 1920 × 1080)",
+          code == 0 and out.splitlines()[0].startswith(str(sheet.resolve())) and "(slides 1–4)" in out and sheet.exists() and struct.unpack(">II", sheet.read_bytes()[16:24])[0] == 1920
+          and struct.unpack(">II", (TMP / "stacks" / "slide-01.png").read_bytes()[16:24]) == (960, 540), (out, err[-300:]))
+    t = (deck_s / "deck.html").read_text(); end = t.index("</div></div>", t.rindex("</section>"))
+    (deck_s / "deck.html").write_text(t[:end].replace("</section>", "</section></section>", 1) + '</div></div>\n<section><div class="box" id="dead"><div class="content">dead</div></div></section>' + t[end + len("</div></div>"):])
+    code, out, err = gs("check", str(deck_s))
+    code2, out2, err2 = gs("slides", str(deck_s), "--outline")
+    check("check reports broken structure (a stray </section>, slides after the end of the slides), and slides doesn't crash on it",
+          code == 1 and "closes nothing" in out and "after the end of the slides" in out and code2 == 0 and "Traceback" not in err2 and "problem:" in err2, (out, err2[-300:]))
+
+    # ---------- inside a figure: glideshow.figure.save ----------
+    code, f_out, _ = gs("new", "Figures", "--no-open"); deck_f = Path(f_out.splitlines()[0]) if f_out else Path()
+    (deck_f / "src").mkdir(); (deck_f / "src" / "fig.py").write_text(
+        "import sys, matplotlib\nmatplotlib.use('Agg')\nimport matplotlib.pyplot as plt\nfrom glideshow.figure import save\n"
+        "fig, ax = plt.subplots(figsize=(4, 2.5), layout='constrained')\nax.plot([0, 1, 2], [0, 1, 4]); ax.set_xlim(0, 2)\n"
+        "ax.text(1.5, 3.9, 'first label', fontsize=8); ax.text(1.5, 3.8, 'second label', fontsize=8)\nfig.text(0.97, 0.5, 'cut at the edge', fontsize=14)\n"
+        "ax.set_title('done \\u2713', fontname='Arial')\nax.set_xlabel('tiny', fontsize=3)\nsave(fig, sys.argv[1])\n")
+    r = subprocess.run(["uv", "run", "--quiet", "--with", "matplotlib", "--project", str(ROOT), "python", "src/fig.py", "assets/fig.png"], cwd=deck_f, capture_output=True, text=True, timeout=300)
+    side = json.loads((deck_f / "assets" / "fig.png.json").read_text()) if (deck_f / "assets" / "fig.png.json").exists() else {}
+    texts = [t["text"] for t in side.get("texts", [])]
+    check("figure.save writes the picture and, beside it, its size and each drawn label's place (not the labels of ticks outside the axes)",
+          r.returncode == 0 and side.get("inches") == [4.0, 2.5] and "first label" in texts and "tiny" in texts
+          and all(0 <= t["x"] and t["x"] + t["w"] <= 1.002 for t in side["texts"] if t["text"] != "cut at the edge"), (r.stderr[-400:], texts))
+    gs("figure", "add", str(deck_f), "assets/fig.png", "--slide", "1", "--at", "100,100,768,480", "--id", "fig", "--alt", "A test figure")
+    code, out, err = gs("check", str(deck_f))
+    check("check sees inside a figure: labels overlapping, one cut off at its edge, text too small on the slide",
+          code == 1 and '"first label" and "second label" overlap' in out and '"cut at the edge" is cut off' in out and re.search(r'"tiny", 3 pt\)', out), out)
+    check("…and characters its font lacks (drawn as empty boxes)", "\u2713" in side.get("missing", []) and "font lacks" in out, (side.get("missing"), out))
 
     # ---------- comments stay on their slide when slides move ----------
     t = (deck_e / "deck.html").read_text()

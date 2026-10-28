@@ -9,13 +9,16 @@
     glideshow serve [DECK] [...]      run the server in the foreground (--port N, --build OUT, --init, --add-image FILE)
     glideshow url                     print the running server's address (starting it if needed)
     glideshow selection [--json]      what the open editor shows: the deck, the slide on show, the selected boxes and their text
-    glideshow render [deck] [N ...]   the deck's slides as PNGs (default: the deck open in the editor; -o DIR), one path per line,
-                                      then any problems (overflow, cut-off code, off-slide, overlaps, small text, notes left; --json);
-                                      --morph: each Morph step's pairs and a picture halfway through it
+    glideshow render [deck] [N ...]   the deck's slides as 960 × 540 PNGs (default: the deck open in the editor; -o DIR; --full:
+                                      1920 × 1080), one path per line, then any problems (overflow, cut-off code, off-slide,
+                                      overlaps, small text, inside figures, notes left; --json); --sheet: nine slides to a picture
+                                      instead; --morph: each Morph step's pairs and a picture halfway through it
     glideshow check [deck] [N ...]    only the problems, no pictures (exit 1 if any)
-    glideshow docs                    the deck format and authoring recipes, for an agent writing deck.html by hand
+    glideshow docs [reference]        for an agent: the guide and recipes (reference: the full deck format)
     glideshow layout [NAME]           the layouts' exact placeholder boxes; with NAME, a slide in that layout to paste
-    glideshow slides <deck> [N ...]   only the deck's <section>s (no inlined CSS / JS), each with its line in deck.html
+    glideshow slides <deck> [N ...]   only the deck's <section>s (no inlined CSS / JS), each with its line in deck.html;
+                                      --outline: one line per slide (its layout, title, boxes' ids and first words)
+    glideshow put <deck> N            replace slide N with the <section>s on stdin (--after N inserts, --delete N removes)
     glideshow figure add|refresh|size a picture placed or replaced in place, remembering the command that made it (see
                                       `glideshow figure`); refresh re-runs those commands; size gives matplotlib settings
     glideshow comments <deck>         the open comments, each on the slide it's on now (--all, --json)
@@ -32,7 +35,7 @@ recorded in ~/.glideshow/server.json (server-PORT.json with GLIDESHOW_PORT set; 
 restarts itself when its code changes, and a second one is never started. A separate library for tests:
 GLIDESHOW_HOME=/tmp/x/decks GLIDESHOW_CACHE=/tmp/x/cache GLIDESHOW_PORT=48900 glideshow …
 --no-open skips the browser and prints the address instead (`glideshow url` prints it too)."""
-import datetime, os, re, subprocess, sys, time, webbrowser
+import datetime, json, os, re, subprocess, sys, time, webbrowser
 from pathlib import Path
 
 from .service import CACHE, DEFAULT_PORT, code_version, live, post, same_install
@@ -172,16 +175,20 @@ def render(args: list[str], check: bool = False):
     any) through glideshow/render.py, a uv script that brings Playwright with it."""
     out = None
     if "-o" in args: i = args.index("-o"); out = Path(args[i + 1]).expanduser(); args = args[:i] + args[i + 2:]
-    flags = [a for a in args if a in ("--json", "--morph")] + (["--check"] if check else [])
+    flags = [a for a in args if a in ("--json", "--morph", "--full", "--sheet")] + (["--check"] if check else [])
     args = [a for a in args if not a.startswith("--")]
-    nums, names = [a for a in args if a.isdigit()], [a for a in args if not a.isdigit()]
+    is_num = lambda a: re.fullmatch(r"\d+(\.\d+)?", a)
+    nums, names = [a for a in args if is_num(a)], [a for a in args if not is_num(a)]
     if names: deck = Path(names[0]).expanduser() if (Path(names[0]).expanduser() / "deck.html").exists() else match(names[0])
     else:
         s = live()
         if not s: raise SystemExit("Name a deck (glideshow render <deck> [N ...]); no editor is open to take it from.")
         deck = Path(s["deck"])
-    from .agent import ensure_server
+    from .agent import ensure_server, scan, slide_number
     ensure_server(deck)   # the edits being checked are kept as versions by it
+    text = (deck / "deck.html").read_text()
+    nums = [str(slide_number(text, a)) for a in nums]   # the deck's own numbers (8.1) as the file's
+    os.environ["GLIDESHOW_STRUCTURE"] = json.dumps(scan(text)[1])   # what render.py can't see: the file's own structure
     out = out or CACHE / "renders" / deck.name
     try: r = subprocess.run(["uv", "run", "--quiet", str(HERE / "render.py"), str(deck.resolve()), str(out), *nums, *flags])
     except FileNotFoundError: raise SystemExit("glideshow render needs uv (https://docs.astral.sh/uv/), which brings Playwright with it")
@@ -236,7 +243,7 @@ def main(argv):
         return print(URL)
     if cmd == "selection":   # for an agent working beside the editor: what "this" means
         s = live()
-        import json, urllib.request
+        import urllib.request
         if not s:
             if "--json" in rest: print(json.dumps({"slide": None, "boxes": [], "error": "no server, so no editor is open"}))
             raise SystemExit(1 if "--json" in rest else "No editor is open (the Glideshow server isn't running), so there is no selection: ask the user which slide they mean.")
@@ -268,10 +275,10 @@ def main(argv):
             if not running(): start(deck)   # the background server, so every edit to the deck becomes a version
             return print(deck)
         return serve(deck, open_browser)
-    if cmd in ("layout", "slides", "figure", "find", "stop", "comments"):
+    if cmd in ("layout", "slides", "put", "figure", "find", "stop", "comments"):
         from . import agent
         if cmd == "stop": return agent.stop_cmd()
-        return {"layout": agent.layout_cmd, "slides": agent.slides_cmd, "figure": agent.figure_cmd, "find": agent.find_cmd, "comments": agent.comments_cmd}[cmd](rest)
+        return {"layout": agent.layout_cmd, "slides": agent.slides_cmd, "put": agent.put_cmd, "figure": agent.figure_cmd, "find": agent.find_cmd, "comments": agent.comments_cmd}[cmd](rest)
 
     if cmd == "build":
         if len(rest) != 2: raise SystemExit("usage: glideshow build <name> <out>")
@@ -279,9 +286,9 @@ def main(argv):
     if cmd == "install": return install()
     if cmd == "skill": return link_skill()
     if cmd in ("render", "check"): return render(rest, check=cmd == "check")
-    if cmd == "docs":   # what AGENTS.md beside each deck holds: the recipes, then the format reference
+    if cmd == "docs":   # the guide and recipes; `docs reference` the format reference (AGENTS.md beside each deck holds both)
         from .decks import docs_text
-        return print(docs_text())
+        return print(docs_text("reference" if rest[:1] == ["reference"] else "guide"))
     if cmd in ("publish", "unpublish", "published"):
         from . import publish as pub
         if cmd == "published":
