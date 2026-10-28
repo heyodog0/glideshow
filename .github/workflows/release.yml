@@ -1,5 +1,5 @@
 # A version tag (v0.2.0) on main: the quick checks (the browser tests are run locally before tagging, and nightly), glideshow.org runs it, and a GitHub Release with notes from the commits
-# since the last one. The tag must match pyproject.toml's version. Staging is staging.yml.
+# since the last one, and the package on PyPI. The tag must match pyproject.toml's version. Staging is staging.yml.
 name: release
 on:
   push:
@@ -45,3 +45,12 @@ jobs:
       - run: uv build
       - env: { GH_TOKEN: '${{ github.token }}' }
         run: gh release create "$GITHUB_REF_NAME" dist/* --title "Glideshow $GITHUB_REF_NAME" --generate-notes $([[ "$GITHUB_REF_NAME" == v0.* ]] && echo --prerelease)
+  pypi:   # the package on PyPI as "glideshow" (trusted publishing: the PyPI project trusts this workflow; no token stored)
+    needs: release
+    runs-on: ubuntu-latest
+    environment: { name: pypi, url: https://pypi.org/p/glideshow }
+    permissions: { contents: read, id-token: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv build && uv publish --trusted-publishing always
