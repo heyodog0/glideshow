@@ -286,6 +286,17 @@
     <footer><button id="ed-sp-cancel" class="outlined">Cancel</button><button id="ed-sp-apply" class="done">Apply</button></footer>
   </div>
 </div>
+<div id="ed-showdlg" class="backdrop" hidden>
+  <div class="dialog bg-dialog" role="dialog" aria-label="Slideshow settings">
+    <header><h2>Slideshow settings</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <div class="bg-row"><span>Presentation type</span><select id="ed-show-type"><option value="">Normal</option><option value="links">Links only</option><option value="self">Self-playing</option></select></div>
+    <div class="bg-row" data-self><span>Delay between slides</span><span class="unit"><input type="number" id="ed-show-slide" min="0" step="0.5" class="short"> s</span></div>
+    <div class="bg-row" data-self><span>Delay between builds</span><span class="unit"><input type="number" id="ed-show-build" min="0" step="0.5" class="short"> s</span></div>
+    <div class="bg-row"><label class="chk"><input type="checkbox" id="ed-show-loop"> Loop slideshow</label></div>
+    <div class="bg-row"><label class="chk"><input type="checkbox" id="ed-show-idle-on"> Restart if idle for</label><span class="unit"><input type="number" id="ed-show-idle" min="1" step="1" class="short"> min</span></div>
+    <footer><button id="ed-show-done" class="done">Done</button></footer>
+  </div>
+</div>
 <div id="ed-linkdlg" class="backdrop" hidden>
   <div class="dialog bg-dialog" role="dialog" aria-label="Link">
     <header><h2>Link</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>

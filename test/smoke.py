@@ -490,7 +490,12 @@ def checks(pg, deck: Path, errors):
     check("menus as Slides: Google key labels, Center on page, Rotate 90°, Skip slide",
           keys.get("Paste without formatting") == "⌘+Shift+V" and keys.get("Redo") == "⌘Y" and ar == [960, 90] and sk == ["hidden", True] and pg.evaluate("!slides[cur].dataset.visibility"), f"{keys} {ar} {sk}")
     pg.click("#ed-present-menu")
-    check("Slideshow ▾ lists present options", pg.evaluate("[...document.querySelectorAll('.menu .menu-label')].map(e => e.textContent)") == ["Present from this slide", "Present from beginning", "Present fullscreen", "Presenter view", "Open in new tab", "Open as a scrolling page"])
+    check("Slideshow ▾ lists present options", pg.evaluate("[...document.querySelectorAll('.menu .menu-label')].map(e => e.textContent)") == ["Present from this slide", "Present from beginning", "Present fullscreen", "Presenter view", "Open in new tab", "Open as a scrolling page", "Slideshow settings"])
+    pg.click(".menu-item:has(.menu-label:text-is('Slideshow settings'))"); pg.select_option("#ed-show-type", "self"); pg.fill("#ed-show-slide", "8"); pg.dispatch_event("#ed-show-slide", "change")
+    pg.check("#ed-show-loop"); pg.check("#ed-show-idle-on"); pg.fill("#ed-show-idle", "3"); pg.dispatch_event("#ed-show-idle", "change")
+    pg.locator("#ed-showdlg .dialog").screenshot(path=str(HERE / "slideshow-settings.png")); pg.click("#ed-show-done")
+    ss = pg.evaluate("(() => { const d = deckDoc.querySelector('.slides').dataset, out = [d.play, d.playSlide, d.playBuild, 'loop' in d, d.idle]; ['play', 'playSlide', 'playBuild', 'loop', 'idle'].forEach(k => delete d[k]); scheduleSave(); return out; })()")
+    check("Slideshow ▾ → Slideshow settings: type Self-playing with its delays, Loop, Restart if idle, saved on .slides", ss == ["self", "8", "2", True, "3"], str(ss))
     pg.keyboard.press("Escape")
     pg.evaluate("thumbs.blur()"); pg.keyboard.press("Meta+a")   # selection-only groups make the toolbar wide
     pg.set_viewport_size({"width": 760, "height": 900}); pg.wait_for_timeout(100)
@@ -1629,6 +1634,15 @@ def checks(pg, deck: Path, errors):
     v.evaluate("(() => { ['kb-0', 'kb-1'].forEach(id => document.getElementById(id).remove()); Reveal.sync(); Reveal.slide(0); })()")
     check(f"slideshow keys as Keynote: ⇧← takes back one build, ⇧→ goes to the next slide past the rest ({skip[1]} ms), reveal's H / K do nothing",
           back1 == [0, 0] and still == 0 and skip[0] == 1, f"{back1} {still} {skip}")
+    def show_with(attrs):   # a fresh slideshow whose .slides carries these settings before present.js reads them
+        pg2 = v.context.new_page(); pg2.set_viewport_size({"width": 1280, "height": 720})
+        pg2.add_init_script("new MutationObserver((_, o) => { const s = document.querySelector('.reveal .slides'); if (s) { Object.assign(s.dataset, %s); o.disconnect(); } }).observe(document, { childList: true, subtree: true });" % json.dumps(attrs))
+        pg2.goto(URL + "deck/deck.html"); pg2.wait_for_function("window.Reveal?.isReady?.()", timeout=20000); return pg2
+    s1 = show_with({"play": "self", "playSlide": "0.4", "playBuild": "0.2"}); s1.wait_for_timeout(2500)
+    selfp = s1.evaluate("Reveal.getSlides().length - 1 - Reveal.getSlides().indexOf(Reveal.getCurrentSlide())"); s1.close()   # 0: it played through to the last
+    s2 = show_with({"play": "links"}); s2.keyboard.press("ArrowRight"); s2.mouse.click(640, 360); s2.wait_for_timeout(300); links = s2.evaluate("Reveal.getIndices().h"); s2.close()
+    s3 = show_with({"loop": ""}); s3.evaluate("Reveal.slide(Reveal.getTotalSlides())"); s3.wait_for_timeout(200); s3.keyboard.press("End"); s3.keyboard.press("ArrowRight"); s3.wait_for_timeout(300); looped = s3.evaluate("Reveal.getIndices().h"); s3.close()
+    check("Slideshow settings play in the deck: Self-playing moves on by itself, Links only ignores keys and clicks, Loop goes round", selfp == 0 and links == 0 and looped == 0, f"{selfp} {links} {looped}")
     check("decks carry present.js (Slides' presenting keys)", v.evaluate("!!document.getElementById('deck-present') && !Reveal.getConfig().keyboard[79] && Reveal.getConfig().keyboard[79] === null"))
     check("viewer loads the notes plugin (S = speaker view)", v.evaluate("!!(window.Reveal && Reveal.hasPlugin('notes'))"))
     v.screenshot(path=str(HERE / "viewer.png"))

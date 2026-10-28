@@ -245,6 +245,8 @@ const SLIDESHOW = [
   { label: 'Presenter view', icon: 'co_present', run: () => openDeckTab(cur, true) },
   { label: 'Open in new tab', icon: 'open_in_new', run: () => openDeckTab(cur) },
   { label: 'Open as a scrolling page', icon: 'view_day', run: () => window.open('deck.html?view=scroll', '_blank') },   // reveal's scroll view: reads like a page, good on a phone
+  '-',
+  { label: 'Slideshow settings', icon: 'tune', run: () => showShowDialog(true) },
 ];
 document.querySelectorAll('#ed-menubar [data-menu]').forEach(btn => {
   btn.onclick = () => openAnchor === btn ? closeMenu() : openMenu(btn, MENUS[btn.dataset.menu]);

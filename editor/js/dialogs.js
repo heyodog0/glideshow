@@ -106,6 +106,30 @@ addEventListener('keydown', e => {
   if (e.key === 'Enter') applySpacing(); else showSpaceDialog(false);
 }, true);
 
+/* Slideshow ▾ → Slideshow settings, as Keynote's Document settings: the presentation type (Normal, Links only, Self-playing
+   with its delays), Loop and Restart if idle, saved on the deck's .slides element; present.js plays them. */
+const showDlg = $('#ed-showdlg'), SD = k => /** @type {HTMLInputElement} */ ($('#ed-show-' + k));
+function showShowDialog(on) {
+  closeMenu(); showDlg.hidden = !on; if (!on) return;
+  const d = deckDoc.querySelector('.slides').dataset;
+  SD('type').value = d.play || ''; SD('slide').value = d.playSlide || '5'; SD('build').value = d.playBuild || '2';
+  SD('loop').checked = 'loop' in d; SD('idle-on').checked = !!d.idle; SD('idle').value = d.idle || '5';
+  syncShowDialog();
+}
+function syncShowDialog() { showDlg.querySelectorAll('[data-self]').forEach(r => { /** @type {HTMLElement} */ (r).hidden = SD('type').value !== 'self'; }); SD('idle').disabled = !SD('idle-on').checked; }
+function saveShowSettings() {
+  const d = deckDoc.querySelector('.slides').dataset, n = k => Math.max(0, +SD(k).value || 0);
+  if (SD('type').value) d.play = SD('type').value; else delete d.play;
+  if (SD('type').value === 'self') { d.playSlide = String(n('slide')); d.playBuild = String(n('build')); } else { delete d.playSlide; delete d.playBuild; }
+  if (SD('loop').checked) d.loop = ''; else delete d.loop;
+  if (SD('idle-on').checked) d.idle = String(Math.max(1, Math.round(n('idle')))); else delete d.idle;
+  syncShowDialog(); scheduleSave();
+}
+for (const k of ['type', 'slide', 'build', 'loop', 'idle-on', 'idle']) SD(k).onchange = saveShowSettings;
+$('#ed-show-done').onclick = showDlg.querySelector('.sc-close').onclick = () => showShowDialog(false);
+showDlg.addEventListener('pointerdown', e => { if (e.target === showDlg) showShowDialog(false); });
+addEventListener('keydown', e => { if (!showDlg.hidden && (e.key === 'Escape' || e.key === 'Enter')) { e.preventDefault(); e.stopImmediatePropagation(); saveShowSettings(); showShowDialog(false); } }, true);
+
 /* Slide → Go to slide (⌃⌘G, Keynote's key): type a slide number, ⏎. */
 const gotoDlg = $('#ed-gotodlg');
 function showGoto(on) {

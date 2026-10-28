@@ -131,6 +131,7 @@
   };
   addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (linksOnly && !/^(Escape|q|Q|b|B|w|W|l|L|f|F|s|S|\?|\/)$/.test(e.key)) { e.preventDefault(); e.stopImmediatePropagation(); return; }   // Links only: no key moves the show
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;   // typing in a field on the page (a comment box) is not a slideshow key
     const k = e.key.toLowerCase();
     if (screen && k !== 'b' && k !== 'w') { screen.remove(); screen = null; if (k !== 'escape') { e.preventDefault(); e.stopImmediatePropagation(); return; } }
@@ -182,6 +183,23 @@
     autoT = setTimeout(() => { if (JSON.stringify(Reveal.getIndices()) === was) Reveal.nextFragment(); }, ms);
   };
   Reveal.on('slidechanged', cue); Reveal.on('fragmentshown', cue); Reveal.on('fragmenthidden', () => clearTimeout(autoT));
+  /* Slideshow settings (the deck's .slides): data-play="self" plays by itself, data-play-build seconds between builds and
+     data-play-slide before the next slide; data-play="links" moves only through links; data-loop goes round; data-idle
+     (minutes without a key or click) goes back to the first slide. */
+  const show = document.querySelector('.reveal .slides')?.dataset || {}, linksOnly = show.play === 'links';
+  if ('loop' in show) Reveal.configure({ loop: true });
+  let selfT = 0;
+  const selfPlay = () => {
+    clearTimeout(selfT); if (show.play !== 'self') return;
+    const sl = Reveal.getCurrentSlide(), more = sl && sl.querySelector('.fragment:not(.visible)');
+    selfT = setTimeout(() => { if (!Reveal.isLastSlide() || more || 'loop' in show) Reveal.next(); }, (more ? +show.playBuild || 2 : +show.playSlide || 5) * 1000);
+  };
+  if (show.play === 'self') { Reveal.on('slidechanged', selfPlay); Reveal.on('fragmentshown', selfPlay); Reveal.on('fragmenthidden', selfPlay); Reveal.isReady() ? selfPlay() : Reveal.on('ready', selfPlay); }
+  if (show.idle) {
+    let idleT = 0; const restart = () => { clearTimeout(idleT); idleT = setTimeout(() => { Reveal.slide(0, 0, -1); }, +show.idle * 60000); };
+    for (const ev of ['keydown', 'pointerdown', 'pointermove']) addEventListener(ev, restart, true);
+    restart();
+  }
   Reveal.isReady() ? cue() : Reveal.on('ready', cue);
   Reveal.configure({ keyboard: { 79: null, 86: null, 191: null, 190: null, 27: null, 72: null, 74: null, 75: null } });   // O, V, ?, ., Esc, and H / J / K (neither Slides' nor Keynote's)
   if (embedded) Reveal.on('ready', () => window.focus());
@@ -331,6 +349,7 @@
     else location.href = href;   // mailto:, tel:
   };
   addEventListener('click', e => {
+    if (linksOnly && !e.target.closest?.('a, [data-link]')) { down = null; return; }   // Links only: a click elsewhere doesn't advance
     const a = e.target.closest?.('.reveal a[href^="#"]:not([href^="#/"]), .reveal .box[data-link]');
     if (a && !e.defaultPrevented) { e.preventDefault(); down = null; follow(a.getAttribute('href') ?? a.dataset.link); return; }
     const d = down; down = null;
