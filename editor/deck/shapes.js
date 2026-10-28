@@ -225,7 +225,32 @@
     }
     if (!line) out.forEach(e => e.classList.contains('f') && dash(e, b, isNaN(sw) ? 0 : sw));
     svg.replaceChildren(...out);
+    const gr = gradOf(b);
+    if (gr) {   // a gradient fill (data-gradient): an SVG gradient the fill paths use; a fresh id each time, so a stale copy elsewhere never wins
+      const id = 'gr-' + (b.id || 'x') + '-' + (++gradN), r = gr.angle * Math.PI / 180, sx = Math.sin(r) / 2, sy = Math.cos(r) / 2;
+      const def = gr.radial ? el('radialGradient', { id, cx: '.5', cy: '.5', r: '.5' }) : el('linearGradient', { id, x1: .5 - sx, y1: .5 + sy, x2: .5 + sx, y2: .5 - sy });
+      gr.stops.forEach((c, k) => def.append(el('stop', { offset: k / (gr.stops.length - 1), 'stop-color': c })));
+      const defs = el('defs', {}); defs.append(def); svg.prepend(defs);
+      out.forEach(e => { if (e.classList.contains('f') && e.style.fill !== 'none') e.style.fill = `url(#${id})`; });
+    }
   }
+  /* Gradient fills (Fill colour → Gradient, as Slides; Keynote's Gradient Fill): data-gradient="linear 90 #rrggbb #rrggbb"
+     (angle in degrees, CSS's: 90 runs left to right) or "radial #inner #outer". Shapes draw it in their SVG; other boxes
+     get it as --grad (derived, never saved). */
+  let gradN = 0;
+  function gradOf(b) {
+    const m = (b.dataset.gradient || '').trim().split(/\s+/), radial = m[0] === 'radial';
+    if (!radial && m[0] !== 'linear') return null;
+    const stops = m.slice(radial ? 1 : 2).filter(c => /^#[0-9a-f]{3,8}$/i.test(c));
+    return stops.length >= 2 ? { radial, angle: radial ? 0 : +m[1] || 0, stops } : null;
+  }
+  function gradBox(b) {
+    if (b.dataset.shape) { renderShape(b); return; }
+    const g = gradOf(b);
+    if (g) b.style.setProperty('--grad', g.radial ? `radial-gradient(circle, ${g.stops.join(', ')})` : `linear-gradient(${g.angle}deg, ${g.stops.join(', ')})`);
+    else b.style.removeProperty('--grad');
+  }
+  window.gradBox = gradBox;
 
   /* A drop shadow is drawn in the box's own frame (filter runs before transform), so counter-rotate
      its offset to keep it falling straight down the page whatever the box's rotate/flip. */
@@ -339,6 +364,7 @@
   document.querySelectorAll('.box[data-shadow]').forEach(shadeBox);
   document.querySelectorAll('.box[data-crop]').forEach(cropBox);
   document.querySelectorAll('.box[data-adjust]').forEach(adjustImage);
+  document.querySelectorAll('.box[data-gradient]:not([data-shape])').forEach(gradBox);
   const fitAll = () => document.querySelectorAll('.box[data-autofit="shrink"]').forEach(fitText);
   fitAll(); document.fonts?.ready.then(fitAll);   // web fonts change text metrics
   if (window.Reveal?.on) { Reveal.on('ready', fitAll); Reveal.on('slidechanged', fitAll); }   // slides are hidden until shown

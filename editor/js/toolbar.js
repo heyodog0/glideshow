@@ -55,9 +55,10 @@ function openPalette(btn) {
   if (btn.dataset.for !== 'color' && btn.dataset.for !== 'bg') {
     const t = document.createElement('button'), none = btn.dataset.for === 'hilite';
     t.className = 'menu-item transparent'; t.innerHTML = `<span class="icon">format_color_reset</span><span class="menu-label">${none ? 'None' : 'Transparent'}</span>`;
-    t.onclick = () => { closeMenu(); if (none) hilite('transparent'); else if (btn.dataset.for === 'fill') { setVar('--fill', 'transparent'); commit(); } else noBorder(); };
+    t.onclick = () => { closeMenu(); if (none) hilite('transparent'); else if (btn.dataset.for === 'fill') { setGradient(null); setVar('--fill', 'transparent'); commit(); } else noBorder(); };
     m.append(t, div('menu-sep'));
   }
+  let solidStart = m.children.length;
   const theme = div('palette-head'); theme.textContent = 'SIMPLE LIGHT'; m.append(theme);
   const themeRow = div('cells'); THEME_COLORS.forEach(c => themeRow.append(cell(c))); m.append(themeRow);
   const head = div('palette-head'); head.textContent = 'CUSTOM'; m.append(head);
@@ -74,7 +75,7 @@ function openPalette(btn) {
   drop.hidden = !window.EyeDropper;
   drop.onclick = async () => { closeMenu(); try { const { sRGBHex } = await new EyeDropper().open(); rememberColor(sRGBHex); setColor(input, sRGBHex); } catch {} };
   custom.append(plus, drop, ...recentColors().map(cell)); m.append(custom, div('menu-sep'));
-  const grid = div('cells'); PALETTE.forEach(c => grid.append(cell(c))); m.append(grid);
+  const grid = div('cells std'); PALETTE.forEach(c => grid.append(cell(c))); m.append(grid);
   if (btn.dataset.for === 'fill' && sel.size) {   // fill transparency, as Slides' custom colour: 0 % opaque … 100 % clear
     const fill = [...sel][0].style.getPropertyValue('--fill'), row = div('palette-alpha');
     row.innerHTML = '<span>Transparency</span><input type="range" min="0" max="100" step="1"><span class="pct"></span>';
@@ -84,14 +85,52 @@ function openPalette(btn) {
     range.onchange = commit;
     m.append(div('menu-sep'), row);
   }
+  if (btn.dataset.for === 'fill' && sel.size) gradientTabs(m, solidStart);
   document.body.append(m);
   const r = btn.getBoundingClientRect();
   m.style.left = Math.min(r.left, innerWidth - m.offsetWidth - 8) + 'px'; m.style.top = r.bottom + 2 + 'px';
   btn.classList.add('open'); openMenuEl = m; openAnchor = btn;
 }
+/* Fill colour → Solid | Gradient, as Slides: preset gradients (each hue light to dark, linear and radial) and a custom one
+   (type, angle, two colours), applied as data-gradient (shapes.js draws it); a solid colour or Transparent removes it. */
+const gradSpec = b => b?.dataset.gradient || '';
+function setGradient(spec) {
+  for (const b of sel) {
+    if (spec) { b.dataset.gradient = spec; b.style.setProperty('--fill', spec.match(/#[0-9a-f]{3,8}/i)?.[0] || '#4a86e8'); } else delete b.dataset.gradient;
+    gradBox(b);
+  }
+  drawOverlay();
+}
+const cssGrad = spec => { const m = spec.split(' '); return m[0] === 'radial' ? `radial-gradient(circle, ${m.slice(1).join(', ')})` : `linear-gradient(${m[1]}deg, ${m.slice(2).join(', ')})`; };
+function gradientTabs(m, solidStart) {
+  const solid = [...m.children].slice(solidStart), pane = div('grad-pane'), tabs = div('palette-tabs');
+  tabs.innerHTML = '<button data-t="solid">Solid</button><button data-t="gradient">Gradient</button>';
+  const show = t => { tabs.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.t === t)); solid.forEach(e => { /** @type {HTMLElement} */ (e).hidden = t !== 'solid'; }); pane.hidden = t !== 'gradient'; };
+  tabs.onclick = e => { const t = /** @type {HTMLElement} */ (e.target).closest('button'); if (t) show(t.dataset.t); };
+  const presets = div('cells'), cur = gradSpec([...sel][0]);
+  for (const kind of ['linear', 'radial']) for (let i = 0; i < 10; i++) {
+    const spec = kind === 'linear' ? `linear 180 ${PALETTE[20 + i]} ${PALETTE[60 + i]}` : `radial ${PALETTE[20 + i]} ${PALETTE[50 + i]}`, c = document.createElement('button');
+    c.className = 'cell' + (spec === cur ? ' on' : ''); c.style.background = cssGrad(spec); c.dataset.tip = kind === 'linear' ? 'Linear' : 'Radial';
+    c.onclick = () => { closeMenu(); setGradient(spec); commit(); }; presets.append(c);
+  }
+  const [k0 = 'linear', ...rest] = (cur || `linear 180 ${PALETTE[26]} ${PALETTE[66]}`).split(' '), angle0 = k0 === 'radial' ? '180' : rest[0], [c1, c2] = k0 === 'radial' ? rest : rest.slice(1);
+  const custom = div('grad-custom');
+  custom.innerHTML = `<select class="gk"><option value="linear">Linear</option><option value="radial">Radial</option></select>
+    <label class="ga">Angle<input type="number" min="0" max="359" step="15"> °</label><input type="color" class="g1" title="Start colour"><input type="color" class="g2" title="End colour">`;
+  const q = s => /** @type {HTMLInputElement} */ (custom.querySelector(s));
+  q('.gk').value = k0; q('.ga input').value = angle0; q('.g1').value = c1 || PALETTE[26]; q('.g2').value = c2 || PALETTE[66];
+  const apply = () => { const radial = q('.gk').value === 'radial'; q('.ga').hidden = radial;
+    setGradient(radial ? `radial ${q('.g1').value} ${q('.g2').value}` : `linear ${(+q('.ga input').value || 0) % 360} ${q('.g1').value} ${q('.g2').value}`); };
+  q('.ga').hidden = k0 === 'radial';
+  for (const s of ['.gk', '.ga input', '.g1', '.g2']) { q(s).oninput = apply; q(s).onchange = () => { apply(); commit(); }; }
+  const head = div('palette-head'), head2 = div('palette-head'); head.textContent = 'PRESETS'; head2.textContent = 'CUSTOM';
+  pane.append(head, presets, head2, custom);
+  m.prepend(tabs); m.append(pane);   // Slides: the two tabs on top
+  show(cur ? 'gradient' : 'solid');
+}
 document.querySelectorAll('.swatch[data-for]').forEach(btn => { btn.onclick = () => openAnchor === btn ? closeMenu() : openPalette(btn); });
 $('#ed-hilite').onchange = e => hilite(e.target.value);
-$('#ed-fill').oninput = e => setVar('--fill', e.target.value);
+$('#ed-fill').oninput = e => { setGradient(null); setVar('--fill', e.target.value); };
 $('#ed-fill').onchange = commit;
 $('#ed-stroke').oninput = e => {
   setVar('--stroke', e.target.value);

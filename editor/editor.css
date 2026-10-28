@@ -147,6 +147,13 @@ input[type=number] { width: 58px; border-color: var(--divider); padding: 0 4px; 
 .cell.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--blue); }
 .cell.plus { display: flex; align-items: center; justify-content: center; background: var(--surface); color: var(--muted); }
 .cell.plus .icon { font-size: 16px; }
+.palette-tabs { display: flex; gap: 4px; padding: 0 12px 6px; }
+.palette-tabs button { flex: 1; height: 28px; border: 0; border-radius: 14px; background: none; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+.palette-tabs button.on { background: var(--selected); font-weight: 500; }
+.palette [hidden] { display: none !important; }
+.grad-custom { display: flex; align-items: center; gap: 6px; padding: 4px 12px 6px; font-size: 12px; color: var(--muted); }
+.grad-custom label { display: flex; align-items: center; gap: 4px; } .grad-custom input[type=number] { width: 48px; }
+.grad-custom input[type=color] { width: 28px; height: 24px; padding: 0; border: 1px solid var(--divider); border-radius: 4px; background: none; }
 .palette-head { padding: 8px 12px 2px; font-size: 11px; font-weight: 500; letter-spacing: .08em; color: var(--muted); }
 .tip { position: fixed; z-index: 40; pointer-events: none; padding: 4px 8px; border-radius: var(--radius); background: var(--tip); color: #fff; font-size: 12px; line-height: 16px; white-space: nowrap; pointer-events: none; }
 #ed-status { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; font-size: 13px; }
