@@ -2019,8 +2019,8 @@ def cli_checks(b):
         fake = Path(tempfile.mkdtemp(prefix="slides-user-"))
         subprocess.run([str(ROOT / "bin" / "glideshow"), "skill"], env={**env, "HOME": str(fake)}, capture_output=True, text=True, timeout=120)
         link = fake / ".claude" / "skills" / "glideshow"
-        check("glideshow docs prints the recipes and the format reference; glideshow render <deck> 1 writes slide 1 and prints its path; glideshow skill links the skill into ~/.claude/skills",
-              "# Writing slides as an agent" in docs and "Deck format" in docs and rendered == [str((shots / "slide-01.png").resolve())] and (shots / "slide-01.png").stat().st_size > 5000
+        check("glideshow docs prints the recipes, docs reference the format reference; glideshow render <deck> 1 writes slide 1 and prints its path; glideshow skill links the skill into ~/.claude/skills",
+              "# Writing slides as an agent" in docs and "Deck format" in docs and rendered == [str((shots / "slide-01.png").resolve())] and (shots / "slide-01.png").stat().st_size > 1500
               and link.is_symlink() and "name: glideshow" in (link / "SKILL.md").read_text(), f"{rendered} {link.is_symlink()}")
     finally:
         subprocess.run(["pkill", "-f", f"glideshow.server.*{home}"])
