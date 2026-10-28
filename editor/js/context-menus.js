@@ -20,6 +20,7 @@ function objectMenu() {
     '-', { label: 'Link', icon: 'link', key: '⌘K', run: linkText, off: () => sel.size !== 1 },   // pictures too, as Keynote
     '-',
     { label: 'Animate', icon: 'animation', run: () => $('#ed-animate').click() },
+    ...(animSel() ? [editItem('Copy animation')] : []), ...(copiedAnim ? [editItem('Paste animation')] : []),
     '-',
     { label: 'Format options', icon: 'format_paint', run: () => setPanel(true) },
     ...(one?.classList.contains('image') ? ['-', ...IMAGE_ITEMS(), { label: 'Set image as background', icon: 'wallpaper', run: () => imageToBackground(one) }] : []),

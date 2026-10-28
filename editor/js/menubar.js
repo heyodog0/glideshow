@@ -79,6 +79,9 @@ const MENUS = {
     { label: 'Delete', icon: 'delete', run: deleteSelection, off: noSel },
     { label: 'Duplicate', icon: 'control_point_duplicate', key: '⌘D', run: duplicateSelection, off: noSel },
     '-',
+    { label: 'Copy animation', icon: 'animation', run: copyAnim, off: () => !animSel() },
+    { label: 'Paste animation', run: pasteAnim, off: () => !copiedAnim || !sel.size },
+    '-',
     { label: 'Find and replace', icon: 'find_replace', key: '⇧⌘H', run: openFind },
   ],
   View: [   // Slides' order: Slideshow, Motion, Theme builder | Grid view, Show ruler | Guides, Snap to | notes, filmstrip | zoom

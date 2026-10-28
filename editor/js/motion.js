@@ -51,6 +51,26 @@ function addAnim() {   // boxes animated together (several selected) share one c
   [...sel].filter(b => !b.classList.contains('fragment')).forEach((b, i) => { setEffect(b, 'fade-in'); if (i) b.dataset.withPrevious = ''; list.push(b); });
   renumber(list); commit(); renderAnims();
 }
+/* Edit → Copy animation / Paste animation, as Keynote: the effect, its delivery (by paragraph) and its start
+   (on click or with previous) onto the selection. An object not yet animated joins the end of the order. */
+let copiedAnim = null;
+const animSel = () => [...sel].find(b => b.classList.contains('fragment'));
+function copyAnim() {
+  const b = animSel(); if (!b) return;
+  copiedAnim = { eff: effectOf(b), build: b.dataset.build, withPrevious: 'withPrevious' in b.dataset }; setStatus('Animation copied');
+}
+function pasteAnim() {
+  if (!copiedAnim || !sel.size) return;
+  const list = animBoxes(), { eff, build, withPrevious } = copiedAnim;
+  [...sel].forEach((b, i) => {
+    const was = b.classList.contains('fragment');
+    setEffect(b, eff);
+    if (build && !isMedia(b) && !isStroke(b)) b.dataset.build = build; else delete b.dataset.build;
+    if (withPrevious || (i && !was)) b.dataset.withPrevious = ''; else delete b.dataset.withPrevious;
+    if (!was) list.push(b);
+  });
+  renumber(list); commit(); renderAnims();
+}
 function removeAnim(b) {
   b.classList.remove('fragment', ...EFFECTS.map(e => e[0])); delete b.dataset.fragmentIndex; delete b.dataset.withPrevious; delete b.dataset.build;
   renumber(animBoxes()); commit(); renderAnims();

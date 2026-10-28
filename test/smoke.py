@@ -1168,6 +1168,16 @@ def checks(pg, deck: Path, errors):
     together = pg.evaluate("""(() => { const a = makeBox({x:100,y:850,w:300,h:100,html:'Third'}), b = makeBox({x:500,y:850,w:300,h:100,html:'Fourth'}); slides[cur].append(a, b); render();
       sel = new Set([a, b]); drawOverlay(); addAnim(); const out = [a, b].map(x => [x.dataset.fragmentIndex, 'withPrevious' in x.dataset]); a.remove(); b.remove(); renumber(animBoxes()); sel.clear(); render(); return out; })()""")
     check("Add animation on several selected objects: they animate together (one click, the rest with previous)", together == [["2", False], ["2", True]], str(together))
+    cp = pg.evaluate("""(() => { const a = makeBox({x:100,y:850,w:300,h:100,html:'<p>one</p><p>two</p>'}), b = makeBox({x:500,y:850,w:300,h:100,html:'Other'}); slides[cur].append(a, b); render();
+      setEffect(a, 'fade-right'); a.dataset.build = 'paragraph'; renumber([...animBoxes().filter(x => x !== a), a]); sel = new Set([a]); render(); return [a.id, b.id]; })()""")
+    pg.click("#ed-menubar [data-menu=Edit]"); pg.click(".menu-item:has(.menu-label:text-is('Copy animation'))")
+    pg.evaluate(f"(() => {{ sel = new Set([document.getElementById('{cp[1]}')]); render(); }})()")
+    pg.click(f"#{cp[1]}", button="right"); rpaste = pg.evaluate("[...document.querySelectorAll('.menu .menu-label')].map(e => e.textContent).includes('Paste animation')"); pg.keyboard.press("Escape")
+    t0 = pg.evaluate("performance.now()"); pg.evaluate("closeMenu(); pasteAnim()"); pa_ms = pg.evaluate(f"Math.round(performance.now() - {t0})")
+    pasted = pg.evaluate(f"""(() => {{ const a = document.getElementById('{cp[0]}'), b = document.getElementById('{cp[1]}');
+      const out = [b.classList.contains('fade-right'), b.dataset.build, +b.dataset.fragmentIndex > +a.dataset.fragmentIndex]; a.remove(); b.remove(); renumber(animBoxes()); sel.clear(); render(); commit(); return out; }})()""")
+    check(f"Edit → Copy animation / Paste animation ({pa_ms} ms): effect and by-paragraph delivery onto another object, which joins the end of the order; right-click offers Paste",
+          pasted == [True, "paragraph", True] and rpaste, f"{pasted} {rpaste}")
     pg.evaluate(f"(() => {{ ['{an[0]}', '{an[1]}'].forEach(id => document.getElementById(id).remove()); sel.clear(); render(); commit(); }})()")
     check("Motion: Insert → Animation, effect (fly in from left = fade-right), drag reorder → data-fragment-index",
           anim == [["box fragment fade-right", "1"], ["box fragment fade-in", "0"]] and rows == ["Second", "First"] and withp == ["0", "0"], f"{anim} {rows} {withp}")
