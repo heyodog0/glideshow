@@ -50,6 +50,11 @@ const openAnims = new Set();
 const START_LABEL = { click: 'On click', with: 'With previous', after: 'After previous', transition: 'After transition' };
 const EASES = [['', 'Acceleration: default'], ['linear', 'None'], ['ease-in', 'Ease in'], ['ease-out', 'Ease out'], ['ease-in-out', 'Ease in and out']];
 const TIMING = ['start', 'duration', 'delay', 'ease'];
+/* Delivery (data-build), as Keynote: a text box by paragraph, by highlighted paragraph (the earlier ones dim), by word
+   or by character; a table by row, column or cell. present.js plays them. */
+const DELIVERY_TEXT = [['', 'All at once'], ['paragraph', 'By paragraph'], ['highlight', 'By highlighted paragraph'], ['word', 'By word'], ['character', 'By character']];
+const DELIVERY_TABLE = [['', 'All at once'], ['row', 'By row'], ['column', 'By column'], ['cell', 'By cell']];
+const deliveries = b => isMedia(b) || isStroke(b) || isGroup(b) ? [] : content(b)?.querySelector('table') ? DELIVERY_TABLE : content(b)?.textContent.trim() ? DELIVERY_TEXT : [];
 const startOf = b => 'withPrevious' in b.dataset ? 'with' : b.dataset.start || 'click';
 function setStart(b, v) { delete b.dataset.withPrevious; delete b.dataset.start; if (v === 'with') b.dataset.withPrevious = ''; else if (v !== 'click') b.dataset.start = v; }
 function setEffect(b, eff) { b.classList.remove(...EFFECTS.map(e => e[0])); b.classList.add('fragment', eff); }
@@ -72,7 +77,7 @@ function pasteAnim() {
   [...sel].forEach((b, i) => {
     const was = b.classList.contains('fragment');
     setEffect(b, eff);
-    if (build && !isMedia(b) && !isStroke(b)) b.dataset.build = build; else delete b.dataset.build;
+    if (build && deliveries(b).some(([v]) => v === build)) b.dataset.build = build; else delete b.dataset.build;
     for (const k of TIMING) if (timing[k] != null) b.dataset[k] = timing[k]; else delete b.dataset[k];
     if (withPrevious || (i && !was)) { b.dataset.withPrevious = ''; delete b.dataset.start; } else delete b.dataset.withPrevious;
     if (!was) list.push(b);
@@ -106,9 +111,10 @@ function renderAnims() {
       <div class="timing"><label>Duration (s)<input class="dur" type="number" min="0.1" max="20" step="0.1" placeholder="0.5"></label>
       <label>Delay (s)<input class="del" type="number" min="0" max="60" step="0.1" placeholder="0"></label></div>
       <select class="ease">${EASES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
-      <label class="para chk"><input type="checkbox"> By paragraph</label></div>`;
+      <select class="dl"></select></div>`;
     const when = start === 'with' ? `With build ${step}` : start === 'after' && i ? `After build ${step - 1}` : START_LABEL[start] || 'On click';   // Keynote names the build it follows
-    r.querySelector('.eff').textContent = `${EFFECTS.find(e => e[0] === effectOf(b))[1]}${b.dataset.build === 'paragraph' ? ' by paragraph' : ''}  (${when})`;
+    const dl = deliveries(b), how = dl.find(([v]) => v && v === b.dataset.build)?.[1];
+    r.querySelector('.eff').textContent = `${EFFECTS.find(e => e[0] === effectOf(b))[1]}${how ? ' ' + how.toLowerCase() : ''}  (${when})`;
     r.querySelector('.what').textContent = animLabel(b);
     const se = r.querySelector('select.e'), tr = r.querySelector('select.t'); se.value = effectOf(b); tr.value = start;
     se.onchange = () => { each(x => setEffect(x, se.value)); commit(); renderAnims(); };
@@ -118,9 +124,9 @@ function renderAnims() {
     num('.dur', 'duration'); num('.del', 'delay');
     const ez = /** @type {HTMLSelectElement} */ (r.querySelector('select.ease')); ez.value = b.dataset.ease || '';
     ez.onchange = () => { each(x => { if (ez.value) x.dataset.ease = ez.value; else delete x.dataset.ease; }); commit(); renderAnims(); };
-    const para = /** @type {HTMLInputElement} */ (r.querySelector('.para input')), textual = !isMedia(b) && !isStroke(b) && !!content(b)?.textContent.trim();
-    /** @type {HTMLElement} */ (r.querySelector('.para')).hidden = !textual; para.checked = b.dataset.build === 'paragraph';   // Slides' "By paragraph": one step per paragraph or bullet
-    para.onchange = () => { if (para.checked) b.dataset.build = 'paragraph'; else delete b.dataset.build; commit(); renderAnims(); };
+    const ds = /** @type {HTMLSelectElement} */ (r.querySelector('select.dl'));
+    ds.hidden = !dl.length; ds.innerHTML = dl.map(([v, l]) => `<option value="${v}">${l}</option>`).join(''); ds.value = b.dataset.build || '';
+    ds.onchange = () => { each(x => { if (ds.value && deliveries(x).some(([v]) => v === ds.value)) x.dataset.build = ds.value; else delete x.dataset.build; }); commit(); renderAnims(); };
     r.querySelector('.anim-head button').onclick = () => removeAnim(b);
     r.querySelector('.anim-head').onclick = e => {
       if (e.target.closest('button')) return;

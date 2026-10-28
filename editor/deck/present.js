@@ -8,22 +8,53 @@
   /* Morph (data-auto-animate on a slide): reveal's Auto-Animate from the slide before, which needs the attribute too.
      Boxes pair by data-morph (Duplicate slide sets it to the original's id), else by their own id.
      Builds by paragraph (data-build="paragraph" on an animated text box): each paragraph or list item is its own step,
-     with the box's effect, and the slide's later steps move back to make room. */
+     with the box's effect, and the slide's later steps move back to make room; "highlight" too, dimming the ones before
+     the current one; a table by "row", "column" or "cell" the same way. By "word" or "character" stays one step, the
+     text arriving a word or letter at a time over the build's duration. */
+  /* By word / by character: each word (or letter, kept within its word so lines break as before) in a span that arrives
+     with the box's effect, one after another over the build's duration. Out and emphasis effects stay whole. */
+  const FROM = { appear: 'none', 'fade-in': 'none', 'fade-right': 'translateX(-1em)', 'fade-left': 'translateX(1em)', 'fade-up': 'translateY(.8em)', 'fade-down': 'translateY(-.8em)', 'zoom-in': 'scale(.1)' };
+  const wordByWord = (box, mode, cls) => {
+    const eff = cls.find(c => c in FROM); if (!eff || cls.length > 1) return;
+    const texts = [], tw = document.createTreeWalker(box.querySelector(':scope > .content') || box, NodeFilter.SHOW_TEXT);
+    for (let n; (n = tw.nextNode());) if (n.data.trim()) texts.push(n);
+    let i = 0;
+    for (const t of texts) {
+      const frag = document.createDocumentFragment();
+      for (const piece of t.data.split(/(\s+)/)) {
+        if (!piece) continue;
+        if (/^\s+$/.test(piece)) { frag.append(piece); continue; }
+        const word = document.createElement('span');
+        if (mode === 'word') { word.className = 'gs-w'; word.style.setProperty('--i', String(i++)); word.textContent = piece; }
+        else { word.className = 'gs-word'; for (const ch of piece) { const c = document.createElement('span'); c.className = 'gs-w'; c.style.setProperty('--i', String(i++)); c.textContent = ch; word.append(c); } }
+        frag.append(word);
+      }
+      t.replaceWith(frag);
+    }
+    const total = (+box.dataset.duration || 1) * 1000, step = total / Math.max(1, i);
+    box.classList.add('gs-seq');
+    box.style.cssText += `;--gs-step:${step}ms;--gs-d:${eff === 'appear' ? 0 : Math.min(total, Math.max(200, step * 3))}ms;--gs-from:${FROM[eff]};--gs-ease:${box.dataset.ease || 'ease'};transition-duration:${total}ms`;
+  };
   const prepare = () => {
     const all = Reveal.getSlides();
     all.forEach((sl, i) => { if (sl.hasAttribute('data-auto-animate') && all[i - 1] && !all[i - 1].hasAttribute('data-auto-animate')) all[i - 1].setAttribute('data-auto-animate', ''); });
     document.querySelectorAll('.reveal .slides .box').forEach(b => { if (!b.dataset.id) b.dataset.id = b.dataset.morph || b.id; });
     let changed = false;
     all.forEach(sl => {
-      const frags = [...sl.querySelectorAll('.box.fragment[data-build="paragraph"]')].sort((a, b) => (+a.dataset.fragmentIndex || 0) - (+b.dataset.fragmentIndex || 0));
+      const frags = [...sl.querySelectorAll('.box.fragment[data-build]')].sort((a, b) => (+a.dataset.fragmentIndex || 0) - (+b.dataset.fragmentIndex || 0));
       frags.reverse().forEach(box => {   // from the last, so each one's room doesn't move the ones before it
-        const parts = [...box.querySelectorAll(':scope > .content > :is(p, div, h1, h2, h3, h4, h5, h6), :scope > .content > :is(ul, ol) > li')];
-        if (parts.length < 2) return;
-        const at = +box.dataset.fragmentIndex || 0, cls = [...box.classList].filter(c => /^(appear|fade-[\w-]+|zoom-in|grow|shrink|strike|semi-fade-out|current-visible|highlight-[\w-]+)$/.test(c));   // its effect
-        sl.querySelectorAll('.fragment').forEach(f => { if (f !== box && +f.dataset.fragmentIndex > at) f.dataset.fragmentIndex = String(+f.dataset.fragmentIndex + parts.length - 1); });
+        const mode = box.dataset.build, cls = [...box.classList].filter(c => /^(appear|fade-[\w-]+|zoom-in|grow|shrink|strike|semi-fade-out|current-visible|highlight-[\w-]+)$/.test(c));   // its effect
+        if (mode === 'word' || mode === 'character') { wordByWord(box, mode, cls); return; }
+        const table = box.querySelector(':scope > .content table'), cells = table ? [...table.querySelectorAll('td, th')] : [];
+        const groups = mode === 'row' ? [...(table?.rows || [])].map(r => [r]) : mode === 'cell' ? cells.map(c => [c])
+          : mode === 'column' ? [...new Set(cells.map(c => /** @type {HTMLTableCellElement} */ (c).cellIndex))].sort((a, b) => a - b).map(n => cells.filter(c => /** @type {HTMLTableCellElement} */ (c).cellIndex === n))
+          : [...box.querySelectorAll(':scope > .content > :is(p, div, h1, h2, h3, h4, h5, h6), :scope > .content > :is(ul, ol) > li')].map(p => [p]);
+        if (groups.length < 2) return;
+        const at = +box.dataset.fragmentIndex || 0;
+        sl.querySelectorAll('.fragment').forEach(f => { if (f !== box && +f.dataset.fragmentIndex > at) f.dataset.fragmentIndex = String(+f.dataset.fragmentIndex + groups.length - 1); });
         box.classList.remove('fragment', ...cls); delete box.dataset.fragmentIndex;
-        parts.forEach((el, i) => { el.classList.add('fragment', ...cls); el.dataset.fragmentIndex = String(at + i);
-          for (const k of i ? ['duration', 'ease'] : ['duration', 'ease', 'delay', 'start']) if (box.dataset[k]) el.dataset[k] = box.dataset[k]; });   // the box's timing; its start and delay on the first part
+        groups.forEach((g, i) => g.forEach(el => { el.classList.add('fragment', ...cls); if (mode === 'highlight') el.classList.add('gs-hl'); el.dataset.fragmentIndex = String(at + i);
+          for (const k of i ? ['duration', 'ease'] : ['duration', 'ease', 'delay', 'start']) if (box.dataset[k]) el.dataset[k] = box.dataset[k]; }));   // the box's timing; its start and delay on the first part
         changed = true;
       });
     });
@@ -154,6 +185,11 @@
   css.textContent = `
     html, body, .reveal { background: #000 !important; }
     .reveal .box[data-link] { cursor: pointer; }
+    .reveal .slides .box.fragment.gs-seq { opacity: 1 !important; visibility: inherit !important; transform: none !important; }
+    .reveal .gs-seq .gs-w { display: inline-block; opacity: 0; transform: var(--gs-from); transition: opacity var(--gs-d) var(--gs-ease), transform var(--gs-d) var(--gs-ease); transition-delay: calc(var(--i) * var(--gs-step)); }
+    .reveal .gs-seq.visible .gs-w { opacity: 1; transform: none; }
+    .reveal .gs-word { white-space: nowrap; }
+    .reveal .slides .fragment.gs-hl.visible:not(.current-fragment) { opacity: .35; }
     .reveal .backgrounds { display: none; }
     .sl-bar { position: fixed; left: 20px; bottom: 20px; z-index: 102; display: flex; align-items: center; height: 36px; padding: 0 4px;
       background: #f8fafd; border-radius: 18px; color: #444746; font: 14px Roboto, -apple-system, Arial, sans-serif;

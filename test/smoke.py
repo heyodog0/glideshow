@@ -1624,11 +1624,20 @@ def reveal_checks(b, errors, deck_file: Path):
 
     # builds: more effects; by paragraph; a stack of pictures shown one after another
     eff = pg.evaluate("EFFECTS.map(e => e[0])")
+    dl = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
+      const w = makeBox({ x: 100, y: 100, w: 900, h: 150, html: 'alpha beta gamma' }), h = makeBox({ x: 100, y: 300, w: 900, h: 300, html: '<ul><li>Hi one</li><li>Hi two</li></ul>' });
+      const tb = makeBox({ x: 1100, y: 100, w: 600, h: 200, cls: 'table', html: '<table><tr><td>a</td><td>b</td><td>c</td></tr><tr><td>d</td><td>e</td><td>f</td></tr></table>' });
+      slides[cur].append(w, h, tb); render(); for (const b of [w, h, tb]) { sel = new Set([b]); addAnim(); }
+      w.dataset.build = 'word'; h.dataset.build = 'highlight'; tb.dataset.build = 'column'; commit(); render(); sel = new Set([tb]); renderAnims();
+      return [deliveries(w).map(d => d[1]), deliveries(tb).map(d => d[1]), [...document.querySelectorAll('.anim-row .eff')].map(e => e.textContent.split('  ')[0])]; }""")
+    check("Motion panel → Delivery: text All at once / By paragraph / By highlighted paragraph / By word / By character; a table By row / column / cell",
+          dl[0] == ["All at once", "By paragraph", "By highlighted paragraph", "By word", "By character"] and dl[1] == ["All at once", "By row", "By column", "By cell"]
+          and dl[2] == ["Fade in by word", "Fade in by highlighted paragraph", "Fade in by column"], str(dl))
     pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
       const t = makeBox({ x: 100, y: 100, w: 900, h: 500, html: '<ul><li>One</li><li>Two</li><li>Three</li></ul>' }), after = makeBox({ x: 1100, y: 100, w: 500, h: 200, html: 'After' });
       slides[cur].append(t, after); render(); sel = new Set([t]); addAnim(); sel = new Set([after]); addAnim();
       setEffect(t, 'fade-in-then-semi-out'); t.dataset.build = 'paragraph'; t.dataset.duration = '1.2'; t.dataset.ease = 'ease-in'; t.dataset.delay = '0.5'; commit(); render(); }""")
-    pg.wait_for_selector("#ed-anim-list .anim-row .para", state="attached")
+    pg.wait_for_selector("#ed-anim-list .anim-row select.dl", state="attached")
     pics = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
       const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
       const ps = [0, 1, 2].map(i => makeBox({ x: 100 + i * 500, y: 200 + i * 40, w: 400, h: 300, cls: 'image', html: `<img src="${png}" alt="">` }));
@@ -1645,6 +1654,15 @@ def reveal_checks(b, errors, deck_file: Path):
     check("…by paragraph: in the slideshow each bullet is its own step, with the box's effect, and the next animation follows them",
           para[:2] == [["0", "1", "2"], "3"], str(para))
     check("…its timing (1.2 s, ease in, 0.5 s delay) plays on every bullet, the delay on the first only", para[2] == ["1.2s ease-in 0.5s", "1.2s ease-in", "1.2s ease-in"], str(para[2]))
+    dv = v.evaluate("""() => { const s = Reveal.getSlides().find(x => x.textContent.includes('alpha beta')), w = [...s.querySelectorAll('.box')].find(b => b.textContent.includes('alpha'));
+      const cells = [...s.querySelectorAll('td')].map(c => c.dataset.fragmentIndex), li = [...s.querySelectorAll('li')];
+      return [w.querySelectorAll('.gs-w').length, w.classList.contains('gs-seq'), cells, li.map(l => l.classList.contains('gs-hl') && l.classList.contains('fragment')), Reveal.getIndices(s).h]; }""")
+    v.evaluate(f"Reveal.slide({dv[4]}, 0, -1)"); v.wait_for_timeout(900); v.evaluate("Reveal.nextFragment()")
+    v.wait_for_timeout(200); mid = v.evaluate("[...document.querySelectorAll('.reveal .present .gs-w')].map(w => +getComputedStyle(w).opacity)")
+    v.wait_for_timeout(1400); end = v.evaluate("[...document.querySelectorAll('.reveal .present .gs-w')].map(w => +getComputedStyle(w).opacity > .99)")
+    v.evaluate("Reveal.slide(0)")
+    check("…in the slideshow: by word, the words arrive one after another in one step; by highlighted paragraph each bullet is a step; a table by column builds column by column",
+          dv[:2] == [3, True] and dv[2] == ["3", "4", "5", "3", "4", "5"] and dv[3] == [True, True] and mid[0] > .05 and mid[2] == 0 and all(end), f"{dv} {mid} {end}")
 
     # live box: its own page in assets/, sandboxed in the slide and served with a sandbox policy; double-click edits it
     pg.evaluate("go(slides.length - 1)"); pg.evaluate("addLive()"); pg.wait_for_function("boxes(slides[cur]).some(b => b.classList.contains('live'))"); settle()
