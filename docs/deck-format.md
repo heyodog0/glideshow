@@ -106,6 +106,7 @@ Rules:
   duplicate the slide (Duplicate slide sets `data-morph` on each copy), change the copy, and give it `data-auto-animate`. By
   hand, see "Building a diagram up step by step" above. Optional `data-auto-animate-duration` in seconds (0.5 fast, 1.4 slow).
 - Object animations are reveal fragments on the box: `class="box fragment fade-in"` (or `appear`, `fade-right` = fly in from left, `fade-left`, `fade-up`, `fade-down`, `zoom-in`), ordered by `data-fragment-index` (`data-with-previous` marks one that plays with the one before it, sharing its index). Alt text: the image's `alt`, or `aria-label` on the box.
+- Image adjustments (Format options → Adjustments): `data-adjust="exposure:20 saturation:-30"` on an image's box, any of `exposure saturation contrast highlights shadows sharpness temperature tint`, each -100…100 (0 = left out). shapes.js draws them as an SVG filter on the `<img>` (derived, never saved).
   More effects: `fade-out`, `semi-fade-out` (dim), `fade-in-then-out`, `fade-in-then-semi-out` (fade in, then dim when the
   next step comes: walking through bullets), `highlight-current-blue` (coloured while it is the current step), `grow`, `shrink`,
   `strike`. `data-build="paragraph"` on an animated text box makes each paragraph or bullet its own step with the box's effect; `"highlight"` the same, dimming the ones already shown; `"word"` / `"character"` keep one step, the text arriving a word or letter at a time over `data-duration` (default 1 s; in-effects only). On a table box `"row"`, `"column"` or `"cell"` makes each its own step.

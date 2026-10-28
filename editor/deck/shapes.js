@@ -259,6 +259,32 @@
   }
 
   /* data-crop="top right bottom left": the share of the picture cut off each side (0..1), as --ct/--cr/--cb/--cl. */
+  /* Image adjustments (Format options → Adjustments, as Keynote's Adjust Image): data-adjust="exposure:20 contrast:-10 …",
+     each -100…100, drawn by an SVG filter inside the box (derived, never saved) that the <img> uses. */
+  const ADJUST = ['exposure', 'saturation', 'contrast', 'highlights', 'shadows', 'sharpness', 'temperature', 'tint'];
+  const adjustOf = b => Object.fromEntries((b.dataset.adjust || '').split(/\s+/).map(p => p.split(':')).filter(([k, v]) => ADJUST.includes(k) && +v).map(([k, v]) => [k, Math.max(-100, Math.min(100, +v)) / 100]));
+  function adjustImage(b) {
+    const img = b.querySelector(':scope > .content > img'), a = adjustOf(b);
+    b.querySelector(':scope > svg.adj')?.remove();
+    if (!img) return;
+    if (!Object.keys(a).length) { if (/url\(/.test(img.style.filter)) img.style.filter = ''; if (!img.getAttribute('style')) img.removeAttribute('style'); return; }
+    const id = 'adj-' + (b.id || Math.random().toString(36).slice(2)), f = el('filter', { id, 'color-interpolation-filters': 'sRGB', x: '0', y: '0', width: '1', height: '1' });
+    const lin = (slope, icpt = 0) => { const t = el('feComponentTransfer', {}); for (const c of ['R', 'G', 'B']) t.append(el('feFunc' + c, { type: 'linear', slope, intercept: icpt })); return t; };
+    if (a.exposure) f.append(lin(2 ** a.exposure));
+    if (a.contrast) { const s = 1 + a.contrast; f.append(lin(s, (1 - s) / 2)); }
+    if (a.highlights || a.shadows) {   // lift or lower the light and dark tones, leaving black and white in place
+      const v = Array.from({ length: 17 }, (_, i) => { const x = i / 16; return Math.max(0, Math.min(1, x + 0.25 * 6.75 * ((a.shadows || 0) * x * (1 - x) ** 2 + (a.highlights || 0) * x * x * (1 - x)))).toFixed(4); }).join(' ');
+      const t = el('feComponentTransfer', {}); for (const c of ['R', 'G', 'B']) t.append(el('feFunc' + c, { type: 'table', tableValues: v })); f.append(t);
+    }
+    if (a.saturation) f.append(el('feColorMatrix', { type: 'saturate', values: String(1 + a.saturation) }));
+    if (a.temperature || a.tint) { const w = a.temperature || 0, g = a.tint || 0;   // warmer: more red, less blue; tint: towards magenta (less green)
+      f.append(el('feColorMatrix', { type: 'matrix', values: `${1 + 0.2 * w} 0 0 0 0  0 ${1 - 0.2 * g} 0 0 0  0 0 ${1 - 0.2 * w} 0 0  0 0 0 1 0` })); }
+    if (a.sharpness > 0) { const k = a.sharpness * 0.6; f.append(el('feConvolveMatrix', { order: '3', kernelMatrix: `0 ${-k} 0 ${-k} ${1 + 4 * k} ${-k} 0 ${-k} 0`, edgeMode: 'duplicate', preserveAlpha: 'true' })); }
+    else if (a.sharpness < 0) f.append(el('feGaussianBlur', { stdDeviation: String(-a.sharpness * 2) }));
+    const svg = el('svg', { width: '0', height: '0', 'aria-hidden': 'true' }, 'adj'); svg.style.position = 'absolute';
+    svg.append(f); b.append(svg); img.style.filter = `url(#${id})`;
+  }
+  window.adjustImage = adjustImage; window.ADJUST = ADJUST;
   function cropBox(b) {
     const v = (b.dataset.crop || '').trim().split(/\s+/).map(Number);
     ['--ct', '--cr', '--cb', '--cl'].forEach((k, i) => { if (b.dataset.crop && isFinite(v[i])) b.style.setProperty(k, Math.max(0, Math.min(0.95, v[i]))); else b.style.removeProperty(k); });
@@ -312,6 +338,7 @@
   document.querySelectorAll('.box[data-shape]').forEach(renderShape);
   document.querySelectorAll('.box[data-shadow]').forEach(shadeBox);
   document.querySelectorAll('.box[data-crop]').forEach(cropBox);
+  document.querySelectorAll('.box[data-adjust]').forEach(adjustImage);
   const fitAll = () => document.querySelectorAll('.box[data-autofit="shrink"]').forEach(fitText);
   fitAll(); document.fonts?.ready.then(fitAll);   // web fonts change text metrics
   if (window.Reveal?.on) { Reveal.on('ready', fitAll); Reveal.on('slidechanged', fitAll); }   // slides are hidden until shown

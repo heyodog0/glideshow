@@ -25,7 +25,8 @@ function updatePanel() {
   const vid = b.querySelector('.content > video'); fmt.classList.toggle('is-video', !!vid);
   if (vid) { const [, st, en] = trimOf(vid); F('v-start').value = st ? clock(st) : ''; F('v-end').value = en ? clock(en) : '';
     F('v-auto').checked = vid.hasAttribute('data-autoplay'); F('v-mute').checked = vid.hasAttribute('muted'); F('v-loop').checked = vid.hasAttribute('loop'); }
-  if (img) { F('opacity').value = Math.round((img.style.opacity === '' ? 1 : +img.style.opacity) * 100); F('opacity-n').value = F('opacity').value; }
+  if (img) { F('opacity').value = Math.round((img.style.opacity === '' ? 1 : +img.style.opacity) * 100); F('opacity-n').value = F('opacity').value;
+    const adj = adjustsOf(b); for (const k of ADJUST) F('adj-' + k).value = F('adj-' + k + '-n').value = String(adj[k] || 0); }
   F('alt').value = b.querySelector('.content > img')?.alt || b.getAttribute('aria-label') || '';
 }
 const one = fn => () => { const b = [...sel][0]; if (sel.size !== 1) return; fn(b); drawOverlay(); commit(); };
@@ -71,7 +72,20 @@ F('alt').onchange = one(b => {   // alt text: the image's alt, or an aria-label 
 const setImgOpacity = (b, v) => { const img = b.querySelector('.content > img'); if (!img) return; v = Math.max(0, Math.min(100, +v || 0)); img.style.opacity = v >= 100 ? '' : v / 100; if (!img.getAttribute('style')) img.removeAttribute('style'); F('opacity').value = F('opacity-n').value = v; };
 F('opacity').oninput = () => { const b = [...sel][0]; if (b) setImgOpacity(b, F('opacity').value); };
 F('opacity').onchange = F('opacity-n').onchange = one(b => setImgOpacity(b, document.activeElement === F('opacity-n') ? F('opacity-n').value : F('opacity').value));
-F('adj-reset').onclick = one(b => setImgOpacity(b, 100));
+/* …and Keynote's Exposure, Saturation, Contrast, Highlights, Shadows, Sharpness, Temperature, Tint (-100…100), kept in
+   data-adjust and drawn by shapes.js; dragging a slider redraws live, letting go commits. */
+const adjustsOf = b => Object.fromEntries((b.dataset.adjust || '').split(/\s+/).map(p => p.split(':')).filter(([k, v]) => ADJUST.includes(k) && +v).map(([k, v]) => [k, +v]));
+function setAdjust(b, k, v) {
+  const a = adjustsOf(b); a[k] = Math.max(-100, Math.min(100, Math.round(+v || 0)));
+  const s = ADJUST.filter(x => a[x]).map(x => `${x}:${a[x]}`).join(' ');
+  if (s) b.dataset.adjust = s; else delete b.dataset.adjust;
+  adjustImage(b); F('adj-' + k).value = F('adj-' + k + '-n').value = String(a[k]);
+}
+for (const k of ADJUST) {
+  F('adj-' + k).oninput = () => { const b = [...sel][0]; if (b) setAdjust(b, k, F('adj-' + k).value); };
+  F('adj-' + k).onchange = F('adj-' + k + '-n').onchange = one(b => setAdjust(b, k, document.activeElement === F('adj-' + k + '-n') ? F('adj-' + k + '-n').value : F('adj-' + k).value));
+}
+F('adj-reset').onclick = one(b => { setImgOpacity(b, 100); delete b.dataset.adjust; adjustImage(b); updatePanel(); });
 /* Drop shadow controls, as Slides: changing one turns the shadow on. Defaults are left out of the deck. */
 const SHADOW_UI = { color: '#000000', opacity: 0.3, angle: 90, distance: 6, blur: 8 };
 for (const k of Object.keys(SHADOW_UI)) {

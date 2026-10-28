@@ -754,6 +754,13 @@ def checks(pg, deck: Path, errors):
     vis = pg.evaluate("!!document.querySelector('#ed-fmt details.img-only').offsetParent")
     pg.click("#ed-fmt summary:has-text('Adjustments')"); pg.fill("#ed-f-opacity-n", "30"); pg.press("#ed-f-opacity-n", "Enter")
     res = pg.evaluate("(() => [document.getElementById('%s').style.getPropertyValue('--fill'), document.getElementById('%s').querySelector('img').style.opacity, toHex('#ff000099', '#000')])()" % (op[0], op[1]))
+    pg.fill("#ed-f-adj-exposure-n", "40"); pg.press("#ed-f-adj-exposure-n", "Enter"); pg.fill("#ed-f-adj-temperature-n", "-30"); pg.press("#ed-f-adj-temperature-n", "Enter")
+    t0 = pg.evaluate("performance.now()"); pg.evaluate("(() => { const f = $('#ed-f-adj-contrast'); f.value = '25'; f.dispatchEvent(new Event('input')); })()"); adj_ms = pg.evaluate(f"Math.round(performance.now() - {t0})")
+    adj = pg.evaluate("""(() => { const b = document.getElementById('%s'), img = b.querySelector('img'), c = cleanBox(b);
+      return [b.dataset.adjust, /url\\(.#adj-/.test(img.style.filter), b.querySelectorAll('svg.adj feComponentTransfer, svg.adj feColorMatrix').length, !c.querySelector('svg.adj') && !c.querySelector('img').style.filter]; })()""" % op[1])
+    pg.click("#ed-f-adj-reset"); reset = pg.evaluate("(() => { const b = document.getElementById('%s'); return [b.dataset.adjust ?? '', !!b.querySelector('svg.adj'), b.querySelector('img').style.opacity, $('#ed-f-adj-exposure').value]; })()" % op[1])
+    check(f"image adjustments (Keynote's Exposure … Tint) in Format options → Adjustments: data-adjust, an SVG filter drawn live ({adj_ms} ms), never saved; Reset clears them",
+          adj == ["exposure:40 contrast:25 temperature:-30", True, 3, True] and reset == ["", False, "", "0"], f"{adj} {reset}")
     pg.evaluate("(() => { setPanel(false); slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
     check("fill transparency (palette slider, #rrggbbaa) and image opacity (Format options → Adjustments)", vis and res == ["#ff000099", "0.3", "#ff0000"], f"{vis} {res}")
     sh = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1); const b = makeBox({x: 600, y: 300, w: 400, h: 200, shape: 'rect'});

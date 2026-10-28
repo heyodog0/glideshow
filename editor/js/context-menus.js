@@ -59,7 +59,7 @@ const IMAGE_ITEMS = () => [
 ];
 function resetImage(b) {
   if (!b) return;
-  delete b.dataset.crop; cropBox(b); const img = b.querySelector('.content > img'); if (img) { img.style.opacity = ''; if (!img.getAttribute('style')) img.removeAttribute('style'); }
+  delete b.dataset.crop; delete b.dataset.adjust; adjustImage(b); cropBox(b); const img = b.querySelector('.content > img'); if (img) { img.style.opacity = ''; if (!img.getAttribute('style')) img.removeAttribute('style'); }
   resetImageSize(b);
 }
 function imageToBackground(b) {
