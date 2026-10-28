@@ -12,6 +12,7 @@ function startEdit(b, pt) {
   editStart = c.innerHTML;
   c.contentEditable = 'true'; c.spellcheck = spellOn();
   editFloor = parseFloat(b.dataset.minh) || geo(b).h;
+  c.onbeforeinput = autoFormat;
   c.oninput = e => { if (e.inputType === 'insertText' && /^[ \u00a0]$/.test(e.data || '') && latexOn()) latexShortcut(); if (b.dataset.placeholder) markPlaceholder(c); fitHeight(b); };
   c.focus();
   let r = pt && caretAt(pt.x, pt.y);
@@ -39,10 +40,36 @@ function latexShortcut() {
   tail.before(el);
   s.collapse(tail, 1);
 }
+/* Typing as Slides and Keynote (Tools → Use smart quotes, Automatically detect lists; both on unless turned off):
+   ' and " curl by what comes before them, -- becomes an em dash, and "- ", "* ", "• " or "1. " at the start of a
+   paragraph starts a bulleted or numbered list. Through execCommand, so they stay in the browser's undo. */
+const smartQuotesOn = () => stored('slides-smart-quotes') !== '0', autoListsOn = () => stored('slides-auto-lists') !== '0';
+function autoFormat(/** @type {InputEvent} */ e) {
+  if (e.inputType !== 'insertText' || !e.data) return;
+  const s = getSelection(); if (!s.rangeCount) return;
+  const r0 = s.getRangeAt(0), n = r0.startContainer, o = r0.startOffset, prev = n?.nodeType === 3 ? /** @type {Text} */ (n).data.slice(0, o) : '';
+  if ((n.nodeType === 3 ? n.parentElement : /** @type {Element} */ (n))?.closest('pre, code')) return;   // code stays as typed
+  if (smartQuotesOn() && (e.data === "'" || e.data === '"')) {
+    const open = !prev || /[\s(\[{—–"“'‘]$/.test(prev);
+    e.preventDefault(); document.execCommand('insertText', false, e.data === '"' ? (open ? '“' : '”') : (open ? '‘' : '’')); return;
+  }
+  if (!s.isCollapsed) return;
+  if (smartQuotesOn() && e.data === '-' && prev.endsWith('-')) {
+    e.preventDefault(); s.modify('extend', 'backward', 'character'); document.execCommand('insertText', false, '—'); return;
+  }
+  if (autoListsOn() && e.data === ' ' && !n?.parentElement?.closest('li')) {
+    const block = n?.parentElement?.closest('p, div, h1, h2, h3, h4, h5, h6') || n?.parentElement;
+    if (!block || !content(editing).contains(block)) return;
+    const r = document.createRange(); r.setStart(block === content(editing) ? content(editing) : block, 0); r.setEnd(n, o);
+    const m = r.toString().match(/^(?:([-*•])|(1)[.)])$/); if (!m) return;
+    e.preventDefault(); s.removeAllRanges(); s.addRange(r); document.execCommand('delete');
+    lastRange = s.getRangeAt(0).cloneRange(); listText(m[1] ? 'insertUnorderedList' : 'insertOrderedList');
+  }
+}
 function stopEdit() {
   if (!editing) return;
   const b = editing, c = content(b);
-  c.removeAttribute('contenteditable'); c.removeAttribute('spellcheck'); c.oninput = null;
+  c.removeAttribute('contenteditable'); c.removeAttribute('spellcheck'); c.oninput = c.onbeforeinput = null;
   editing = null; lastRange = null;
   getSelection().removeAllRanges();
   if (!b.dataset.shape && !b.dataset.placeholder && !isMedia(b) && !c.textContent.trim() && !c.querySelector('img')) {

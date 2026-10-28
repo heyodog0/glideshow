@@ -199,7 +199,9 @@ const MENUS = {
     { label: 'Stack as a sequence', icon: 'stacks', run: () => stackSequence(), off: () => [...sel].filter(b => isMedia(b)).length < 2 },   // pictures shown one after another in one place
   ],
   Tools: [{ label: 'Spelling', icon: 'spellcheck', items: () => [{ label: 'Show spelling suggestions', key: '⌥⌘X', on: spellOn, run: () => setSpelling(!spellOn()) }] },
-    { label: 'Convert LaTeX shortcuts', icon: 'function', on: latexOn, run: () => store('slides-latex', latexOn() ? '0' : undefined) }],
+    { label: 'Convert LaTeX shortcuts', icon: 'function', on: latexOn, run: () => store('slides-latex', latexOn() ? '0' : undefined) },
+    { label: 'Use smart quotes', icon: 'format_quote', on: smartQuotesOn, run: () => store('slides-smart-quotes', smartQuotesOn() ? '0' : undefined) },
+    { label: 'Automatically detect lists', icon: 'format_list_bulleted', on: autoListsOn, run: () => store('slides-auto-lists', autoListsOn() ? '0' : undefined) }],
   Help: [
     { label: 'Search the menus', icon: 'search', key: '⌥/', run: () => menuInput.focus() },
     '-',
