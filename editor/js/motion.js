@@ -45,6 +45,13 @@ const animBoxes = () => boxes().filter(b => b.classList.contains('fragment'))
 /* "With previous" shares the previous animation's step (same data-fragment-index); data-with-previous keeps the choice. */
 const renumber = list => { let n = -1; list.forEach((b, i) => { if (!(i && 'withPrevious' in b.dataset)) n++; b.dataset.fragmentIndex = n; }); };
 const openAnims = new Set();
+/* Build timing, as Keynote: data-start="after" (After previous) or "transition" (after the slide's transition; the first
+   build only), data-duration / data-delay in seconds, data-ease the acceleration. present.js plays them. */
+const START_LABEL = { click: 'On click', with: 'With previous', after: 'After previous', transition: 'After transition' };
+const EASES = [['', 'Acceleration: default'], ['linear', 'None'], ['ease-in', 'Ease in'], ['ease-out', 'Ease out'], ['ease-in-out', 'Ease in and out']];
+const TIMING = ['start', 'duration', 'delay', 'ease'];
+const startOf = b => 'withPrevious' in b.dataset ? 'with' : b.dataset.start || 'click';
+function setStart(b, v) { delete b.dataset.withPrevious; delete b.dataset.start; if (v === 'with') b.dataset.withPrevious = ''; else if (v !== 'click') b.dataset.start = v; }
 function setEffect(b, eff) { b.classList.remove(...EFFECTS.map(e => e[0])); b.classList.add('fragment', eff); }
 function addAnim() {   // boxes animated together (several selected) share one click: the first on click, the rest with previous
   const list = animBoxes();
@@ -57,22 +64,23 @@ let copiedAnim = null;
 const animSel = () => [...sel].find(b => b.classList.contains('fragment'));
 function copyAnim() {
   const b = animSel(); if (!b) return;
-  copiedAnim = { eff: effectOf(b), build: b.dataset.build, withPrevious: 'withPrevious' in b.dataset }; setStatus('Animation copied');
+  copiedAnim = { eff: effectOf(b), build: b.dataset.build, withPrevious: 'withPrevious' in b.dataset, timing: Object.fromEntries(TIMING.map(k => [k, b.dataset[k]])) }; setStatus('Animation copied');
 }
 function pasteAnim() {
   if (!copiedAnim || !sel.size) return;
-  const list = animBoxes(), { eff, build, withPrevious } = copiedAnim;
+  const list = animBoxes(), { eff, build, withPrevious, timing } = copiedAnim;
   [...sel].forEach((b, i) => {
     const was = b.classList.contains('fragment');
     setEffect(b, eff);
     if (build && !isMedia(b) && !isStroke(b)) b.dataset.build = build; else delete b.dataset.build;
-    if (withPrevious || (i && !was)) b.dataset.withPrevious = ''; else delete b.dataset.withPrevious;
+    for (const k of TIMING) if (timing[k] != null) b.dataset[k] = timing[k]; else delete b.dataset[k];
+    if (withPrevious || (i && !was)) { b.dataset.withPrevious = ''; delete b.dataset.start; } else delete b.dataset.withPrevious;
     if (!was) list.push(b);
   });
   renumber(list); commit(); renderAnims();
 }
 function removeAnim(b) {
-  b.classList.remove('fragment', ...EFFECTS.map(e => e[0])); delete b.dataset.fragmentIndex; delete b.dataset.withPrevious; delete b.dataset.build;
+  b.classList.remove('fragment', ...EFFECTS.map(e => e[0])); delete b.dataset.fragmentIndex; delete b.dataset.withPrevious; delete b.dataset.build; TIMING.forEach(k => delete b.dataset[k]);
   renumber(animBoxes()); commit(); renderAnims();
 }
 function moveAnim(from, to) { const list = animBoxes(); list.splice(to, 0, ...list.splice(from, 1)); renumber(list); commit(); renderAnims(); }
@@ -86,18 +94,26 @@ function renderAnims() {
   trans.classList.toggle('no-trans', kind === 'none');
   const t = TRANSITIONS.find(x => x[0] === kind); $('#ed-t-name').textContent = t ? t[1] : 'None';
   host.replaceChildren(...animBoxes().map((b, i) => {
-    const open = sel.has(b) || openAnims.has(b), withPrev = 'withPrevious' in b.dataset;
+    const open = sel.has(b) || openAnims.has(b), start = startOf(b);
     const r = div('anim-row' + (sel.has(b) ? ' on' : '') + (open ? ' open' : '')); r.draggable = true; r.dataset.i = String(i);
     r.innerHTML = `<div class="anim-head"><span class="n icon" title="Drag to reorder">drag_indicator</span><span class="icon chev">chevron_right</span>
       <span class="eff"></span><span class="what"></span><button title="Delete animation"><span class="icon">delete</span></button></div>
       <div class="anim-body"><select class="e">${EFFECTS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
-      <select class="t"><option value="click">On click</option><option value="with">With previous</option></select>
-      <label class="para"><input type="checkbox"> By paragraph</label></div>`;
-    r.querySelector('.eff').textContent = `${EFFECTS.find(e => e[0] === effectOf(b))[1]}${b.dataset.build === 'paragraph' ? ' by paragraph' : ''}  (${withPrev ? 'With previous' : 'On click'})`;
+      <select class="t">${Object.entries(START_LABEL).filter(([v]) => v !== 'transition' || !i).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+      <div class="timing"><label>Duration (s)<input class="dur" type="number" min="0.1" max="20" step="0.1" placeholder="0.5"></label>
+      <label>Delay (s)<input class="del" type="number" min="0" max="60" step="0.1" placeholder="0"></label></div>
+      <select class="ease">${EASES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+      <label class="para chk"><input type="checkbox"> By paragraph</label></div>`;
+    r.querySelector('.eff').textContent = `${EFFECTS.find(e => e[0] === effectOf(b))[1]}${b.dataset.build === 'paragraph' ? ' by paragraph' : ''}  (${START_LABEL[start] || 'On click'})`;
     r.querySelector('.what').textContent = animLabel(b);
-    const se = r.querySelector('select.e'), tr = r.querySelector('select.t'); se.value = effectOf(b); tr.value = withPrev ? 'with' : 'click';
+    const se = r.querySelector('select.e'), tr = r.querySelector('select.t'); se.value = effectOf(b); tr.value = start;
     se.onchange = () => { setEffect(b, se.value); commit(); renderAnims(); };
-    tr.onchange = () => { if (tr.value === 'with') b.dataset.withPrevious = ''; else delete b.dataset.withPrevious; renumber(animBoxes()); commit(); renderAnims(); };
+    tr.onchange = () => { setStart(b, tr.value); renumber(animBoxes()); commit(); renderAnims(); };
+    const num = (cls, key) => { const f = /** @type {HTMLInputElement} */ (r.querySelector(cls)); f.value = b.dataset[key] ?? '';
+      f.onchange = () => { const v = parseFloat(f.value); if (v >= 0 && isFinite(v)) b.dataset[key] = String(Math.round(v * 100) / 100); else delete b.dataset[key]; commit(); }; };
+    num('.dur', 'duration'); num('.del', 'delay');
+    const ez = /** @type {HTMLSelectElement} */ (r.querySelector('select.ease')); ez.value = b.dataset.ease || '';
+    ez.onchange = () => { if (ez.value) b.dataset.ease = ez.value; else delete b.dataset.ease; commit(); };
     const para = /** @type {HTMLInputElement} */ (r.querySelector('.para input')), textual = !isMedia(b) && !isStroke(b) && !!content(b)?.textContent.trim();
     /** @type {HTMLElement} */ (r.querySelector('.para')).hidden = !textual; para.checked = b.dataset.build === 'paragraph';   // Slides' "By paragraph": one step per paragraph or bullet
     para.onchange = () => { if (para.checked) b.dataset.build = 'paragraph'; else delete b.dataset.build; commit(); renderAnims(); };
@@ -123,9 +139,15 @@ async function playAnims() {
     'fade-in-then-out': [{ opacity: 0 }, { opacity: 1, offset: .3 }, { opacity: 1, offset: .7 }, { opacity: 0 }], 'fade-in-then-semi-out': [{ opacity: 0 }, { opacity: 1, offset: .4 }, { opacity: .5 }],
     'highlight-current-blue': [{ color: 'inherit' }, { color: '#1b6ac9' }, { color: 'inherit' }], grow: [{ scale: 1 }, { scale: 1.3 }, { scale: 1 }],
     shrink: [{ scale: 1 }, { scale: .7 }, { scale: 1 }], strike: [{ textDecoration: 'none' }, { textDecoration: 'line-through' }] };
-  const list = animBoxes();
+  const list = animBoxes(), wait = ms => new Promise(r => setTimeout(r, ms));
   list.forEach(b => { b.style.visibility = 'hidden'; });
-  for (const b of list) { b.style.visibility = ''; await b.animate(kf[effectOf(b)], { duration: 500, easing: 'ease' }).finished; await new Promise(r => setTimeout(r, 250)); }
+  const steps = []; list.forEach(b => { if (startOf(b) === 'with' && steps.length) steps.at(-1).push(b); else steps.push([b]); });   // one step per click or After previous
+  for (const [i, step] of steps.entries()) {
+    if (i && !['after', 'transition'].includes(startOf(step[0]))) await wait(250);   // a click, in the preview
+    if (['after', 'transition'].includes(startOf(step[0]))) await wait((+step[0].dataset.delay || 0) * 1000);
+    await Promise.all(step.map(b => { b.style.visibility = '';
+      return b.animate(kf[effectOf(b)], { duration: (+b.dataset.duration || 0.5) * 1000, delay: startOf(b) === 'with' || startOf(b) === 'click' ? (+b.dataset.delay || 0) * 1000 : 0, easing: b.dataset.ease || 'ease', fill: 'backwards' }).finished; }));
+  }
 }
 $('#ed-anim-add').onclick = addAnim;
 $('#ed-anim-play').onclick = async () => { playTransition(); await new Promise(r => setTimeout(r, 300)); playAnims(); };

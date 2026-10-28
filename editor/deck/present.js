@@ -22,7 +22,8 @@
         const at = +box.dataset.fragmentIndex || 0, cls = [...box.classList].filter(c => /^(appear|fade-[\w-]+|zoom-in|grow|shrink|strike|semi-fade-out|current-visible|highlight-[\w-]+)$/.test(c));   // its effect
         sl.querySelectorAll('.fragment').forEach(f => { if (f !== box && +f.dataset.fragmentIndex > at) f.dataset.fragmentIndex = String(+f.dataset.fragmentIndex + parts.length - 1); });
         box.classList.remove('fragment', ...cls); delete box.dataset.fragmentIndex;
-        parts.forEach((el, i) => { el.classList.add('fragment', ...cls); el.dataset.fragmentIndex = String(at + i); });
+        parts.forEach((el, i) => { el.classList.add('fragment', ...cls); el.dataset.fragmentIndex = String(at + i);
+          for (const k of i ? ['duration', 'ease'] : ['duration', 'ease', 'delay', 'start']) if (box.dataset[k]) el.dataset[k] = box.dataset[k]; });   // the box's timing; its start and delay on the first part
         changed = true;
       });
     });
@@ -32,6 +33,11 @@
       st.media = 'not all'; sl.dataset.slideStyle = String(++n);
       document.head.append(Object.assign(document.createElement('style'), { textContent: `.reveal .slides section[data-slide-style="${n}"] { ${st.textContent} }` }));
     }));
+    // build timing (Motion panel): duration, acceleration, and a delay for builds that start on a click or with the previous
+    document.querySelectorAll('.reveal .slides .fragment').forEach(f => {
+      const d = f.dataset; if (d.duration) f.style.transitionDuration = d.duration + 's'; if (d.ease) f.style.transitionTimingFunction = d.ease;
+      if (d.delay && !/^(after|transition)$/.test(d.start || '')) f.style.transitionDelay = d.delay + 's';
+    });
     if (changed) Reveal.sync();
     if (new URLSearchParams(location.search).get('view') === 'scroll') Reveal.configure({ view: 'scroll' });   // read as a page (reveal's scroll view)
   };
@@ -100,6 +106,27 @@
     else if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); exit(); }
   }, true);   // capture: before reveal.js's own handler
 
+  /* Builds that start by themselves (data-start="after": after the previous build ends, "transition": after the slide's
+     transition), each after its own data-delay. A key or click in between cancels the wait. */
+  let autoT = 0;
+  const secs = (el, p) => parseFloat(getComputedStyle(el)[p]) || 0;
+  const cue = () => {
+    clearTimeout(autoT);
+    const sl = Reveal.getCurrentSlide(); if (!sl) return;
+    const f = Reveal.getIndices().f ?? -1, at = n => [...sl.querySelectorAll('.fragment')].filter(e => +(e.dataset.fragmentIndex ?? -2) === n);
+    const lead = at(f + 1)[0], start = lead?.dataset.start;
+    if (!start || !/^(after|transition)$/.test(start)) return;
+    let ms;
+    if (f < 0) {   // the slide's first build: after its transition (or morph)
+      const kind = sl.dataset.transition || Reveal.getConfig().transition, sp = sl.dataset.transitionSpeed || Reveal.getConfig().transitionSpeed;
+      ms = sl.hasAttribute('data-auto-animate') ? (+sl.dataset.autoAnimateDuration || 1) * 1000 : kind === 'none' ? 0 : ({ fast: 400, slow: 1200 }[sp] || 800);
+    } else ms = Math.max(0, ...at(f).map(e => (secs(e, 'transitionDuration') + secs(e, 'transitionDelay')) * 1000));
+    ms += (+lead.dataset.delay || 0) * 1000;
+    const was = JSON.stringify(Reveal.getIndices());
+    autoT = setTimeout(() => { if (JSON.stringify(Reveal.getIndices()) === was) Reveal.nextFragment(); }, ms);
+  };
+  Reveal.on('slidechanged', cue); Reveal.on('fragmentshown', cue); Reveal.on('fragmenthidden', () => clearTimeout(autoT));
+  Reveal.isReady() ? cue() : Reveal.on('ready', cue);
   Reveal.configure({ keyboard: { 79: null, 86: null, 191: null, 190: null, 27: null } });   // O, V, ?, ., Esc
   if (embedded) Reveal.on('ready', () => window.focus());
   if (/print-pdf/.test(location.search)) {   // PDF, as Slides prints it: one page per slide, edge to edge, no numbers, colours kept

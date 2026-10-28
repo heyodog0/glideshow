@@ -109,6 +109,7 @@ Rules:
   More effects: `fade-out`, `semi-fade-out` (dim), `fade-in-then-out`, `fade-in-then-semi-out` (fade in, then dim when the
   next step comes: walking through bullets), `highlight-current-blue` (coloured while it is the current step), `grow`, `shrink`,
   `strike`. `data-build="paragraph"` on an animated text box makes each paragraph or bullet its own step with the box's effect.
+  Timing (Motion panel): `data-start="after"` plays a build by itself once the one before has finished, `data-start="transition"` (the slide's first build) once the slide's transition has; `data-duration` and `data-delay` in seconds (defaults reveal's ~0.5 s and 0); `data-ease` = `linear | ease-in | ease-out | ease-in-out`.
   Pictures that replace each other in one place (a plot that updates): stack them at the same position, the first
   `fade-out` with the second's step, each middle one `fade-in-then-out`, the last `fade-in` (Arrange → Stack as a sequence).
 - Backgrounds beyond colour and image (reveal's own): `data-background-video="assets/clip.mp4"` (with `data-background-video-loop`

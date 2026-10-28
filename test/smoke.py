@@ -1174,6 +1174,16 @@ def checks(pg, deck: Path, errors):
     pg.click(".anim-row >> nth=1 >> .anim-head .eff"); pg.select_option(".anim-row >> nth=1 >> select.t", "with")
     withp = pg.evaluate(f"['{an[0]}', '{an[1]}'].map(id => document.getElementById(id).dataset.fragmentIndex)")
     pg.select_option(".anim-row >> nth=1 >> select.t", "click")
+    pg.evaluate(f"(() => {{ openAnims.add(document.getElementById('{an[1]}')); renderAnims(); }})()")
+    starts = [pg.evaluate("[...document.querySelectorAll('.anim-row')].map(r => [...r.querySelectorAll('select.t option')].map(o => o.value).join())")]
+    pg.select_option(".anim-row >> nth=1 >> select.t", "after"); pg.fill(".anim-row >> nth=1 >> input.dur", "1.5"); pg.dispatch_event(".anim-row >> nth=1 >> input.dur", "change")
+    pg.fill(".anim-row >> nth=1 >> input.del", "0.25"); pg.dispatch_event(".anim-row >> nth=1 >> input.del", "change"); pg.select_option(".anim-row >> nth=1 >> select.ease", "ease-out")
+    pg.locator("#ed-trans").screenshot(path=str(HERE / "motion-timing.png"))
+    timing = pg.evaluate(f"(() => {{ const b = document.getElementById('{an[1]}'), d = b.dataset; return [d.start, d.duration, d.delay, d.ease, d.fragmentIndex, document.querySelectorAll('.anim-row .eff')[1].textContent.includes('After previous')]; }})()")
+    pg.select_option(".anim-row >> nth=1 >> select.t", "click"); pg.evaluate(f"(() => {{ const d = document.getElementById('{an[1]}').dataset; delete d.duration; delete d.delay; delete d.ease; commit(); }})()")
+    check("Motion panel build timing: start On click / With previous / After previous (After transition on the first only), duration, delay, acceleration",
+          starts[0][0].endswith("transition") and not starts[0][1].endswith("transition")
+          and timing == ["after", "1.5", "0.25", "ease-out", "1", True], f"{starts} {timing}")
     together = pg.evaluate("""(() => { const a = makeBox({x:100,y:850,w:300,h:100,html:'Third'}), b = makeBox({x:500,y:850,w:300,h:100,html:'Fourth'}); slides[cur].append(a, b); render();
       sel = new Set([a, b]); drawOverlay(); addAnim(); const out = [a, b].map(x => [x.dataset.fragmentIndex, 'withPrevious' in x.dataset]); a.remove(); b.remove(); renumber(animBoxes()); sel.clear(); render(); return out; })()""")
     check("Add animation on several selected objects: they animate together (one click, the rest with previous)", together == [["2", False], ["2", True]], str(together))
@@ -1554,6 +1564,13 @@ def checks(pg, deck: Path, errors):
     v.click("#lk-box"); v.wait_for_timeout(200); at_sid = v.evaluate("Reveal.getSlides().indexOf(Reveal.getCurrentSlide())")
     v.evaluate("(() => { document.getElementById('lk-last').remove(); document.getElementById('lk-box').remove(); Reveal.slide(0); })()")
     check("in the slideshow a #last text link and a linked box (#slide=<sid>) go there, and the click doesn't also advance", at_last and at_sid == 1, f"{at_last} {at_sid}")
+    v.evaluate("""(() => { const s = Reveal.getSlides()[0], mk = (i, start) => { const b = document.createElement('div'); b.className = 'box fragment fade-in'; b.dataset.fragmentIndex = i;
+        if (start) b.dataset.start = start; b.dataset.delay = '0.2'; b.style.cssText = 'position:absolute;left:0;top:0;width:10px;height:10px'; b.id = 'tm-' + i; s.append(b); };
+      mk(0, 'transition'); mk(1, ''); mk(2, 'after'); Reveal.sync(); Reveal.slide(1); Reveal.slide(0, 0, -1); })()""")
+    v.wait_for_timeout(1600); auto1 = v.evaluate("Reveal.getIndices().f")
+    v.evaluate("Reveal.nextFragment()"); v.wait_for_timeout(1500); auto2 = v.evaluate("Reveal.getIndices().f")
+    v.evaluate("(() => { ['tm-0', 'tm-1', 'tm-2'].forEach(id => document.getElementById(id).remove()); Reveal.sync(); Reveal.slide(0); })()")
+    check("slideshow: a build After transition plays by itself, the next waits for a click, an After previous one follows it", auto1 == 0 and auto2 == 2, f"{auto1} {auto2}")
     check("decks carry present.js (Slides' presenting keys)", v.evaluate("!!document.getElementById('deck-present') && !Reveal.getConfig().keyboard[79] && Reveal.getConfig().keyboard[79] === null"))
     check("viewer loads the notes plugin (S = speaker view)", v.evaluate("!!(window.Reveal && Reveal.hasPlugin('notes'))"))
     v.screenshot(path=str(HERE / "viewer.png"))
@@ -1605,7 +1622,7 @@ def reveal_checks(b, errors, deck_file: Path):
     pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
       const t = makeBox({ x: 100, y: 100, w: 900, h: 500, html: '<ul><li>One</li><li>Two</li><li>Three</li></ul>' }), after = makeBox({ x: 1100, y: 100, w: 500, h: 200, html: 'After' });
       slides[cur].append(t, after); render(); sel = new Set([t]); addAnim(); sel = new Set([after]); addAnim();
-      setEffect(t, 'fade-in-then-semi-out'); t.dataset.build = 'paragraph'; commit(); render(); }""")
+      setEffect(t, 'fade-in-then-semi-out'); t.dataset.build = 'paragraph'; t.dataset.duration = '1.2'; t.dataset.ease = 'ease-in'; t.dataset.delay = '0.5'; commit(); render(); }""")
     pg.wait_for_selector("#ed-anim-list .anim-row .para", state="attached")
     pics = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
       const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
@@ -1618,9 +1635,11 @@ def reveal_checks(b, errors, deck_file: Path):
           and len({(p[0], p[1]) for p in pics}) == 1 and [p[2] for p in pics] == ["fade-out", "fade-in-then-out", "fade-in"] and pics[0][3] == pics[1][3] and pics[0][4], f"{eff} {pics}")
     v.reload(); v.wait_for_function("window.Reveal?.isReady?.()", timeout=20000); v.wait_for_timeout(300)
     para = v.evaluate("""() => { const s = Reveal.getSlides().at(-2), li = [...s.querySelectorAll('li')];
-      return [li.map(l => l.className.includes('fragment fade-in-then-semi-out') ? l.dataset.fragmentIndex : '-'), [...s.querySelectorAll('.box')].find(b => b.textContent === 'After')?.dataset.fragmentIndex]; }""")
+      return [li.map(l => l.className.includes('fragment fade-in-then-semi-out') ? l.dataset.fragmentIndex : '-'), [...s.querySelectorAll('.box')].find(b => b.textContent === 'After')?.dataset.fragmentIndex,
+        li.map(l => [l.style.transitionDuration, l.style.transitionTimingFunction, l.style.transitionDelay].join(' ').trim())]; }""")
     check("…by paragraph: in the slideshow each bullet is its own step, with the box's effect, and the next animation follows them",
-          para == [["0", "1", "2"], "3"], str(para))
+          para[:2] == [["0", "1", "2"], "3"], str(para))
+    check("…its timing (1.2 s, ease in, 0.5 s delay) plays on every bullet, the delay on the first only", para[2] == ["1.2s ease-in 0.5s", "1.2s ease-in", "1.2s ease-in"], str(para[2]))
 
     # live box: its own page in assets/, sandboxed in the slide and served with a sandbox policy; double-click edits it
     pg.evaluate("go(slides.length - 1)"); pg.evaluate("addLive()"); pg.wait_for_function("boxes(slides[cur]).some(b => b.classList.contains('live'))"); settle()

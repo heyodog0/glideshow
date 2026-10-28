@@ -593,6 +593,8 @@ body.theme-mode #ed-notes, body.theme-mode #ed-splitter { display: none !importa
 .live-still .icon { font-size: 160px; }
 .live-dialog { width: min(820px, 92vw); } .live-dialog .live-code { padding-top: 8px; }
 .live-dialog textarea { width: 100%; height: 50vh; font: 13px/1.5 ui-monospace, Menlo, monospace; color: var(--ink); background: var(--surface); border: 1px solid var(--divider); border-radius: var(--radius); padding: 10px 12px; resize: vertical; tab-size: 2; }
+.anim-body .timing { display: flex; gap: 12px; } .anim-body .timing label { flex: 1; }
+.anim-body .timing input { width: 100%; height: 36px; box-sizing: border-box; }
 .anim-body .para { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); } .anim-body .para[hidden] { display: none; }
 a#ed-app-icon { text-decoration: none; cursor: pointer; }   /* the mascot goes home */
 #ed-history select { margin: 8px 16px; height: 40px; border: 1px solid var(--divider); }
