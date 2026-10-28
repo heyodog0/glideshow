@@ -1,5 +1,5 @@
 /* Presenting keys as Google Slides, for every deck (copied into <script id="deck-present"> on save, like
-   shapes.js). B / W black or white screen, L laser pointer, a slide number then ⏎ to jump, ⏎ next, Esc to
+   shapes.js). a click advances, B / W black or white screen, L laser pointer, a slide number then ⏎ to jump, ⏎ next, Esc to
    leave (back to the editor when presenting from it), M a note for the AI (from the editor), F fullscreen and S speaker notes from reveal.js.
    Turns off reveal.js defaults Slides doesn't have: O / Esc overview, V pause, ? help. */
 (function () {
@@ -216,7 +216,24 @@
     clearTimeout(idleTimer);
     idleTimer = setTimeout(() => { if (pop) return; bar.classList.add('idle'); if (!laser) document.documentElement.style.cursor = 'none'; }, 3000);
   };
-  addEventListener('pointermove', wake); addEventListener('pointerdown', e => { if (pop && !e.target.closest?.('.sl-pop')) closePop(); });
+  addEventListener('pointermove', wake);
+  /* A click on the slide advances, as Keynote and Slides: not on a link, a video, a field or the toolbar, not after a
+     drag (selecting text), and not when the click only closes a menu or lifts the black / white screen. */
+  let down = null;
+  addEventListener('pointerdown', e => {
+    down = null;
+    if (pop && !e.target.closest?.('.sl-pop')) { closePop(); return; }
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || memo) return;
+    if (screen) { screen.remove(); screen = null; return; }
+    if (e.target.closest?.('a, button, input, textarea, select, video, audio, iframe, [contenteditable], .sl-bar, .sl-pop')) return;
+    if (!e.target.closest?.('.reveal')) return;
+    down = { x: e.clientX, y: e.clientY };
+  });
+  addEventListener('click', e => {
+    const d = down; down = null;
+    if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4 || String(getSelection())) return;
+    Reveal.next();
+  });
   Reveal.on('ready', () => { document.body.append(bar); paint(); showNum(); wake(); });
   Reveal.on('slidechanged', showNum);
 })();

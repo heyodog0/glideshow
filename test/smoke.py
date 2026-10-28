@@ -1464,6 +1464,14 @@ def checks(pg, deck: Path, errors):
     v.click(".sl-pop button:has-text('Every 5 seconds')"); auto = v.evaluate("Reveal.getConfig().autoSlide"); v.evaluate("Reveal.configure({ autoSlide: 0 })")
     check("presenting toolbar is Slides' pill (◀ n ▶ ⋮), edge to edge, ⋮ menu with keys and an Auto-play submenu",
           menu[0] == "prev,num,next,more" and menu[1] == 0 and "Exit slideshow Esc" in menu[2][0] and "Every second" in menu[2][1] and auto == 5000, f"{menu} {auto}")
+    v.evaluate("Reveal.slide(0)"); v.wait_for_timeout(300)
+    t0 = v.evaluate("performance.now()"); v.mouse.click(640, 360); clicked = v.evaluate(f"[Reveal.getIndices().h, Math.round(performance.now() - {t0})]")
+    v.mouse.move(600, 300); v.mouse.down(); v.mouse.move(700, 320, steps=4); v.mouse.up(); dragged = v.evaluate("Reveal.getIndices().h")
+    v.keyboard.press("b"); v.mouse.click(640, 360); lifted = v.evaluate("[!!document.querySelector('body > div[data-c]'), Reveal.getIndices().h]")
+    wake(); v.click(".sl-bar [data-a=more]"); v.mouse.click(640, 360); closed = v.evaluate("[!!document.querySelector('.sl-pop'), Reveal.getIndices().h]")
+    v.evaluate("Reveal.slide(0)")
+    check(f"a click on the slide advances, as Keynote and Slides ({clicked[1]} ms); a drag doesn't, nor the click that lifts the black screen or closes the menu",
+          clicked[0] == 1 and dragged == 1 and lifted == [False, 1] and closed == [False, 1], f"{clicked} {dragged} {lifted} {closed}")
     check("decks carry present.js (Slides' presenting keys)", v.evaluate("!!document.getElementById('deck-present') && !Reveal.getConfig().keyboard[79] && Reveal.getConfig().keyboard[79] === null"))
     check("viewer loads the notes plugin (S = speaker view)", v.evaluate("!!(window.Reveal && Reveal.hasPlugin('notes'))"))
     v.screenshot(path=str(HERE / "viewer.png"))
