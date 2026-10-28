@@ -77,7 +77,7 @@ function openContextMenu(e, items) {
 }
 stage.addEventListener('contextmenu', e => {
   if (editing && topBox(e.target) === editing && e.target.closest('td, th')) {   // in a table cell: Slides' table menu
-    const td = e.target.closest('td, th'); if (!td.contains(getSelection().anchorNode)) focusCell(td);
+    const td = e.target.closest('td, th'); if (!cellSel.has(td) && !td.contains(getSelection().anchorNode)) focusCell(td);
     openContextMenu(e, [editItem('Cut'), editItem('Copy'), editItem('Paste'), '-', ...tableItems()]); return;
   }
   if (editing && topBox(e.target) === editing) return;   // the browser's own menu while editing text (spelling suggestions)

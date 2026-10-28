@@ -68,6 +68,7 @@ function autoFormat(/** @type {InputEvent} */ e) {
 }
 function stopEdit() {
   if (!editing) return;
+  clearCellSel();
   const b = editing, c = content(b);
   c.removeAttribute('contenteditable'); c.removeAttribute('spellcheck'); c.oninput = c.onbeforeinput = null;
   editing = null; lastRange = null;

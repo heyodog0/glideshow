@@ -33,6 +33,73 @@ function addTable(cols, rows) {
 }
 const cellAt = () => getSelection().anchorNode?.parentElement?.closest?.('td, th') || (getSelection().anchorNode?.closest?.('td, th'));
 function focusCell(td) { const r = document.createRange(); r.selectNodeContents(td); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r); lastRange = r.cloneRange(); }
+/* Cell selection, as Slides and Keynote: drag across cells, or ⇧-click from the caret's cell, picks a rectangle (merged
+   cells widen it); Fill colours those cells, Merge / Unmerge joins or splits them, ⌫ empties them. Marked .cell-on
+   (editor only, stripped on save). */
+let cellSel = new Set(), cellAnchor = null;
+/** @param {HTMLTableElement} t */
+function cellGrid(t) {   // the table as a grid of cells, a merged cell in every slot it covers
+  /** @type {HTMLTableCellElement[][]} */ const g = [];
+  [...t.rows].forEach((tr, r) => { let c = 0; for (const td of tr.cells) { while (g[r]?.[c]) c++;
+    for (let i = 0; i < td.rowSpan; i++) for (let j = 0; j < td.colSpan; j++) (g[r + i] ||= [])[c + j] = td; c += td.colSpan; } });
+  return g;
+}
+const slotsOf = (g, td) => g.flatMap((row, r) => row.map((x, c) => x === td ? [r, c] : null)).filter(Boolean);
+function rectCells(a, b) {
+  const g = cellGrid(a.closest('table')), all = [...slotsOf(g, a), ...slotsOf(g, b)];
+  let r0 = Math.min(...all.map(p => p[0])), r1 = Math.max(...all.map(p => p[0])), c0 = Math.min(...all.map(p => p[1])), c1 = Math.max(...all.map(p => p[1]));
+  for (let grew = true; grew;) {   // a merged cell sticking out of the rectangle widens it
+    grew = false;
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) for (const [rr, cc] of slotsOf(g, g[r][c])) {
+      if (rr < r0) { r0 = rr; grew = true; } if (rr > r1) { r1 = rr; grew = true; } if (cc < c0) { c0 = cc; grew = true; } if (cc > c1) { c1 = cc; grew = true; } }
+  }
+  const out = new Set(); for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (g[r]?.[c]) out.add(g[r][c]);
+  return out;
+}
+function markCells() { canvas.querySelectorAll('.cell-on').forEach(c => c.classList.remove('cell-on')); cellSel.forEach(c => c.classList.add('cell-on')); }
+function clearCellSel() { cellAnchor = null; if (cellSel.size) { cellSel = new Set(); markCells(); } }
+/** The cells a cell command acts on: the picked ones, else the caret's (or the last caret's) cell in the edited table. */
+function cellTargets() {
+  if (cellSel.size) return [...cellSel];
+  const td = cellAt() || lastRange?.startContainer?.parentElement?.closest('td, th') || /** @type {any} */ (lastRange?.startContainer)?.closest?.('td, th');
+  return editing && td && editing.contains(td) ? [td] : [];
+}
+canvas.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  const td = /** @type {Element} */ (e.target).closest?.('td, th');
+  if (!editing || !td || !editing.contains(td)) return clearCellSel();
+  const from = cellAt();
+  if (e.shiftKey && from && from !== td && from.closest('table') === td.closest('table')) { e.preventDefault(); e.stopPropagation(); cellSel = rectCells(from, td); markCells(); return; }
+  clearCellSel(); cellAnchor = td;
+});
+canvas.addEventListener('pointermove', e => {
+  if (!cellAnchor || !(e.buttons & 1)) return;
+  const td = document.elementFromPoint(e.clientX, e.clientY)?.closest('td, th');
+  if (!td || td.closest('table') !== cellAnchor.closest('table')) return;
+  if (td === cellAnchor) { if (cellSel.size) { cellSel = new Set(); markCells(); } return; }
+  cellSel = rectCells(cellAnchor, td); markCells(); getSelection().removeAllRanges();
+});
+addEventListener('pointerup', () => { cellAnchor = null; });
+function fillCells(v) { const cs = cellTargets(); if (!cs.length) return false; cs.forEach(td => { td.style.backgroundColor = v === 'transparent' ? '' : v; if (!td.getAttribute('style')) td.removeAttribute('style'); }); return true; }
+function mergeCells() {
+  const cs = [...cellSel]; if (cs.length < 2) return;
+  const t = cs[0].closest('table'), g = cellGrid(t), slots = cs.flatMap(td => slotsOf(g, td));
+  const r0 = Math.min(...slots.map(p => p[0])), r1 = Math.max(...slots.map(p => p[0])), c0 = Math.min(...slots.map(p => p[1])), c1 = Math.max(...slots.map(p => p[1])), keep = g[r0][c0];
+  for (const td of cs) if (td !== keep) { if (td.textContent.trim()) keep.append(document.createElement('br'), ...td.childNodes); td.remove(); }   // Slides keeps every cell's text
+  keep.colSpan = c1 - c0 + 1; keep.rowSpan = r1 - r0 + 1;
+  cellSel = new Set([keep]); markCells(); focusCell(keep); fitHeight(editing);
+}
+function unmergeCells() {
+  for (const td of cellTargets().filter(td => td.colSpan > 1 || td.rowSpan > 1)) {
+    const t = td.closest('table'), g = cellGrid(t), [r0, c0] = slotsOf(g, td)[0], rs = td.rowSpan, cs = td.colSpan;
+    td.colSpan = 1; td.rowSpan = 1;
+    for (let r = r0; r < r0 + rs; r++) {
+      const tr = t.rows[r], after = [...tr.cells].find(x => x !== td && slotsOf(g, x)[0]?.[1] > c0 + cs - 1);   // the first cell right of the merged block
+      for (let c = c0; c < c0 + cs; c++) { if (r === r0 && c === c0) continue; const n = document.createElement(td.tagName.toLowerCase()); n.style.cssText = td.style.cssText; after ? after.before(n) : tr.append(n); }
+    }
+  }
+  clearCellSel(); fitHeight(editing);
+}
 /** @param {any} td a table cell */
 function tableOp(op, td = cellAt()) {
   if (!td || !editing) return;
@@ -56,6 +123,9 @@ const tableItems = () => [
   '-',
   { label: 'Delete row', icon: 'delete', run: () => tableOp('del-row') }, { label: 'Delete column', icon: 'delete', run: () => tableOp('del-col') },
   { label: 'Delete table', icon: 'delete', run: () => tableOp('del-table') },
+  '-',
+  { label: 'Merge cells', icon: 'cell_merge', run: mergeCells, off: () => cellSel.size < 2 },
+  { label: 'Unmerge cells', run: unmergeCells, off: () => !cellTargets().some(td => td.colSpan > 1 || td.rowSpan > 1) },
   '-',
   { label: 'Distribute rows', icon: 'vertical_distribute', run: () => tableOp('dist-rows') }, { label: 'Distribute columns', icon: 'horizontal_distribute', run: () => tableOp('dist-cols') },
 ];

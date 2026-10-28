@@ -670,3 +670,4 @@ html.collab #ed-share, html.collab #ed-theme-btn { display: none !important; }
 .person-ring.typing { z-index: 1; box-shadow: 0 0 0 calc(3 * var(--k, 1px)) var(--c); }
 .person-tag { position: absolute; left: calc(-3 * var(--k, 1px)); bottom: 100%; margin-bottom: calc(3 * var(--k, 1px)); padding: 0 calc(6 * var(--k, 1px));
   background: var(--c); color: #fff; font-family: inherit; font-size: calc(12 * var(--k, 1px)); font-weight: 500; line-height: calc(20 * var(--k, 1px)); white-space: nowrap; border-radius: calc(3 * var(--k, 1px)) calc(3 * var(--k, 1px)) calc(3 * var(--k, 1px)) 0; }
+#ed-canvas .box.table :is(td, th).cell-on { box-shadow: inset 0 0 0 9999px rgba(26, 115, 232, .18); }   /* picked table cells, as Slides */

@@ -239,6 +239,22 @@ def checks(pg, deck: Path, errors):
     pg.keyboard.press("Escape"); pg.evaluate("(() => { sel.forEach(b => b.remove()); sel.clear(); render(); commit(); })()")
     check("Insert → Table: size grid (3 x 2), Tab moves between cells and adds a row at the end, right-click a cell to insert a column",
           cap == "3 x 2" and dims == [2, 3] and after == [3, 4, "Item", "Q1"], f"{cap} {dims} {after}")
+    pg.click("#ed-menubar [data-menu=Insert]"); pg.hover(".menu-item:has-text('Table')"); pg.click(".tg-cell[data-r='2'][data-c='2']")
+    pg.keyboard.press("Enter"); pg.evaluate("[...sel][0].querySelectorAll('td').forEach((td, i) => { td.textContent = 'c' + i; })")
+    c = lambda i: pg.locator(f"#ed-canvas table td >> nth={i}").bounding_box()
+    a, z = c(0), c(4); pg.mouse.move(a["x"] + 10, a["y"] + 10); pg.mouse.down(); pg.mouse.move(z["x"] + 20, z["y"] + 10, steps=5); pg.mouse.up()
+    picked = pg.evaluate("[...document.querySelectorAll('#ed-canvas td.cell-on')].map(td => td.textContent)")
+    pg.click(".swatch[data-for=fill]"); pg.click(".palette .cell[data-color='#ffff00']")
+    filled = pg.evaluate("[[...document.querySelectorAll('#ed-canvas td')].map(td => td.style.backgroundColor ? 1 : 0).join(''), [...sel][0].style.getPropertyValue('--fill')]")
+    pg.mouse.click(a["x"] + 10, a["y"] + 10, button="right"); t0 = pg.evaluate("performance.now()"); pg.click(".menu-item:has(.menu-label:text-is('Merge cells'))"); mg_ms = pg.evaluate(f"Math.round(performance.now() - {t0})")
+    merged = pg.evaluate("(() => { const t = document.querySelector('#ed-canvas table'), td = t.rows[0].cells[0]; return [td.colSpan, td.rowSpan, t.rows[0].cells.length, t.rows[1].cells.length, td.textContent]; })()")
+    pg.mouse.click(a["x"] + 10, a["y"] + 10, button="right"); pg.click(".menu-item:has(.menu-label:text-is('Unmerge cells'))")
+    split = pg.evaluate("(() => { const t = document.querySelector('#ed-canvas table'); return [...t.rows].map(r => r.cells.length).join(); })()")
+    saved = pg.evaluate("!cleanBox([...sel][0]).querySelector('.cell-on')")
+    pg.keyboard.press("Escape"); pg.evaluate("(() => { sel.forEach(b => b.remove()); sel.clear(); render(); commit(); })()")
+    check(f"table cells as Slides: drag picks a block, Fill colours only those cells, Merge joins them (their text kept, {mg_ms} ms), Unmerge splits it back",
+          picked == ["c0", "c1", "c3", "c4"] and filled[0] == "110110000" and filled[1] in ("", None) and merged == [2, 2, 2, 1, "c0c1c3c4"] and split == "3,3,3" and saved,
+          f"{picked} {filled} {merged} {split} {saved}")
     pg.click("#ed-menubar [data-menu=Insert]"); pg.hover(".menu-item:has-text('Video')"); pg.click(".menu-item:has-text('By URL')")
     pg.fill("#ed-url-in", "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=5"); pg.keyboard.press("Enter")
     em = pg.evaluate("(() => { const b = [...sel][0]; return [b.classList.contains('embed'), b.querySelector('iframe').getAttribute('src'), isMedia(b)]; })()")

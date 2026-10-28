@@ -126,6 +126,7 @@ function cleanBox(b) {
   c.querySelectorAll('[contenteditable], [spellcheck]').forEach(e => { e.removeAttribute('contenteditable'); e.removeAttribute('spellcheck'); });
   [c, ...c.querySelectorAll('.box')].forEach(e => ['--shx', '--shy', '--shb', '--shc', '--grad', '--fimg', '--fsize', '--frep', '--fit', '--ct', '--cr', '--cb', '--cl', '--tx-l', '--tx-t', '--tx-r', '--tx-b'].forEach(k => e.style.removeProperty(k)));   // derived; shapes.js recomputes them
   c.querySelectorAll('[data-ph]').forEach(e => e.removeAttribute('data-ph'));   // the editor's copy of the placeholder prompt
+  c.querySelectorAll('.cell-on').forEach(e => { e.classList.remove('cell-on'); if (!e.className) e.removeAttribute('class'); });   // the editor's cell selection
   c.querySelectorAll('[src*="gsv="], [poster*="gsv="]').forEach(e => ['src', 'poster'].forEach(a => { const v = e.getAttribute(a); if (v) e.setAttribute(a, plainSrc(v)); }));   // the editor's fetch-again mark (render.js)
   c.querySelectorAll('video[data-ed-poster]').forEach(v => { v.removeAttribute('poster'); v.removeAttribute('data-ed-poster'); });   // the editor's first frame for a video without a poster
   c.classList.remove('on');   // stray toolbar state that older editors leaked onto boxes with data-valign

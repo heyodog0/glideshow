@@ -55,7 +55,7 @@ function openPalette(btn) {
   if (btn.dataset.for !== 'color' && btn.dataset.for !== 'bg') {
     const t = document.createElement('button'), none = btn.dataset.for === 'hilite';
     t.className = 'menu-item transparent'; t.innerHTML = `<span class="icon">format_color_reset</span><span class="menu-label">${none ? 'None' : 'Transparent'}</span>`;
-    t.onclick = () => { closeMenu(); if (none) hilite('transparent'); else if (btn.dataset.for === 'fill') { setGradient(null); setVar('--fill', 'transparent'); commit(); } else noBorder(); };
+    t.onclick = () => { closeMenu(); if (none) hilite('transparent'); else if (btn.dataset.for === 'fill') { if (!fillCells('transparent')) { setGradient(null); setVar('--fill', 'transparent'); } commit(); } else noBorder(); };
     m.append(t, div('menu-sep'));
   }
   let solidStart = m.children.length;
@@ -85,7 +85,7 @@ function openPalette(btn) {
     range.onchange = commit;
     m.append(div('menu-sep'), row);
   }
-  if (btn.dataset.for === 'fill' && sel.size) gradientTabs(m, solidStart, { get: () => gradSpec([...sel][0]), set: setGradient, image: true });
+  if (btn.dataset.for === 'fill' && sel.size && !cellTargets().length) gradientTabs(m, solidStart, { get: () => gradSpec([...sel][0]), set: setGradient, image: true });
   if (btn.dataset.for === 'bg' && slides[cur]) gradientTabs(m, solidStart, { get: () => specOfCss(slides[cur].dataset.backgroundGradient || ''), set: setBgGradient });
   document.body.append(m);
   const r = btn.getBoundingClientRect();
@@ -148,7 +148,7 @@ function gradientTabs(m, solidStart, target) {
 }
 document.querySelectorAll('.swatch[data-for]').forEach(btn => { btn.onclick = () => openAnchor === btn ? closeMenu() : openPalette(btn); });
 $('#ed-hilite').onchange = e => hilite(e.target.value);
-$('#ed-fill').oninput = e => { setGradient(null); setVar('--fill', e.target.value); };
+$('#ed-fill').oninput = e => { if (fillCells(e.target.value)) return; setGradient(null); setVar('--fill', e.target.value); };   // cells in an edited table: those cells
 /* …and an Image tab, as Keynote's Image Fill: a picture with a scale (Scale to fill, Scale to fit, Stretch, Tile, Original size). */
 function setFillImage(src, scale) {
   for (const b of sel) {

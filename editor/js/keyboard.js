@@ -179,6 +179,7 @@ addEventListener('keydown', e => {
   if (mod && !e.shiftKey && (e.key === ']' || e.key === '[') && (editing || sel.size)) { e.preventDefault(); indentText(e.key === ']' ? 1 : -1); return; }
   if (editing && e.key === 'Tab' && !cellAt()) { e.preventDefault(); indentText(e.shiftKey ? -1 : 1); return; }
   if (editing) {
+    if ((e.key === 'Backspace' || e.key === 'Delete') && cellSel.size > 1) { e.preventDefault(); cellSel.forEach(td => td.replaceChildren()); fitHeight(editing); return; }   // empty the picked cells
     if (e.key === 'Tab' && cellAt()) {   // Tab / ⇧Tab: next / previous cell; Tab in the last cell adds a row
       e.preventDefault();
       const cells = [...cellAt().closest('table').querySelectorAll('td, th')], i = cells.indexOf(cellAt()) + (e.shiftKey ? -1 : 1);
