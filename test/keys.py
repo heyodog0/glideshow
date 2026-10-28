@@ -159,6 +159,8 @@ E = [
   ("Navigation", "Zoom in", "none", "Meta+Equal", "$('#ed-canvas').getBoundingClientRect().width > __w"),
   ("Navigation", "Zoom out", "none", "Meta+Minus", "$('#ed-canvas').getBoundingClientRect().width < __w"),
   ("Navigation", "Fit", "none", ["Meta+Equal", "Meta+Digit0"], "Math.abs($('#ed-canvas').getBoundingClientRect().width - __w) < 1"),
+  ("Navigation", "Zoom to selection", "box", "Meta+Shift+Digit0", "zoom > 1 && Math.abs(A().getBoundingClientRect().left + A().getBoundingClientRect().width / 2 - ($('#ed-stage').getBoundingClientRect().left + $('#ed-stage').clientWidth / 2)) < 30"),
+  ("Navigation", "Zoom to fit content", "none", ["js:setZoom(2)", "Meta+Alt+Shift+Digit0"], "zoom !== null && zoom < 2"),
   ("Presenting", "Present from this slide", "none", "Meta+Enter", "presenting() && /#\\/1/.test($('#ed-show iframe').src)"),
   ("Presenting", "Present from beginning", "none", "Meta+Shift+Enter", "presenting() && /#\\/0/.test($('#ed-show iframe').src)"),
 ]

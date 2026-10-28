@@ -8,7 +8,7 @@ function render() {
   const s = slides[cur];
   if (scope && !s.contains(scope)) scope = null;
   s.querySelectorAll(':scope > style').forEach(x => { x.classList.add('slide-css'); x.media = 'not all'; });   // a slide's style applies to it only (below), never to the editor
-  canvas.prepend(s);
+  canvas.prepend(s); if (zoom) queueMicrotask(extendStage);
   paintBg(frame, s);
   ($('#ed-slide-css') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'ed-slide-css' }))).textContent = slideCSS(s) ? `#ed-canvas > section { ${slideCSS(s)} }` : '';
   s.querySelectorAll('img, video').forEach(freshSrc); s.querySelectorAll('video').forEach(stillPoster);

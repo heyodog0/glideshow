@@ -668,6 +668,15 @@ def checks(pg, deck: Path, errors):
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
     check("double-click enters a group to pick one member (outline lines up), moving it refits the group, Esc goes back to the group",
           entered == [ids[0], True] and ol and moved == ["100px", "800px", "0px"] and out == [ids[2], None], f"{entered} {ol} {moved} {out}")
+    off = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1); const b = makeBox({x: W + 700, y: H + 300, w: 300, h: 200, shape: 'rect'}); s.append(b);
+      sel.clear(); render(); commit(); setZoom(2); const st = $('#ed-stage'); st.scrollLeft = st.scrollWidth; st.scrollTop = st.scrollHeight;
+      const r = b.getBoundingClientRect(), sr = st.getBoundingClientRect(); return [b.id, r.right <= sr.right + 1 && r.bottom <= sr.bottom + 1 && r.left >= sr.left]; })()""")
+    t0 = pg.evaluate("performance.now()"); pg.evaluate("zoomToContent()"); zc_ms = pg.evaluate(f"Math.round(performance.now() - {t0})")
+    seen = pg.evaluate(f"""(() => {{ const sr = $('#ed-stage').getBoundingClientRect(), inside = r => r.left >= sr.left - 1 && r.right <= sr.right + 1 && r.top >= sr.top - 1 && r.bottom <= sr.bottom + 1;
+      const out = [inside(document.getElementById('{off[0]}').getBoundingClientRect()), inside($('#ed-frame').getBoundingClientRect())];
+      setZoom(null); slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); return [...out, $('#ed-frame').style.marginLeft || 'auto']; }})()""")
+    check(f"extended canvas: zoomed in, the stage scrolls to an object off the slide; View → Zoom to fit content shows it and the slide ({zc_ms} ms)",
+          off[1] and seen == [True, True, "auto"], f"{off} {seen}")
     pg.evaluate("go(0)"); pg.click("#ed-menubar [data-menu=Slide]"); pg.click(".menu-item:has(.menu-label:text-is('Go to slide'))")
     pg.fill("#ed-goto-n", "2"); t0 = pg.evaluate("performance.now()"); pg.keyboard.press("Enter")
     went = pg.evaluate(f"[cur, $('#ed-gotodlg').hidden, Math.round(performance.now() - {t0})]")

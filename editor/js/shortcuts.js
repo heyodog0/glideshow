@@ -22,7 +22,7 @@ const SHORTCUTS = {
     ['Delete / duplicate selected slides', '⌫ / ⌘D'], ['Select all slides', '⌘A'], ['Back to the slide / to the filmstrip', '⏎ / Esc'], ['Move to filmstrip', '⌥⇧⌘F']],
   'Navigation': [['Next / previous slide (nothing selected)', '↓ / ↑'], ['Next / previous slide', 'Page Down / Page Up'],
     ['Next / previous slide while typing', 'Page Down / Page Up'], ['Go to slide', '⌃⌘G'],
-    ['Zoom in', '⌘+'], ['Zoom out', '⌘−'], ['Fit', '⌘0']],
+    ['Zoom in', '⌘+'], ['Zoom out', '⌘−'], ['Fit', '⌘0'], ['Zoom to selection', '⇧⌘0'], ['Zoom to fit content', '⌥⇧⌘0']],
   'Presenting': [['Present from this slide', '⌘↵'], ['Present from beginning', '⇧⌘↵'], ['Next / previous slide', '→ / ← or N / P'], ['Up / down in a stack', '↓ / ↑'],
     ['Next / back in reading order', 'Space / ⇧Space or PgDn / PgUp'], ['First / last slide', 'Home / End'], ['Go to slide n', 'n then ↵'],
     ['Black / white screen', 'B / W'], ['Laser pointer', 'L'], ['Full screen', 'F'], ['Speaker view', 'S'], ['Note for the AI (presenting from the editor)', 'M'], ['Exit', 'Esc']],

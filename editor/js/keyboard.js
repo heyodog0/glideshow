@@ -172,6 +172,7 @@ addEventListener('keydown', e => {
   if (mod && e.altKey && e.code === 'KeyX') { e.preventDefault(); setSpelling(!spellOn()); return; }
   if (mod && e.altKey && e.shiftKey && e.code === 'KeyF') { e.preventDefault(); stopEdit(); thumbs.focus({ preventScroll: true }); return; }   // move to filmstrip
   if (mod && e.key === '/') { e.preventDefault(); showShortcuts(shortcutsDlg.hidden); return; }
+  if (mod && e.shiftKey && e.code === 'Digit0') { e.preventDefault(); e.altKey ? zoomToContent() : zoomToSelection(); return; }   // Keynote: ⇧⌘0 / ⌥⇧⌘0
   if (mod && !e.altKey && (e.key === '=' || e.key === '+' || e.key === '-' || e.key === '0')) {
     e.preventDefault(); e.key === '0' ? setZoom(null) : zoomStep(e.key === '-' ? -1 : 1); return;
   }
@@ -254,5 +255,5 @@ addEventListener('keydown', e => {
 });
 /* Modifier keys docs/shortcuts.md gives the editor, by e.code; ⌘C / ⌘X / ⌘V / ⌘L / ⌘R / ⌘W stay the browser's. */
 const CLAIMED = { meta: 'KeyB KeyI KeyU KeyK KeyD KeyM KeyY KeyZ KeyA KeyS KeyP KeyF Backslash Period Comma BracketLeft BracketRight Slash ArrowUp ArrowDown Enter',
-  shift: 'KeyX KeyL KeyE KeyR KeyJ KeyH KeyM Digit7 Digit8 Period Comma ArrowUp ArrowDown Enter KeyZ', alt: 'KeyC KeyV KeyG KeyX', ctrl: 'KeyB KeyI KeyK KeyW KeyJ' };
+  shift: 'KeyX KeyL KeyE KeyR KeyJ KeyH KeyM Digit7 Digit8 Digit0 Period Comma ArrowUp ArrowDown Enter KeyZ', alt: 'KeyC KeyV KeyG KeyX', ctrl: 'KeyB KeyI KeyK KeyW KeyJ' };
 const claimed = e => (CLAIMED[e.metaKey && e.ctrlKey ? 'ctrl' : e.altKey ? 'alt' : e.shiftKey ? 'shift' : 'meta'] || '').split(' ').includes(e.code);

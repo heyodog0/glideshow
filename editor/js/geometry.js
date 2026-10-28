@@ -63,6 +63,7 @@ function fit() {
   canvas.style.transform = `scale(${scale})`;
   stage.classList.toggle('zoomed', !!zoom);
   $('#ed-zoom .zoom-label').textContent = zoom ? Math.round(zoom * 100) + '%' : 'Fit';
+  extendStage();
   drawOverlay(); drawGuides(); drawRulers();
 }
 /* Rulers, as Slides: inches (1 in = 192 canvas px) with 1/8 in ticks and numbers at whole inches, 0 at the slide's
@@ -147,6 +148,30 @@ function setZoom(z, cx, cy) {
   stage.scrollLeft += fr.left + p.x * scale - cx; stage.scrollTop += fr.top + p.y * scale - cy;
 }
 const fitZoom = () => scale * W / 960;
+/* Keynote's extended canvas: zoomed in, the stage scrolls as far as the objects that sit off the slide (a margin on
+   that side of the frame), keeping the slide where it was on screen. */
+function extendStage() {
+  const fr0 = frame.getBoundingClientRect(), m = ['', '', '', ''];   // top right bottom left
+  if (zoom && slides[cur]) {
+    const g = bbox([{ x: 0, y: 0, w: W, h: H }, ...boxes().map(aabb)]), cs = getComputedStyle(stage);
+    const [t, r, b, l] = [-g.y, g.x + g.w - W, g.y + g.h - H, -g.x].map(v => Math.max(0, v) * scale + (v > 0 ? 24 : 0));
+    if (W * scale + l + r > stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) { if (l) m[3] = l + 'px'; if (r) m[1] = r + 'px'; }
+    if (H * scale + t + b > stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)) { if (t) m[0] = t + 'px'; if (b) m[2] = b + 'px'; }
+  }
+  const st = frame.style; if ([st.marginTop, st.marginRight, st.marginBottom, st.marginLeft].join() === m.join()) return;
+  [st.marginTop, st.marginRight, st.marginBottom, st.marginLeft] = m;
+  const fr = frame.getBoundingClientRect(); stage.scrollLeft += fr.left - fr0.left; stage.scrollTop += fr.top - fr0.top;
+}
+/* View → Zoom to selection (⇧⌘0) and Zoom to fit content (⌥⇧⌘0, the slide and everything off it), as Keynote. */
+function zoomTo(g) {
+  const cs = getComputedStyle(stage), sw = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 32, sh = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 32;
+  setZoom(Math.min(sw / Math.max(g.w, 1), sh / Math.max(g.h, 1)) * W / 960);
+  const fr = frame.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+  stage.scrollLeft += fr.left + (g.x + g.w / 2) * scale - (sr.left + sr.width / 2); stage.scrollTop += fr.top + (g.y + g.h / 2) * scale - (sr.top + sr.height / 2);
+  drawOverlay(); drawRulers();
+}
+const zoomToSelection = () => { if (sel.size) zoomTo(bbox([...sel].map(aabb))); };
+const zoomToContent = () => zoomTo(bbox([{ x: 0, y: 0, w: W, h: H }, ...boxes().map(aabb)]));
 const zoomStep = dir => {
   const z = fitZoom();
   setZoom(dir > 0 ? ZOOMS.find(v => v > z + 0.01) ?? 2 : [...ZOOMS].reverse().find(v => v < z - 0.01) ?? 0.5);

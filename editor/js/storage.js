@@ -233,7 +233,7 @@ function commit() {
   fitGroups(); followConnectors(); showAINotes();
   if (pushHistory()) scheduleSave();
   refreshFind();
-  renderThumbs(); updateToolbar();
+  renderThumbs(); updateToolbar(); if (zoom) extendStage();
 }
 // `at` is the slide to show: the slide where the undone/redone change was made, as in Slides.
 function restore(s, at = s.cur) {

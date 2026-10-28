@@ -226,6 +226,9 @@ const zoomItems = () => [
   '-',
   { label: 'Zoom in', icon: 'zoom_in', key: '⌘+', run: () => zoomStep(1) },
   { label: 'Zoom out', icon: 'zoom_out', key: '⌘−', run: () => zoomStep(-1) },
+  '-',
+  { label: 'Zoom to selection', icon: 'zoom_in_map', key: '⇧⌘0', run: zoomToSelection, off: noSel },
+  { label: 'Zoom to fit content', icon: 'fit_screen', key: '⌥⇧⌘0', run: zoomToContent },
 ];
 menuButton($('#ed-zoom'), () => zoomItems());
 // Trackpad pinch (and ⌘/ctrl + wheel) zooms around the pointer.
