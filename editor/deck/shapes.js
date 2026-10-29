@@ -38,6 +38,9 @@
     const d = DASH[b.dataset.dash];
     if (d) e.setAttribute('stroke-dasharray', d.map(v => v * Math.max(width, 1)).join(' '));
   }
+  /* Line Draw (class line-draw / line-erase, base.css): the stroke measured as 1, so its dash can draw it. Dashed lines keep
+     their dashes and just appear. */
+  function drawable(e, b) { if (b.matches('.line-draw, .line-erase') && !DASH[b.dataset.dash]) e.setAttribute('pathLength', '1'); }
 
   /* Shapes are drawn from the OOXML preset geometry that Google Slides itself uses (ECMA-376 presetShapeDefinitions:
      guides, adjust values, paths, text rectangle, handles). data-adj, data-adj2… are the presets' adj values scaled 0–1;
@@ -201,7 +204,7 @@
       case 'path': {   // a freehand curve, polyline or scribble: data-path in 0..1 units of the box, scaled with it
         const d = b.dataset.path || 'M0,0 L1,1', width = isNaN(sw) ? 4 : sw, main = unitPath(d, 0, 0, w, h, /z\s*$/i.test(d) ? 'f' : 'l');   // closed (… Z): filled, as a shape
         if ((d.match(/M/g) || []).length > 1) main.style.fillRule = 'evenodd';   // several outlines (Combine shapes): holes stay holes
-        dash(main, b, width); out = [unitPath(d, 0, 0, w, h, 'hit'), main]; break;
+        dash(main, b, width); drawable(main, b); out = [unitPath(d, 0, 0, w, h, 'hit'), main]; break;
       }
       case 'line': case 'arrowline': case 'elbow': case 'curve': {
         const [ax, ay, bx, by] = b.dataset.dir === 'up' ? [0, h, w, 0] : [0, 0, w, h];
@@ -217,7 +220,7 @@
         const p0 = [ax + u0x * A.back, ay + u0y * A.back], p1 = [bx - u1x * B.back, by - u1y * B.back];
         const d = s === 'curve' ? `M${p0} C${/** @type {any} */ (route).c[0]} ${/** @type {any} */ (route).c[1]} ${p1}` : route ? 'M' + [p0, ...route.pts.slice(1, -1), p1].join(' L') : `M${p0} L${p1}`;
         const main = el('path', { d }, 'l');
-        dash(main, b, width);
+        dash(main, b, width); drawable(main, b);
         out = [el('path', { d: d.replace(/^M[^ ]+/, `M${ax},${ay}`) }, 'hit'), main, ...A.els, ...B.els];
         break;
       }

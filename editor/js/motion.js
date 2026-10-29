@@ -41,9 +41,9 @@ const EFFECTS = [['appear', 'Appear'], ['fade-in', 'Fade in'], ['fade-right', 'F
   // Keynote's builds (base.css): Wipe and Move In from each side, Scale, Pop
   ['wipe-r', 'Wipe from left'], ['wipe-l', 'Wipe from right'], ['wipe-d', 'Wipe from top'], ['wipe-u', 'Wipe from bottom'],
   ['move-in-r', 'Move in from left'], ['move-in-l', 'Move in from right'], ['move-in-d', 'Move in from top'], ['move-in-u', 'Move in from bottom'],
-  ['scale-in', 'Scale'], ['pop-in', 'Pop'],
+  ['scale-in', 'Scale'], ['pop-in', 'Pop'], ['line-draw', 'Line draw'],   // Line draw: lines and open drawings only (strokeOnly)
   // reveal's other fragment styles: out, dimmed, shown for one step only, and emphasis on something already there
-  ['fade-out', 'Fade out'], ['semi-fade-out', 'Dim'], ['fade-in-then-out', 'Fade in, then out'], ['fade-in-then-semi-out', 'Fade in, then dim'],
+  ['fade-out', 'Fade out'], ['line-erase', 'Line draw out'], ['semi-fade-out', 'Dim'], ['fade-in-then-out', 'Fade in, then out'], ['fade-in-then-semi-out', 'Fade in, then dim'],
   ['highlight-current-blue', 'Highlight while current'], ['grow', 'Grow'], ['shrink', 'Shrink'], ['strike', 'Strike through'],
   // Keynote's actions: Rotate by data-angle (degrees, negative counterclockwise; 360 by default), Pulse, Pop
   ['spin', 'Rotate'], ['pulse', 'Pulse'], ['pop', 'Pop (emphasis)']];
@@ -66,7 +66,9 @@ const DELIVERY_TABLE = [['', 'All at once'], ['row', 'By row'], ['column', 'By c
 const deliveries = b => isMedia(b) || isStroke(b) || isGroup(b) ? [] : content(b)?.querySelector('table') ? DELIVERY_TABLE : content(b)?.textContent.trim() ? DELIVERY_TEXT : [];
 const startOf = b => 'withPrevious' in b.dataset ? 'with' : b.dataset.start || 'click';
 function setStart(b, v) { delete b.dataset.withPrevious; delete b.dataset.start; if (v === 'with') b.dataset.withPrevious = ''; else if (v !== 'click') b.dataset.start = v; }
-function setEffect(b, eff) { b.classList.remove(...EFFECTS.map(e => e[0])); b.classList.add('fragment', eff); }
+function setEffect(b, eff) { b.classList.remove(...EFFECTS.map(e => e[0])); b.classList.add('fragment', eff); if (b.dataset.shape) renderShape(b); }   // (Line draw measures the stroke)
+/* Keynote offers Line Draw only on drawings: here lines and open freehand paths. */
+const STROKE_ONLY = ['line-draw', 'line-erase'], effectsFor = b => EFFECTS.filter(([v]) => isStroke(b) || !STROKE_ONLY.includes(v));
 function addAnim() {   // boxes animated together (several selected) share one click: the first on click, the rest with previous
   const list = animBoxes();
   [...sel].filter(b => !b.classList.contains('fragment')).forEach((b, i) => { setEffect(b, 'fade-in'); if (i) b.dataset.withPrevious = ''; list.push(b); });
@@ -94,7 +96,7 @@ function pasteAnim() {
   renumber(list); commit(); renderAnims();
 }
 function removeAnim(b) {
-  b.classList.remove('fragment', ...EFFECTS.map(e => e[0])); delete b.dataset.fragmentIndex; delete b.dataset.withPrevious; delete b.dataset.build; TIMING.forEach(k => delete b.dataset[k]);
+  b.classList.remove('fragment', ...EFFECTS.map(e => e[0])); if (b.dataset.shape) renderShape(b); delete b.dataset.fragmentIndex; delete b.dataset.withPrevious; delete b.dataset.build; TIMING.forEach(k => delete b.dataset[k]);
   renumber(animBoxes()); commit(); renderAnims();
 }
 function moveAnim(from, to) { const list = animBoxes(); list.splice(to, 0, ...list.splice(from, 1)); renumber(list); commit(); renderAnims(); }
@@ -115,7 +117,7 @@ function renderAnims() {
     const r = div('anim-row' + (sel.has(b) ? ' on' : '') + (open ? ' open' : '')); r.draggable = true; r.dataset.i = String(i);
     r.innerHTML = `<div class="anim-head"><span class="n icon" title="Drag to reorder">drag_indicator</span><span class="icon chev">chevron_right</span>
       <span class="step" title="Build ${step}">${step}</span><span class="eff"></span><span class="what"></span><button title="Delete animation"><span class="icon">delete</span></button></div>
-      <div class="anim-body"><select class="e">${EFFECTS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+      <div class="anim-body"><select class="e">${effectsFor(b).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <select class="t">${Object.entries(START_LABEL).filter(([v]) => v !== 'transition' || !i).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <div class="timing"><label>Duration (s)<input class="dur" type="number" min="0.1" max="20" step="0.1" placeholder="0.5"></label>
       <label>Delay (s)<input class="del" type="number" min="0" max="60" step="0.1" placeholder="0"></label></div>
@@ -177,6 +179,9 @@ async function playAnims() {
     if (i && !['after', 'transition'].includes(startOf(step[0]))) await wait(250);   // a click, in the preview
     if (['after', 'transition'].includes(startOf(step[0]))) await wait((+step[0].dataset.delay || 0) * 1000);
     await Promise.all(step.map(b => { b.style.visibility = '';
+      const ln = STROKE_ONLY.includes(effectOf(b)) && b.querySelector('svg.shape path.l[pathLength]');   // Line draw: the stroke draws (or undraws)
+      if (ln) { ln.style.strokeDasharray = '1 1'; const draw = [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }];
+        return ln.animate(effectOf(b) === 'line-draw' ? draw : draw.reverse(), { duration: (+b.dataset.duration || 0.5) * 1000, easing: b.dataset.ease || 'ease' }).finished.then(() => { ln.style.strokeDasharray = ''; }); }
       return b.animate(effectOf(b) === 'spin' ? spin(b) : kf[effectOf(b)], { duration: (+b.dataset.duration || 0.5) * 1000, delay: startOf(b) === 'with' || startOf(b) === 'click' ? (+b.dataset.delay || 0) * 1000 : 0, easing: b.dataset.ease || 'ease', fill: 'backwards' }).finished; }));
   }
 }

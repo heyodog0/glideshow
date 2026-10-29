@@ -123,6 +123,8 @@ Rules:
   `strike`. Keynote's: `wipe-r` / `wipe-l` / `wipe-d` / `wipe-u` (Wipe from left / right / top / bottom), `move-in-r` / `-l` / `-d` /
   `-u` (Move in from off the slide, from the left …), `scale-in` (Scale), `pop-in` (Pop); actions on a box already shown: `spin`
   (Rotate by `data-angle` degrees, 360 by default, negative counterclockwise; it stays turned), `pulse`, `pop` (Pop emphasis).
+  On a line or an open drawing: `line-draw` (drawn along its stroke, arrowheads at the end) and `line-erase` (undrawn); a
+  dashed line just appears.
   `data-build="paragraph"` on an animated text box makes each paragraph or bullet its own step with the box's effect; `"highlight"` the same, dimming the ones already shown; `"word"` / `"character"` keep one step, the text arriving a word or letter at a time over `data-duration` (default 1 s; in-effects only). On a table box `"row"`, `"column"` or `"cell"` makes each its own step.
   Timing (Motion panel): `data-start="after"` plays a build by itself once the one before has finished, `data-start="transition"` (the slide's first build) once the slide's transition has; `data-duration` and `data-delay` in seconds (defaults reveal's ~0.5 s and 0); `data-ease` = `linear | ease-in | ease-out | ease-in-out`.
   Pictures that replace each other in one place (a plot that updates): stack them at the same position, the first

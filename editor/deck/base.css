@@ -150,6 +150,15 @@
 .reveal .slides section .fragment.spin.visible { rotate: var(--gs-angle, 360deg); }
 .reveal .slides section .fragment.pulse.visible { animation: gs-pulse .5s ease-in-out; }
 .reveal .slides section .fragment.pop.visible { animation: gs-pop .5s; }
+/* Line Draw: a line or drawing appears as if drawn (line-draw), its arrowheads at the end; Line Draw out (line-erase)
+   undraws it back to its start. shapes.js measures the stroke as 1 (pathLength); --gs-dur / -ease / -delay from present.js. */
+.reveal .slides section .fragment:is(.line-draw, .line-erase) { opacity: 1; transition-property: visibility; transition-duration: 0s; }
+.reveal .slides section .fragment.line-erase { visibility: inherit; }
+.reveal .slides section .fragment:is(.line-draw, .line-erase) path.l[pathLength] { stroke-dasharray: 1 1; stroke-dashoffset: 0; transition: stroke-dashoffset var(--gs-dur, .5s) var(--gs-ease, ease) var(--gs-delay, 0s); }
+.reveal .slides section .fragment.line-draw:not(.visible) path.l[pathLength], .reveal .slides section .fragment.line-erase.visible path.l[pathLength] { stroke-dashoffset: 1; }
+.reveal .slides section .fragment:is(.line-draw, .line-erase) svg.shape > :not(.l, .hit, defs) { transition: opacity .15s; }
+.reveal .slides section .fragment.line-draw:not(.visible) svg.shape > :not(.l, .hit, defs), .reveal .slides section .fragment.line-erase.visible svg.shape > :not(.l, .hit, defs) { opacity: 0; }
+.reveal .slides section .fragment.line-draw.visible svg.shape > :not(.l, .hit, defs) { transition-delay: calc(var(--gs-delay, 0s) + var(--gs-dur, .5s)); }
 @keyframes gs-pop-in { from { scale: 0; } 60% { scale: 1.12; } 80% { scale: .96; } to { scale: 1; } }
 @keyframes gs-pulse { 50% { scale: 1.15; } }
 @keyframes gs-pop { 30% { scale: 1.25; } 60% { scale: .95; } to { scale: 1; } }

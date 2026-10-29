@@ -1904,6 +1904,12 @@ def reveal_checks(b, errors, deck_file: Path):
           kn[0][:3] == [True, "90", "Rotate"] and kn[0][4] is True and kn[0][5] == "Wipe from left" and kn[0][3] < 100
           and {"wipe-r", "wipe-l", "wipe-d", "wipe-u", "move-in-r", "move-in-l", "move-in-d", "move-in-u", "sl-up", "sl-down"} <= set(kn[1])
           and {"Wipe from left", "Move in from bottom", "Scale", "Pop", "Rotate", "Pulse", "Pop (emphasis)"} <= set(kn[2]), str(kn[0]))
+    ld = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
+      const l = makeBox({ x: 200, y: 300, w: 800, h: 200, shape: 'arrowline' }), r = makeBox({ x: 200, y: 600, w: 300, h: 200, html: 'r' });
+      const e = makeBox({ x: 200, y: 900, w: 800, h: 100, shape: 'line' });
+      slides[cur].append(l, r, e); render(); sel = new Set([l, r]); addAnim(); setEffect(l, 'line-draw'); sel = new Set([e]); addAnim(); setEffect(e, 'line-erase'); commit(); render();
+      return [effectsFor(l).some(e => e[0] === 'line-draw'), effectsFor(r).some(e => e[0] === 'line-draw'), l.querySelector('svg.shape path.l')?.getAttribute('pathLength')]; }""")
+    check("Line draw (in and out) is offered on lines and open drawings only, as Keynote; it measures the stroke for drawing", ld == [True, False, "1"], str(ld))
     pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
       const t = makeBox({ x: 100, y: 100, w: 900, h: 500, html: '<ul><li>One</li><li>Two</li><li>Three</li></ul>' }), after = makeBox({ x: 1100, y: 100, w: 500, h: 200, html: 'After' });
       slides[cur].append(t, after); render(); sel = new Set([t]); addAnim(); sel = new Set([after]); addAnim();
@@ -1951,6 +1957,14 @@ def reveal_checks(b, errors, deck_file: Path):
           and b0[0][0] == "inset(0px 100% 0px 0px)" and b0[0][3] == "hidden" and b0[1][1].startswith("1920px") and b0[2][2] == "0" and b0[3][2] == "0" and b0[4][3] == "visible"
           and b1[0][0] in ("inset(0px)", "none") and b1[1][1] == "none" and b1[2][2] in ("none", "1") and b1[3][2] in ("none", "1") and b1[4][3] == "90deg"
           and b1[5][2] in ("none", "1") and float(b1[5][5]) > 1, f"{kb}")
+    lv = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => x.querySelector('.box.line-draw')), h = Reveal.getIndices(s).h, b = s.querySelector('.box.line-draw'),
+      p = b.querySelector('path.l'), head = b.querySelector('svg.shape > :not(.l):not(.hit):not(defs)'), cs = e => getComputedStyle(e), wait = ms => new Promise(r => setTimeout(r, ms));
+      Reveal.slide(h, 0, -1); await wait(900); const before = [parseFloat(cs(p).strokeDashoffset), +cs(head).opacity];
+      Reveal.nextFragment(); await wait(200); const mid = parseFloat(cs(p).strokeDashoffset); await wait(900);
+      const after = [parseFloat(cs(p).strokeDashoffset), +cs(head).opacity, cs(b).visibility], ep = s.querySelector('.box.line-erase path.l'), shown = parseFloat(cs(ep).strokeDashoffset);
+      Reveal.nextFragment(); await wait(900); const erased = parseFloat(cs(ep).strokeDashoffset); Reveal.slide(0); return [p.getAttribute('pathLength'), before, mid, after, [shown, erased]]; }""")
+    check("…in the slideshow Line draw draws the arrow's stroke from its start, then shows the arrowhead", lv[0] == "1" and lv[1] == [1, 0] and 0 < lv[2] < 1 and lv[3] == [0, 1, "visible"], str(lv))
+    check("…and Line draw out undraws a line that was showing", lv[4] == [0, 1], str(lv[4]))
 
     # live box: its own page in assets/, sandboxed in the slide and served with a sandbox policy; double-click edits it
     pg.evaluate("go(slides.length - 1)"); pg.evaluate("addLive()"); pg.wait_for_function("boxes(slides[cur]).some(b => b.classList.contains('live'))"); settle()
