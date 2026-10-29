@@ -59,6 +59,7 @@
 .box[data-text-gradient] > .content { background-image: var(--tgrad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .box > .content, .box > .content :is(u, s, span, a) { text-decoration-style: var(--u-style, solid); text-decoration-thickness: var(--u-weight, auto); }
 .box[data-dropcap] > .content::first-letter { float: left; font-size: 3.4em; line-height: .82; margin: .06em .08em 0 0; }
+.reveal .slides section > .slide-num { position: absolute; right: 2.6%; bottom: 3.5%; font-size: 26.67px; color: #757575; pointer-events: none; }   /* Insert → Slide numbers */
 .box > .content span.tb { display: inline-block; white-space: pre; overflow: hidden; vertical-align: baseline; }   /* a tab, sized by shapes.js to its stop */
 .box > .content th { font-weight: bold; }   /* header cells (Format options → Table → Header rows / columns) */
 .box.table[data-alt-rows] .content tr:nth-child(even) > td { background-color: var(--alt-row, #f3f3f3); }

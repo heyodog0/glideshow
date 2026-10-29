@@ -133,6 +133,7 @@ const MENUS = {
     { label: 'Live box', icon: 'play_circle', run: () => addLive() },   // ours: a page with its own script, on the slide
     '-',
     { label: 'Special characters', icon: 'special_character', run: () => showChars(true) },
+    { label: 'Slide numbers', icon: 'tag', run: () => showNumDialog(true) },
     { label: 'Animation', icon: 'animation', run: () => { setTransPanel(true); addAnim(); }, off: noSel },
     '-',
     { label: 'Link', icon: 'link', key: '⌘K', run: linkText, off: () => !editing && sel.size !== 1 },

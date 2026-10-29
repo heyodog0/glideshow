@@ -219,6 +219,7 @@ Mark the claim with a short `[1]` in the text if there are several.
 - Don't write SVG or `--tx-*` / `--sh*` style variables: they are derived when the deck loads.
 - A link to another slide: `<a href="#slide=<that section's data-sid>">` (or `data-link` on a picture's box), not
   `#/3`, so it survives reordering; `#next`, `#previous`, `#first`, `#last` and `#exit` also work (deck-format.md).
+- Slide numbers: `data-slide-numbers="on"` on `.slides` (never type numbers into a box; they'd go stale).
 - Builds that play by themselves: `data-start="after"` (or `"transition"` on a slide's first build), with `data-delay` /
   `data-duration` in seconds; see deck-format.md for `data-ease`.
 - The editor commits every save to git when the deck is in a repo, so `git log` / `git diff` show what the person

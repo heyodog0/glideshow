@@ -25,6 +25,7 @@ Rules:
 - Geometry lives only in a box's inline `left/top/width/height` (in px on the 1920×1080 canvas). Rotation is an inline `transform: rotate(Ndeg)` about the box centre (absent when 0).
 - Inside `.content`, anything goes: HTML, lists, `<pre><code>` blocks, tables, iframes.
 - Guides: `data-guides="v960 h540"` on the `.slides` element (vertical/horizontal, px); editor only, never drawn when presenting.
+- Slide numbers (Insert → Slide numbers): `data-slide-numbers="on"` (or `"skip-title"`: not on title-layout slides) on `.slides`; a slide's `data-slide-number="on" | "off"` overrides it. Skipped slides aren't counted. shapes.js draws each number (bottom right); it is never saved.
 - Slideshow settings (Slideshow ▾ → Slideshow settings), on `.slides`: `data-play="self"` plays by itself (`data-play-build` seconds between builds, default 2; `data-play-slide` seconds before the next slide, default 5) or `data-play="links"` (only links move the show); `data-loop` goes back to the first slide after the last; `data-idle="5"` returns to the first slide after that many minutes without a key or click.
 - Cropped pictures: `data-crop="top right bottom left"` on a `.box.image`, each the share (0–1) of the picture cut off that side; the box is the visible part.
 - Videos: `<div class="box video" style="…"><div class="content"><video src="assets/clip.mp4" poster="assets/clip.jpg" controls playsinline></video></div></div>`;

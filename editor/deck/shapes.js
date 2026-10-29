@@ -325,6 +325,23 @@
     }
   }
   window.fitTabs = fitTabs;
+  /* Slide numbers (Insert → Slide numbers, as Slides): .slides[data-slide-numbers] ("on", or "skip-title" to leave title
+     slides out), a slide's own data-slide-number="on" / "off" over that; skipped slides aren't counted. Each numbered
+     slide gets a derived .slide-num in its bottom-right corner (never saved). */
+  function numberSlides(list, deck = /** @type {HTMLElement | null} */ (document.querySelector('.reveal .slides'))?.dataset.slideNumbers) {
+    let n = 0;
+    for (const s of list) {
+      s.querySelector(':scope > .slide-num')?.remove();
+      if (s.dataset.visibility === 'hidden') continue;
+      n++;
+      const own = s.dataset.slideNumber, on = own ? own === 'on' : !!deck && !(deck === 'skip-title' && s.dataset.layout === 'title');
+      if (!on) continue;
+      const e = document.createElement('div'); e.className = 'slide-num'; e.setAttribute('aria-hidden', 'true'); e.textContent = String(n); s.append(e);
+    }
+  }
+  window.numberSlides = numberSlides;
+  const leaves = () => [...document.querySelectorAll('.reveal .slides > section')].flatMap(s => s.querySelector(':scope > section') ? [...s.querySelectorAll(':scope > section')] : [s]);
+  if (document.querySelector('.reveal .slides')) numberSlides(leaves());
 
   /* A drop shadow is drawn in the box's own frame (filter runs before transform), so counter-rotate
      its offset to keep it falling straight down the page whatever the box's rotate/flip. */

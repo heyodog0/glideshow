@@ -138,7 +138,7 @@ function sectionHTML(s, save) {
   const shell = s.cloneNode(false);
   if (save) shell.removeAttribute('data-ed-stack');
   const open = shell.outerHTML.slice(0, -'</section>'.length);
-  const inner = [...s.children].map(e => '  ' + (e.classList.contains('box') ? cleanBox(e) : e).outerHTML).join('\n');
+  const inner = [...s.children].filter(e => !e.classList.contains('slide-num')).map(e => '  ' + (e.classList.contains('box') ? cleanBox(e) : e).outerHTML).join('\n');
   return `${open}\n${inner}\n</section>`;
 }
 function deckHTML() {

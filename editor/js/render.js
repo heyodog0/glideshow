@@ -146,6 +146,7 @@ const foldedH = () => { try { return new Set(JSON.parse(stored(foldKey()) || '[]
 function setFolded(h, on) { const f = foldedH(); on ? f.add(h) : f.delete(h); store(foldKey(), f.size ? JSON.stringify([...f]) : undefined); }
 const subsOf = i => { let n = 0; while (slides[i + n + 1] && isSub(i + n + 1)) n++; return n; };
 function renderThumbs() {
+  numberSlides(slides, deckDoc?.querySelector('.slides')?.dataset.slideNumbers);   // slide numbers follow every change of order, skipping and layout
   picked = new Set([...picked].filter(s => slides.includes(s))); if (slides[cur]) picked.add(slides[cur]);
   if (isSub(cur) && foldedH().has(hv(cur)[0])) setFolded(hv(cur)[0], false);   // never hide the slide being edited
   const fold = foldedH();

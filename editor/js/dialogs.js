@@ -106,6 +106,25 @@ addEventListener('keydown', e => {
   if (e.key === 'Enter') applySpacing(); else showSpaceDialog(false);
 }, true);
 
+/* Insert → Slide numbers, Slides' dialog: On / Off and Skip title slides for the deck (Apply), or On / Off for the
+   picked slides only (Apply to selected). */
+const numDlg = $('#ed-numdlg');
+function showNumDialog(on) {
+  closeMenu(); numDlg.hidden = !on; if (!on) return;
+  const d = deckDoc.querySelector('.slides').dataset, s = slides[cur].dataset.slideNumber;
+  $(s ? (s === 'on' ? '#ed-num-on' : '#ed-num-off') : d.slideNumbers ? '#ed-num-on' : '#ed-num-off').checked = true; $('#ed-num-skip').checked = d.slideNumbers === 'skip-title';
+}
+const numOn = () => /** @type {HTMLInputElement} */ ($('#ed-num-on')).checked;
+$('#ed-num-apply').onclick = () => {
+  const d = deckDoc.querySelector('.slides').dataset;
+  if (numOn()) d.slideNumbers = $('#ed-num-skip').checked ? 'skip-title' : 'on'; else delete d.slideNumbers;
+  slides.forEach(s => delete s.dataset.slideNumber); showNumDialog(false); render(); commit(); scheduleSave();
+};
+$('#ed-num-picked').onclick = () => { pickedIdx().forEach(i => { slides[i].dataset.slideNumber = numOn() ? 'on' : 'off'; }); showNumDialog(false); render(); commit(); };
+$('#ed-num-cancel').onclick = numDlg.querySelector('.sc-close').onclick = () => showNumDialog(false);
+numDlg.addEventListener('pointerdown', e => { if (e.target === numDlg) showNumDialog(false); });
+addEventListener('keydown', e => { if (!numDlg.hidden && (e.key === 'Escape' || e.key === 'Enter')) { e.preventDefault(); e.stopImmediatePropagation(); if (e.key === 'Enter') $('#ed-num-apply').click(); else showNumDialog(false); } }, true);
+
 /* Format → Align & indent → Indentation options, as Slides (Keynote's first-line, left and right indents): inches, on the
    box's paragraphs, kept as --ind-left / --ind-right / --ind-first on .content (base.css; a hanging indent is a negative
    first line with the left indent moved in by as much). */

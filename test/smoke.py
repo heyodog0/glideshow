@@ -769,6 +769,18 @@ def checks(pg, deck: Path, errors):
       setZoom(null); slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); return [...out, $('#ed-frame').style.marginLeft || 'auto']; }})()""")
     check(f"extended canvas: zoomed in, the stage scrolls to an object off the slide; View → Zoom to fit content shows it and the slide ({zc_ms} ms)",
           off[1] and seen == [True, True, "auto"], f"{off} {seen}")
+    pg.evaluate("go(0)"); pg.click("#ed-menubar [data-menu=Insert]"); pg.click(".menu-item:has(.menu-label:text-is('Slide numbers'))")
+    pg.check("#ed-num-on"); pg.check("#ed-num-skip"); pg.locator("#ed-numdlg .dialog").screenshot(path=str(HERE / "slide-numbers.png")); pg.click("#ed-num-apply")
+    nums = pg.evaluate("slides.map(s => [s.dataset.layout || '', s.dataset.visibility || '', s.querySelector(':scope > .slide-num')?.textContent || ''])")
+    pg.evaluate("go(1)"); pg.click("#ed-menubar [data-menu=Insert]"); pg.click(".menu-item:has(.menu-label:text-is('Slide numbers'))"); pg.check("#ed-num-off"); pg.click("#ed-num-picked")
+    own = pg.evaluate("[slides[1].dataset.slideNumber, !!slides[1].querySelector('.slide-num'), !sectionHTML(slides[2] || slides[0], true).includes('slide-num'), deckDoc.querySelector('.slides').dataset.slideNumbers]")
+    pg.evaluate("(() => { slides.forEach(s => delete s.dataset.slideNumber); delete deckDoc.querySelector('.slides').dataset.slideNumbers; go(0); render(); commit(); })()")
+    expect = [];  n = 0
+    for lay, vis, got in nums:
+        if vis == "hidden": expect.append(""); continue
+        n += 1; expect.append("" if lay == "title" else str(n))
+    check("Insert → Slide numbers, as Slides: On with Skip title slides numbers the rest (skipped slides not counted); Off for a picked slide; never saved",
+          [x[2] for x in nums] == expect and own == ["off", False, True, "skip-title"], f"{nums} {expect} {own}")
     pg.evaluate("go(0)"); pg.click("#ed-menubar [data-menu=Slide]"); pg.click(".menu-item:has(.menu-label:text-is('Go to slide'))")
     pg.fill("#ed-goto-n", "2"); t0 = pg.evaluate("performance.now()"); pg.keyboard.press("Enter")
     went = pg.evaluate(f"[cur, $('#ed-gotodlg').hidden, Math.round(performance.now() - {t0})]")
@@ -1729,6 +1741,8 @@ def checks(pg, deck: Path, errors):
     selfp = s1.evaluate("Reveal.getSlides().length - 1 - Reveal.getSlides().indexOf(Reveal.getCurrentSlide())"); s1.close()   # 0: it played through to the last
     s2 = show_with({"play": "links"}); s2.keyboard.press("ArrowRight"); s2.mouse.click(640, 360); s2.wait_for_timeout(300); links = s2.evaluate("Reveal.getIndices().h"); s2.close()
     s3 = show_with({"loop": ""}); s3.evaluate("Reveal.slide(Reveal.getTotalSlides())"); s3.wait_for_timeout(200); s3.keyboard.press("End"); s3.keyboard.press("ArrowRight"); s3.wait_for_timeout(300); looped = s3.evaluate("Reveal.getIndices().h"); s3.close()
+    s4 = show_with({"slideNumbers": "on"}); sn = s4.evaluate("[...document.querySelectorAll('.reveal .slides section > .slide-num')].map(e => e.textContent)"); s4.close()
+    check("the slideshow numbers the slides (shapes.js) when the deck says so", len(sn) >= 2 and sn[:2] == ["1", "2"], str(sn))
     check("Slideshow settings play in the deck: Self-playing moves on by itself, Links only ignores keys and clicks, Loop goes round", selfp == 0 and links == 0 and looped == 0, f"{selfp} {links} {looped}")
     check("decks carry present.js (Slides' presenting keys)", v.evaluate("!!document.getElementById('deck-present') && !Reveal.getConfig().keyboard[79] && Reveal.getConfig().keyboard[79] === null"))
     check("viewer loads the notes plugin (S = speaker view)", v.evaluate("!!(window.Reveal && Reveal.hasPlugin('notes'))"))
