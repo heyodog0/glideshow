@@ -92,6 +92,7 @@
     return;
   }
   const embedded = new URLSearchParams(location.search).has('embedded');
+  let rehearsal = null;   // Rehearse slideshow's presenter view over the show (below)
   let typed = '', screen = null, laser = null;
 
   const cover = color => {
@@ -148,6 +149,11 @@
     pop.classList.add('sl-keys'); pop.style.left = (innerWidth - pop.offsetWidth) / 2 + 'px'; pop.style.top = Math.max(8, (innerHeight - pop.offsetHeight) / 2) + 'px';
   };
   addEventListener('keydown', e => {
+    if (rehearsal?.isConnected && rehearsal.style.display !== 'none') {   // Rehearse: keys go to the presenter view over the show
+      e.preventDefault(); e.stopImmediatePropagation(); rehearsal.contentWindow?.focus();
+      rehearsal.contentDocument?.dispatchEvent(new KeyboardEvent('keydown', { key: e.key, shiftKey: e.shiftKey, metaKey: e.metaKey, ctrlKey: e.ctrlKey, altKey: e.altKey, bubbles: true, cancelable: true }));
+      return;
+    }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (linksOnly && !/^(Escape|q|Q|b|B|w|W|l|L|f|F|s|S|\?|\/)$/.test(e.key)) { e.preventDefault(); e.stopImmediatePropagation(); return; }   // Links only: no key moves the show
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;   // typing in a field on the page (a comment box) is not a slideshow key
@@ -175,6 +181,7 @@
     if (k === 'b' || k === 'w') { e.preventDefault(); e.stopImmediatePropagation(); cover(k === 'b' ? '#000' : '#fff'); }
     else if (k === 'l') { e.preventDefault(); e.stopImmediatePropagation(); toggleLaser(); }
     else if ((k === 'n' || k === 'p') && !e.shiftKey) { e.preventDefault(); e.stopImmediatePropagation(); k === 'n' ? Reveal.right() : Reveal.left(); }   // Slides: N / P = → / ←, past a stack
+    else if (k === 'x' && rehearsal?.isConnected) { e.preventDefault(); e.stopImmediatePropagation(); rehearsal.style.display = ''; rehearsal.contentWindow?.focus(); }   // back to the presenter view
     else if (k === 's') { e.preventDefault(); e.stopImmediatePropagation(); openPresenter(); }
 
     else if (k === 'm' && embedded) { e.preventDefault(); e.stopImmediatePropagation(); openMemo(); }
@@ -410,10 +417,11 @@
     ['R', 'Reset the timer'], ['U / D', 'Scroll the notes up / down'], ['⌘+ / ⌘−', 'Notes larger / smaller'], ['?', 'These keys'], ['Esc', 'End the slideshow']];
   const PV_PARTS = [['cur', 'Current slide'], ['next', 'Next slide'], ['notes', 'Speaker notes'], ['ready', 'Ready-to-advance bar'], ['clock', 'Clock'], ['timer', 'Timer']];
   const pvPrefs = () => { try { return { cur: 1, next: 1, notes: 1, ready: 1, clock: 1, timer: 1, size: 20, invert: 0, count: 'up', minutes: 20, ...JSON.parse(localStorage.getItem('gs-presenter') || '{}') }; } catch { return { cur: 1, next: 1, notes: 1, ready: 1, clock: 1, timer: 1, size: 20, invert: 0, count: 'up', minutes: 20 }; } };
-  const openPresenter = () => {
+  const openPresenter = (/** @type {any} */ host = null) => {   // host: a frame over the show (Rehearse) instead of a window
     if (pv && !pv.closed) { pv.focus(); return pv; }
-    pv = window.open('', 'gs-presenter', 'width=1280,height=800'); if (!pv?.document?.open) return (pv = null);   // blocked (or a stand-in)
-    const d = pv.document, u = new URL(location.href), o = pvPrefs(); u.hash = ''; u.searchParams.delete('embedded'); u.searchParams.set('gs-view', '1');
+    pv = host || window.open('', 'gs-presenter', 'width=1280,height=800'); if (!pv?.document?.open) return (pv = null);   // blocked (or a stand-in)
+    const me = pv, gone = () => me.closed || pv !== me, end = () => { exit(); if (host) { host.frameElement?.remove(); pv = null; focus(); } else me.close(); };
+    const d = me.document, u = new URL(location.href), o = pvPrefs(); u.hash = ''; ['embedded', 'rehearse'].forEach(k => u.searchParams.delete(k)); u.searchParams.set('gs-view', '1');
     const save = () => { try { localStorage.setItem('gs-presenter', JSON.stringify(o)); } catch { /* private window */ } };
     d.open(); d.write(`<!doctype html><html><head><meta charset="utf-8"><title>Presenter view</title><style>
       :root { --ink: #1f1f1f; --muted: #444746; --line: #c4c7c5; --hover: #e9eef6; --blue: #0b57d0; }
@@ -459,7 +467,7 @@
     // the timer: counting up from the start, or down from o.minutes; Pause / Reset as Slides' presenter view
     let t0 = Date.now(), pausedAt = 0;
     const tick = () => {
-      if (pv.closed) return clearInterval(clock);
+      if (gone()) return clearInterval(clock);
       $p('.clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
       const ms = (pausedAt || Date.now()) - t0, left = o.minutes * 60000 - ms, v = o.count === 'down' ? Math.abs(left) : ms, sec = Math.floor(v / 1000);
       $p('.timer .t').textContent = (o.count === 'down' && left < 0 ? '−' : '') + [Math.floor(sec / 3600), Math.floor(sec / 60) % 60, sec % 60].map(n => String(n).padStart(2, '0')).join(':');
@@ -470,7 +478,7 @@
     // what's shown: current and next, as Keynote's labels; the ready bar red while the change plays
     let busyT = 0;
     const sync = (ms = 0) => {
-      if (pv.closed) return;
+      if (gone()) return;
       const all = Reveal.getSlides(), sl = Reveal.getCurrentSlide(), at = Reveal.getIndices(sl), f = Reveal.getIndices().f ?? -1;
       const steps = [...new Set([...sl.querySelectorAll('.fragment')].map(e => +(e.dataset.fragmentIndex ?? 0)))].sort((a, b) => a - b).filter(n => n > f);
       const n = all[all.indexOf(sl) + 1], i = all.indexOf(sl) + 1;
@@ -510,7 +518,7 @@
       if (a === 'reset') resetTimer();
       if (a === 'layout') pop?.classList.contains('lay') ? close() : layout(b);
       if (a === 'help') help();
-      if (a === 'end') { exit(); pv.close(); }
+      if (a === 'end') end();
       if (a === 'smaller' || a === 'bigger') size(a === 'smaller' ? -2 : 2);
       if (a === 'invert') { o.invert = o.invert ? 0 : 1; save(); apply(); }
     });
@@ -519,7 +527,8 @@
       const k = e.key, mod = e.metaKey || e.ctrlKey;
       if (mod && (k === '+' || k === '=' || k === '-')) { e.preventDefault(); size(k === '-' ? -2 : 2); return; }
       if (mod || e.altKey) return;
-      if (k === 'Escape') { e.preventDefault(); if (pop) close(); else { exit(); pv.close(); } return; }
+      if (k === 'Escape') { e.preventDefault(); if (pop) close(); else end(); return; }
+      if (host && e.key.toLowerCase() === 'x' && !e.shiftKey) { e.preventDefault(); host.frameElement.style.display = 'none'; focus(); return; }   // Rehearse: X shows the slide itself
       if (k === '?' || k === '/') { e.preventDefault(); help(); return; }
       const lk = k.toLowerCase(), all = Reveal.getSlides(), go = {
         ArrowRight: () => Reveal.next(), ArrowDown: () => Reveal.next(), ' ': () => Reveal.next(), PageDown: () => Reveal.next(),
@@ -531,12 +540,20 @@
       // the rest (a slide number then ↵, B / W, Z, ⇧-arrows …) as the show's own keys
       document.dispatchEvent(new KeyboardEvent('keydown', { key: k, shiftKey: e.shiftKey, bubbles: true, cancelable: true })); e.preventDefault();
     });
-    pv.addEventListener('beforeunload', () => { for (const ev of ['slidechanged', 'fragmentshown', 'fragmenthidden']) Reveal.off(ev, onShow); clearInterval(clock); });
-    addEventListener('beforeunload', () => pv?.close());
+    me.addEventListener('beforeunload', () => { for (const ev of ['slidechanged', 'fragmentshown', 'fragmenthidden']) Reveal.off(ev, onShow); clearInterval(clock); });
+    if (!host) addEventListener('beforeunload', () => me.close());
     apply(); tick();
     return pv;
   };
   /** @type {any} */ (window).gsPresenter = openPresenter;   // the editor's Slideshow ▾ → Presenter view
+  /* Rehearse slideshow (?rehearse, the editor's Slideshow ▾ → Rehearse slideshow), as Keynote: the presenter view on this
+     screen, its timer running; X flips between it and the slide; Esc ends. */
+  const rehearse = () => {
+    rehearsal = document.createElement('iframe'); rehearsal.title = 'Rehearse slideshow';
+    rehearsal.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:200;background:#f8fafd';
+    document.body.append(rehearsal); openPresenter(rehearsal.contentWindow); rehearsal.contentWindow?.focus();
+  };
+  if (new URLSearchParams(location.search).has('rehearse')) Reveal.isReady() ? rehearse() : Reveal.on('ready', rehearse);
   Reveal.on('ready', () => { document.body.append(bar); paint(); showNum(); wake(); });
   Reveal.on('slidechanged', showNum);
 })();

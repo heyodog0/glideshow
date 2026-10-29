@@ -584,13 +584,24 @@ def checks(pg, deck: Path, errors):
     check("Slideshow ▾ → Record slideshow: presents with a recording bar, keeps the voice and every slide change's time, saves them with the deck as Recorded",
           bar and rc[0] == "recorded" and rc[1] and rc[2] >= 2 and rc[3:] == [False, True], f"{bar} {rc}")
     pg.click("#ed-present-menu")
-    check("Slideshow ▾ lists present options", pg.evaluate("[...document.querySelectorAll('.menu .menu-label')].map(e => e.textContent)") == ["Present from this slide", "Present from beginning", "Present fullscreen", "Presenter view", "Open in new tab", "Open as a scrolling page", "Record slideshow", "Slideshow settings"])
+    check("Slideshow ▾ lists present options", pg.evaluate("[...document.querySelectorAll('.menu .menu-label')].map(e => e.textContent)") == ["Present from this slide", "Present from beginning", "Present fullscreen", "Presenter view", "Rehearse slideshow", "Open in new tab", "Open as a scrolling page", "Record slideshow", "Slideshow settings"])
     pg.click(".menu-item:has(.menu-label:text-is('Slideshow settings'))"); pg.select_option("#ed-show-type", "self"); pg.fill("#ed-show-slide", "8"); pg.dispatch_event("#ed-show-slide", "change")
     pg.check("#ed-show-loop"); pg.check("#ed-show-idle-on"); pg.fill("#ed-show-idle", "3"); pg.dispatch_event("#ed-show-idle", "change")
     pg.locator("#ed-showdlg .dialog").screenshot(path=str(HERE / "slideshow-settings.png")); pg.click("#ed-show-done")
     ss = pg.evaluate("(() => { const d = deckDoc.querySelector('.slides').dataset, out = [d.play, d.playSlide, d.playBuild, 'loop' in d, d.idle]; ['play', 'playSlide', 'playBuild', 'loop', 'idle'].forEach(k => delete d[k]); scheduleSave(); return out; })()")
     check("Slideshow ▾ → Slideshow settings: type Self-playing with its delays, Loop, Restart if idle, saved on .slides", ss == ["self", "8", "2", True, "3"], str(ss))
     pg.keyboard.press("Escape")
+    pg.click("#ed-present-menu"); pg.click(".menu-item:has(.menu-label:text-is('Rehearse slideshow'))")
+    RH = "(() => { const w = document.querySelector('#ed-show iframe')?.contentWindow, r = w?.document.querySelector('iframe[title=\"Rehearse slideshow\"]'); return { w, r, d: r?.contentDocument }; })()"
+    pg.wait_for_function(f"!!{RH}.d?.querySelector('.cur h2')?.textContent && {RH}.d.querySelectorAll('iframe')[0].contentWindow?.Reveal?.isReady?.()", timeout=15000)
+    r0 = pg.evaluate(f"(() => {{ const x = {RH}; return [JSON.stringify(x.w.Reveal.getIndices()), x.d.querySelector('.cur h2').textContent, !!x.d.querySelector('.timer .t').textContent, x.d.hasFocus()]; }})()")
+    pg.keyboard.press("ArrowLeft"); pg.wait_for_timeout(300)
+    r1 = pg.evaluate(f"JSON.stringify({RH}.w.Reveal.getIndices())")
+    pg.keyboard.press("x"); pg.wait_for_timeout(100); r2 = pg.evaluate(f"getComputedStyle({RH}.r).display")
+    pg.keyboard.press("x"); pg.wait_for_timeout(100); r3 = pg.evaluate(f"getComputedStyle({RH}.r).display")
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(300); r4 = pg.evaluate("document.querySelector('#ed-show').hidden")
+    check("Slideshow ▾ → Rehearse slideshow: the presenter view over the show, its timer running; its keys move the show; X flips to the slide and back; Esc ends",
+          r0[1].startswith("Current: Slide ") and r0[2] and r1 != r0[0] and r2 == "none" and r3 == "block" and r4, f"{r0} {r1} {r2} {r3} {r4}")
     pg.evaluate("thumbs.blur()"); pg.keyboard.press("Meta+a")   # selection-only groups make the toolbar wide
     pg.set_viewport_size({"width": 760, "height": 900}); pg.wait_for_timeout(100)
     narrow = pg.evaluate("[!document.querySelector('#ed-more-wrap').hidden, document.querySelector('#ed-more-pop').children.length, document.querySelector('#ed-toolbar').scrollWidth <= document.querySelector('#ed-toolbar').clientWidth]")

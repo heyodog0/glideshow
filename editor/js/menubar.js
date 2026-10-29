@@ -254,6 +254,7 @@ const SLIDESHOW = [
   { label: 'Present fullscreen', icon: 'fullscreen', run: () => present(cur, { fullscreen: true }) },
   '-',
   { label: 'Presenter view', icon: 'co_present', run: () => openDeckTab(cur, true) },
+  { label: 'Rehearse slideshow', icon: 'timer', run: () => present(cur, { rehearse: true }) },   // Keynote's: the presenter view on this screen
   { label: 'Open in new tab', icon: 'open_in_new', run: () => openDeckTab(cur) },
   { label: 'Open as a scrolling page', icon: 'view_day', run: () => window.open('deck.html?view=scroll', '_blank') },   // reveal's scroll view: reads like a page, good on a phone
   '-',

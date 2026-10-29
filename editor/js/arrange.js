@@ -170,7 +170,7 @@ async function present(from = cur, opts = {}) {
   if (savedCode !== currentCode() && !(/** @type {any} */ (window.GLIDESHOW_CLOUD)?.collab)) await save();   // the deck's slideshow code is this editor's (storage.js deckCode)
   stopEdit(); closeMenu();
   const ov = $('#ed-show'), f = document.createElement('iframe');
-  f.src = 'deck.html?embedded#/' + hv(from).join('/'); f.allow = 'fullscreen';
+  f.src = `deck.html?embedded${opts.rehearse ? '&rehearse' : ''}#/` + hv(from).join('/'); f.allow = 'fullscreen';   // Rehearse: the presenter view over the show (present.js)
   ov.replaceChildren(f); ov.hidden = false;
   f.addEventListener('load', () => f.contentWindow.focus());
   if (opts.fullscreen) ov.requestFullscreen?.().catch(() => {});
