@@ -81,6 +81,25 @@ canvas.addEventListener('pointermove', e => {
 });
 addEventListener('pointerup', () => { cellAnchor = null; });
 function fillCells(v) { const cs = cellTargets(); if (!cs.length) return false; cs.forEach(td => { td.style.backgroundColor = v === 'transparent' ? '' : v; if (!td.getAttribute('style')) td.removeAttribute('style'); }); return true; }
+/* Cell borders, as Slides: Select borders picks which sides (all, inner, horizontal, vertical, outer, left, top, right,
+   bottom of the picked block); Border colour / weight / dash then set those sides as inline border-* on the cells. */
+let cellSides = 'all';
+const CELL_SIDES = [['all', 'border_all', 'All borders'], ['inner', 'border_inner', 'Inner borders'], ['horizontal', 'border_horizontal', 'Horizontal borders'],
+  ['vertical', 'border_vertical', 'Vertical borders'], ['outer', 'border_outer', 'Outer borders'], ['left', 'border_left', 'Left border'],
+  ['top', 'border_top', 'Top border'], ['right', 'border_right', 'Right border'], ['bottom', 'border_bottom', 'Bottom border']];
+/** @param {'color' | 'width' | 'style'} prop */
+function cellBorder(prop, v) {
+  const cs = cellTargets(); if (!cs.length) return false;
+  const g = cellGrid(cs[0].closest('table')), slots = cs.flatMap(td => slotsOf(g, td));
+  const r0 = Math.min(...slots.map(p => p[0])), r1 = Math.max(...slots.map(p => p[0])), c0 = Math.min(...slots.map(p => p[1])), c1 = Math.max(...slots.map(p => p[1]));
+  for (const td of cs) {
+    const s = slotsOf(g, td), edge = { top: Math.min(...s.map(p => p[0])) === r0, bottom: Math.max(...s.map(p => p[0])) === r1, left: Math.min(...s.map(p => p[1])) === c0, right: Math.max(...s.map(p => p[1])) === c1 };
+    const want = side => ({ all: true, outer: edge[side], inner: !edge[side], horizontal: /top|bottom/.test(side) && !edge[side], vertical: /left|right/.test(side) && !edge[side] })[cellSides] ?? (cellSides === side && edge[side]);
+    for (const side of ['top', 'right', 'bottom', 'left']) if (want(side)) { td.style.setProperty(`border-${side}-${prop}`, v); if (prop !== 'style' && !td.style.getPropertyValue(`border-${side}-style`)) td.style.setProperty(`border-${side}-style`, 'solid'); }
+  }
+  return true;
+}
+menuButton($('#ed-cell-borders'), () => CELL_SIDES.map(([v, icon, label]) => ({ label, icon, on: () => cellSides === v, run: () => { cellSides = v; $('#ed-cell-borders .icon').textContent = icon; } })));
 function mergeCells() {
   const cs = [...cellSel]; if (cs.length < 2) return;
   const t = cs[0].closest('table'), g = cellGrid(t), slots = cs.flatMap(td => slotsOf(g, td));

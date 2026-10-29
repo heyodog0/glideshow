@@ -117,6 +117,7 @@ input.switch:disabled { opacity: .5; cursor: progress; }
 .grp { display: flex; align-items: center; gap: 2px; padding: 0 var(--gutter); border-left: 1px solid var(--divider); }
 body:not(.has-sel) .sel-only, body.has-sel .nosel-only { display: none !important; }
 body:not(.sel-line) .line-only { display: none !important; }
+body:not(.edit-table) .table-only { display: none !important; }
 body:not(.sel-image) .image-only { display: none !important; }
 .menu-label svg { display: block; }
 body.sel-notext :is(.swatch[data-for=fill], .grp[data-i="3"] > :not(#ed-link), .grp[data-i="4"], #ed-clear-fmt) { display: none !important; }

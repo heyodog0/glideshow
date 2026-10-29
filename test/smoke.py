@@ -251,7 +251,18 @@ def checks(pg, deck: Path, errors):
     pg.mouse.click(a["x"] + 10, a["y"] + 10, button="right"); pg.click(".menu-item:has(.menu-label:text-is('Unmerge cells'))")
     split = pg.evaluate("(() => { const t = document.querySelector('#ed-canvas table'); return [...t.rows].map(r => r.cells.length).join(); })()")
     saved = pg.evaluate("!cleanBox([...sel][0]).querySelector('.cell-on')")
+    a, z = c(0), c(4); pg.mouse.move(a["x"] + 10, a["y"] + 10); pg.mouse.down(); pg.mouse.move(z["x"] + 20, z["y"] + 10, steps=5); pg.mouse.up()
+    vis = pg.evaluate("!!$('#ed-cell-borders').offsetParent")
+    pg.click("#ed-cell-borders"); opts = pg.evaluate("[...document.querySelectorAll('.menu .menu-label')].map(e => e.textContent)"); pg.click(".menu-item:has(.menu-label:text-is('Outer borders'))")
+    pg.click("#ed-sw"); pg.click(".menu-item:has(.menu-label:text-is('8px'))")
+    pg.click("#ed-cell-borders"); pg.click(".menu-item:has(.menu-label:text-is('Inner borders'))"); pg.evaluate("setColor($('#ed-stroke'), '#ff0000')")
+    pg.evaluate("clearCellSel()"); pg.locator("#ed-canvas .box.table").screenshot(path=str(HERE / "cell-borders.png"))
+    bd = pg.evaluate("""(() => { const c = [...document.querySelectorAll('#ed-canvas td')], s = (i, side, p) => c[i].style.getPropertyValue(`border-${side}-${p}`);
+      return [s(0, 'top', 'width'), s(0, 'left', 'width'), s(0, 'right', 'width'), s(0, 'right', 'color'), s(4, 'bottom', 'width'), s(4, 'top', 'color'), s(2, 'left', 'width'), [...document.querySelectorAll('#ed-canvas td')].length]; })()""")
     pg.keyboard.press("Escape"); pg.evaluate("(() => { sel.forEach(b => b.remove()); sel.clear(); render(); commit(); })()")
+    check("cell borders as Slides: Select borders (All … Bottom), Outer at 8px rings the block, Inner in red colours only the inside rules",
+          vis and opts[:5] == ["All borders", "Inner borders", "Horizontal borders", "Vertical borders", "Outer borders"] and len(opts) == 9
+          and bd[:3] == ["8px", "8px", ""] and bd[3] == "rgb(255, 0, 0)" and bd[4] == "8px" and bd[5] == "rgb(255, 0, 0)" and bd[6] == "", str(bd))
     check(f"table cells as Slides: drag picks a block, Fill colours only those cells, Merge joins them (their text kept, {mg_ms} ms), Unmerge splits it back",
           picked == ["c0", "c1", "c3", "c4"] and filled[0] == "110110000" and filled[1] in ("", None) and merged == [2, 2, 2, 1, "c0c1c3c4"] and split == "3,3,3" and saved,
           f"{picked} {filled} {merged} {split} {saved}")

@@ -160,11 +160,12 @@ function setFillImage(src, scale) {
 }
 $('#ed-fill').onchange = commit;
 $('#ed-stroke').oninput = e => {
+  if (cellBorder('color', e.target.value)) return;   // cells in an edited table: their chosen sides
   setVar('--stroke', e.target.value);
   sel.forEach(b => { if (!parseFloat(b.style.getPropertyValue('--sw'))) { b.style.setProperty('--sw', '2px'); if (b.dataset.shape) renderShape(b); } });
 };
 $('#ed-stroke').onchange = commit;
-function noBorder() { sel.forEach(b => { if (!isLine(b)) b.style.setProperty('--sw', '0px'); if (b.dataset.shape) renderShape(b); }); drawOverlay(); commit(); }
+function noBorder() { if (cellBorder('width', '0px')) return commit(); sel.forEach(b => { if (!isLine(b)) b.style.setProperty('--sw', '0px'); if (b.dataset.shape) renderShape(b); }); drawOverlay(); commit(); }
 const curSw = () => parseFloat([...sel][0]?.style.getPropertyValue('--sw')) || 0;
 /* Border dash and line ends, as Slides: pictures of each style, the current one ticked. */
 const DASHES = [['', 'Solid'], ['dot', 'Dot'], ['dash', 'Dash'], ['dashdot', 'Dash-dot'], ['longdash', 'Long dash'], ['longdashdot', 'Long dash-dot']];
@@ -177,14 +178,15 @@ const endPreview = (v, side) => {   // a short line with the end drawn the way s
   svg.setAttribute('viewBox', '-10 -10 64 20'); svg.setAttribute('width', '48'); svg.setAttribute('height', '16'); svg.style.cssText = 'overflow:visible';
   return svg.outerHTML.replace('class="shape"', 'class="end-pic"');
 };
-const setData = (k, v) => { for (const b of sel) { if (v) b.dataset[k] = v; else delete b.dataset[k]; if (b.dataset.shape) renderShape(b); } commit(); };
+const DASH_CSS = { '': 'solid', dot: 'dotted', dash: 'dashed', dashdot: 'dashed', longdash: 'dashed', longdashdot: 'dashed' };
+const setData = (k, v) => { if (k === 'dash' && cellBorder('style', DASH_CSS[v] || 'solid')) return commit(); for (const b of sel) { if (v) b.dataset[k] = v; else delete b.dataset[k]; if (b.dataset.shape) renderShape(b); } commit(); };
 menuButton($('#ed-dash'), () => DASHES.map(([v, label]) => ({ label, on: () => ([...sel][0]?.dataset.dash || '') === v, run: () => setData('dash', v),
   svg: `<svg width="64" height="8"><line x1="2" y1="4" x2="62" y2="4" stroke="#1f1f1f" stroke-width="2" stroke-dasharray="${DASH_PREVIEW[v]}"/></svg>` })));
 const lineEnd = side => () => ENDS.map(([v, label]) => ({ label, svg: endPreview(v, side), run: () => setData(side, v === 'none' && side === 'start' ? '' : v),
   on: () => { const b = [...sel][0]; return (b?.dataset[side] || (side === 'end' && b?.dataset.shape === 'arrowline' ? 'fill-arrow' : 'none')) === v; } }));
 menuButton($('#ed-lstart'), lineEnd('start'));
 menuButton($('#ed-lend'), lineEnd('end'));
-menuButton($('#ed-sw'), () => [1, 2, 3, 4, 8, 12, 16, 24].map(v => ({ label: v + 'px', narrow: true, on: () => curSw() === v, run: () => { setVar('--sw', v + 'px'); commit(); } })));   // Slides' weights
+menuButton($('#ed-sw'), () => [1, 2, 3, 4, 8, 12, 16, 24].map(v => ({ label: v + 'px', narrow: true, on: () => curSw() === v, run: () => { if (!cellBorder('width', v + 'px')) setVar('--sw', v + 'px'); commit(); } })));   // Slides' weights; cells: their chosen sides
 
 const FONTS = [['', 'Default'], ['Arial, Helvetica, sans-serif', 'Arial'], ["'Helvetica Neue', Helvetica, Arial, sans-serif", 'Helvetica'],
   ['Verdana, Geneva, sans-serif', 'Verdana'], ["'Trebuchet MS', sans-serif", 'Trebuchet MS'], ['Georgia, serif', 'Georgia'],

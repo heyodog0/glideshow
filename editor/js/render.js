@@ -331,6 +331,7 @@ function updateToolbar() {
   const kind = x => isStroke(x) ? 'line' : isMedia(x) ? 'image' : isGroup(x) ? 'group' : 'text', kinds = new Set([...sel].map(kind));
   document.body.classList.toggle('sel-notext', !!b && (!kinds.has('text') || kinds.size > 1));
   document.body.classList.toggle('sel-line', !!b && [...sel].every(isLine));
+  document.body.classList.toggle('edit-table', !!editing?.querySelector('table'));   // Select borders, for the picked cells
   document.body.classList.toggle('sel-image', sel.size === 1 && !!b?.classList.contains('image'));   // Replace image button   // line start / end buttons
   layoutToolbar();
   $('#ed-undo').disabled = hptr <= 0;
