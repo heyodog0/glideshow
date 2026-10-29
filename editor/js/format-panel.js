@@ -5,7 +5,7 @@ const fmt = $('#ed-fmt'), F = id => $('#ed-f-' + id);
 /* Slides shows geometry in inches: the 1920px-wide slide is 10 in. */
 const PX_IN = 192, toIn = px => Math.round(px / PX_IN * 100) / 100, fromIn = v => v * PX_IN;
 const fitMode = () => fmt.querySelector('[name=ed-f-fit]:checked')?.value;
-function setPanel(open) { fmt.hidden = !open; if (open) { $('#ed-trans').hidden = true; $('#ed-theme').hidden = true; $('#ed-comments').hidden = true; } fit(); updatePanel(); }
+function setPanel(open) { fmt.hidden = !open; if (open) { $('#ed-objects').hidden = true; $('#ed-trans').hidden = true; $('#ed-theme').hidden = true; $('#ed-comments').hidden = true; } fit(); updatePanel(); }
 function updatePanel() {
   if (fmt.hidden) return;
   const b = sel.size === 1 ? [...sel][0] : null;

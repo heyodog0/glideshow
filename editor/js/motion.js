@@ -12,7 +12,7 @@ const kindOf = s => s.hasAttribute('data-auto-animate') ? 'morph' : s.dataset.tr
 const speedOf = s => s.hasAttribute('data-auto-animate') ? Object.keys(MORPH_S).find(k => MORPH_S[k] === s.dataset.autoAnimateDuration) || '' : s.dataset.transitionSpeed || '';
 const trans = $('#ed-trans');
 $('#ed-t-kind').innerHTML = TRANSITIONS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
-function setTransPanel(open) { trans.hidden = !open; if (open) { fmt.hidden = true; $('#ed-theme').hidden = true; $('#ed-comments').hidden = true; updateTransPanel(); } fit(); }
+function setTransPanel(open) { trans.hidden = !open; if (open) { $('#ed-objects').hidden = true; fmt.hidden = true; $('#ed-theme').hidden = true; $('#ed-comments').hidden = true; updateTransPanel(); } fit(); }
 function updateTransPanel() {
   if (trans.hidden || !slides[cur]) return;
   renderAnims();

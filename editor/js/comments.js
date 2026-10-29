@@ -15,7 +15,7 @@ async function cmFetch(body) {
 }
 function setCommentsPanel(open) {
   cmPanel.hidden = !open; $('#ed-comments-btn').classList.toggle('on', open);
-  if (open) { fmt.hidden = true; $('#ed-trans').hidden = true; $('#ed-theme').hidden = true; $('#ed-history').hidden = true; cmFetch(); }
+  if (open) { $('#ed-objects').hidden = true; fmt.hidden = true; $('#ed-trans').hidden = true; $('#ed-theme').hidden = true; $('#ed-history').hidden = true; cmFetch(); }
   fit(); drawPins();
 }
 function cmRender() {

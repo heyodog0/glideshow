@@ -805,6 +805,19 @@ def checks(pg, deck: Path, errors):
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
     check(f"Arrange → Lock ({lock_ms} ms): grey handles that don't drag, no move / nudge / delete / text editing, a drag-select passes over it, saved; right-click offers Unlock, which frees it",
           held == [True, "200px", False, True, True, "none"] and marq == [ids[1]] and "Unlock" in rmenu and saved and freed == [False, "300px"], f"{held} {marq} {rmenu} {saved} {freed}")
+    ob = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1);
+      const a = makeBox({x: 100, y: 100, w: 300, h: 150, html: 'Back text'}), b = makeBox({x: 300, y: 200, w: 300, h: 200, shape: 'ellipse'}), c = makeBox({x: 500, y: 300, w: 400, h: 0, shape: 'line'});
+      s.append(a, b, c); sel.clear(); render(); return [a.id, b.id, c.id]; })()""")
+    pg.click("#ed-menubar [data-menu=View]"); pg.click(".menu-item:has(.menu-label:text-is('Object list'))")
+    names = pg.evaluate("[...document.querySelectorAll('#ed-obj-list .obj-row .name')].map(e => e.textContent)")
+    pg.click("#ed-obj-list .obj-row >> nth=0"); pg.click("#ed-obj-list .obj-row >> nth=2", modifiers=["Meta"]); picked2 = pg.evaluate("[...sel].map(b => b.id).sort()")
+    pg.locator("#ed-obj-list .obj-row >> nth=2").screenshot(path=str(HERE / "object-row.png")); pg.locator("#ed-objects").screenshot(path=str(HERE / "object-list.png"))
+    pg.locator("#ed-obj-list .obj-row >> nth=2").drag_to(pg.locator("#ed-obj-list .obj-row >> nth=0"), target_position={"x": 40, "y": 4})
+    order = pg.evaluate("boxes().map(b => b.id)")
+    pg.click("#ed-obj-list .obj-row >> nth=1 >> .lk"); locked = pg.evaluate(f"document.getElementById('{ob[2]}').hasAttribute('data-locked')")
+    pg.evaluate("(() => { setObjectsPanel(false); slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
+    check("View → Object list, as Keynote: front to back (Line, Ellipse, Back text), click / ⌘-click select, drag a row to restack, the lock toggles Lock",
+          names == ["Line", "Ellipse", "Back text"] and picked2 == sorted([ob[0], ob[2]]) and order == [ob[1], ob[2], ob[0]] and locked, f"{names} {picked2} {order} {locked}")
     pg.click("#ed-menubar [data-menu=View]"); pg.hover(".menu-item:has-text('Guides')"); pg.click(".menu-item:has-text('Add vertical guide')")
     rule = pg.locator("#ed-rules .rule.v").bounding_box(); sc = pg.evaluate("scale")
     pg.mouse.move(rule["x"] + rule["width"] / 2, rule["y"] + 200); pg.mouse.down(); pg.mouse.move(rule["x"] + rule["width"] / 2 + 300 * sc, rule["y"] + 200, steps=4); pg.mouse.up()

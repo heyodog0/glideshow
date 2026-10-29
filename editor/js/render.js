@@ -335,6 +335,7 @@ function updateToolbar() {
   document.body.classList.toggle('sel-line', !!b && [...sel].every(isLine));
   document.body.classList.toggle('edit-table', !!editing?.querySelector('table'));   // Select borders, for the picked cells
   document.body.classList.toggle('sel-image', sel.size === 1 && !!b?.classList.contains('image'));   // Replace image button   // line start / end buttons
+  renderObjects();
   layoutToolbar();
   $('#ed-undo').disabled = hptr <= 0;
   $('#ed-redo').disabled = hptr >= hist.length - 1;

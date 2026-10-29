@@ -26,7 +26,7 @@ function setTheme(t) {
   for (const sl of slides) if (!sl.dataset.backgroundColor || sl.dataset.backgroundColor.toLowerCase() === old.bg.toLowerCase()) sl.dataset.backgroundColor = t.bg;
   render(); commit(); scheduleSave(); updateThemePanel();
 }
-function setThemePanel(open) { $('#ed-theme').hidden = !open; if (open) { fmt.hidden = true; $('#ed-trans').hidden = true; $('#ed-comments').hidden = true; updateThemePanel(); } fit(); }
+function setThemePanel(open) { $('#ed-theme').hidden = !open; if (open) { $('#ed-objects').hidden = true; fmt.hidden = true; $('#ed-trans').hidden = true; $('#ed-comments').hidden = true; updateThemePanel(); } fit(); }
 function updateThemePanel() {
   if ($('#ed-theme').hidden) return;
   const t = theme();

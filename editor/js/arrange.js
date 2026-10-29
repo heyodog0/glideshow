@@ -35,6 +35,41 @@ function lockSel(on) {
   sel.forEach(b => { if (on) b.setAttribute('data-locked', ''); else b.removeAttribute('data-locked'); });
   drawOverlay(); updateToolbar(); commit();
 }
+/* View → Object list (Keynote's): the slide's objects front to back, groups with their members under them. A click
+   selects (⌘ / ⇧ for several), dragging a row restacks the object above or below another, the lock toggles Arrange → Lock. */
+const objPanel = $('#ed-objects');
+function setObjectsPanel(open) { objPanel.hidden = !open; if (open) { fmt.hidden = true; $('#ed-trans').hidden = true; $('#ed-theme').hidden = true; $('#ed-comments').hidden = true; } fit(); renderObjects(); }
+$('#ed-objects-close').onclick = () => setObjectsPanel(false);
+const OBJ_ICON = b => isGroup(b) ? 'group_work' : isLine(b) ? 'pen_size_2' : b.dataset.shape === 'path' ? 'draw' : b.classList.contains('image') ? 'image' : b.classList.contains('video') ? 'movie'
+  : b.classList.contains('table') ? 'table_chart' : b.classList.contains('embed') || b.classList.contains('live') ? 'web' : b.dataset.shape ? 'shapes' : 'text_fields';
+const objName = b => content(b)?.textContent.trim().slice(0, 40) || (isGroup(b) ? 'Group' : b.classList.contains('image') ? 'Image' : b.classList.contains('video') ? 'Video'
+  : b.classList.contains('table') ? 'Table' : isLine(b) ? 'Line' : b.dataset.shape === 'path' ? 'Drawing' : b.dataset.shape ? b.dataset.shape[0].toUpperCase() + b.dataset.shape.slice(1) : 'Text box');
+function renderObjects() {
+  if (objPanel.hidden || !slides[cur]) return;
+  const rows = [], walk = (parent, depth) => { [...parent.children].filter(e => e.classList.contains('box') && !e.classList.contains('note')).reverse().forEach(b => { rows.push([b, depth]); if (isGroup(b)) walk(b, depth + 1); }); };
+  walk(slides[cur], 0);
+  $('#ed-obj-list').replaceChildren(...rows.map(([b, depth]) => {
+    const r = div('obj-row' + (sel.has(b) ? ' on' : '')); r.draggable = !depth; r.style.paddingLeft = 12 + depth * 20 + 'px';
+    r.innerHTML = `<span class="icon kind"></span><span class="name"></span><button class="lk" title="${isLocked(b) ? 'Unlock' : 'Lock'}"><span class="icon">${isLocked(b) ? 'lock' : 'lock_open'}</span></button>`;
+    r.querySelector('.kind').textContent = OBJ_ICON(b); r.querySelector('.name').textContent = objName(b);
+    r.onclick = e => {
+      if (/** @type {Element} */ (e.target).closest('.lk')) { sel = new Set([b]); lockSel(!isLocked(b)); return; }
+      stopEdit(); if (depth) scope = parentBox(b);
+      if (e.metaKey || e.ctrlKey || e.shiftKey) { if (sel.has(b)) sel.delete(b); else sel.add(b); } else sel = new Set([b]);
+      drawOverlay(); updateToolbar();
+    };
+    r.ondragstart = e => { e.dataTransfer.setData('text/x-obj', b.id); };
+    r.ondragover = e => { e.preventDefault(); const up = e.offsetY < r.offsetHeight / 2; r.classList.toggle('drop-up', up); r.classList.toggle('drop-down', !up); };
+    r.ondragleave = () => r.classList.remove('drop-up', 'drop-down');
+    r.ondrop = e => {
+      e.preventDefault(); const up = r.classList.contains('drop-up'); r.classList.remove('drop-up', 'drop-down');
+      const m = slides[cur].querySelector('#' + CSS.escape(e.dataTransfer.getData('text/x-obj'))); if (!m || m === b || depth) return;
+      if (up) b.after(m); else b.before(m);   // the list runs front to back, the slide back to front
+      sel = new Set([m]); drawOverlay(); commit();
+    };
+    return r;
+  }));
+}
 /* Slide → Skip slide: reveal.js leaves data-visibility="hidden" slides out of the slideshow. */
 function skipSlides() {
   const on = !pickedIdx().every(i => slides[i].dataset.visibility === 'hidden');

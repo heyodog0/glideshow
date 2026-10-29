@@ -92,6 +92,7 @@ const MENUS = {
     { label: 'Slideshow', icon: 'slideshow', key: '⌘↵', run: () => present() },
     { label: 'Motion', icon: 'animation', key: '⌥⇧⌘B', on: () => !$('#ed-trans').hidden, run: () => setTransPanel($('#ed-trans').hidden) },
     { label: 'Theme builder', icon: 'palette', run: () => enterThemeEdit() },
+    { label: 'Object list', icon: 'layers', on: () => !$('#ed-objects').hidden, run: () => setObjectsPanel($('#ed-objects').hidden) },
     '-',
     { label: 'Grid view', key: '⌥⌘1', on: () => gridOn, run: () => setGrid(!gridOn) },
     { label: 'Show ruler', on: rulersShown, run: () => setRulersShown(!rulersShown()) },
