@@ -853,6 +853,14 @@ def checks(pg, deck: Path, errors):
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
     check(f"Arrange → Combine shapes as Keynote ({cb[0]} ms to unite): Unite joins two rectangles into one outline, Intersect keeps the overlap, Subtract punches a hole (even-odd), Break apart splits it",
           cb[1] == [[100, 100, 600, 400], 1, 1] and cb[2][0] == 300 and cb[2][1] == 700 and cb[2][2] == 200 and cb[3] == [2, "evenodd"] and cb[4] == 2, str(cb))
+    pg.evaluate("(async () => { go(0); await cmFetch({ op: 'add', slide: 1, sid: slides[0].dataset.sid, text: 'first note' }); await cmFetch({ op: 'add', slide: slides.length, sid: slides.at(-1).dataset.sid, text: 'last note' }); })()"); pg.wait_for_timeout(600)
+    pg.keyboard.press("Meta+Alt+k"); pg.wait_for_timeout(200); f1 = pg.evaluate("[cur, document.querySelector('#ed-cm-list .cm-card.focus .cm-text')?.textContent]")
+    pg.keyboard.press("Meta+Alt+k"); pg.wait_for_timeout(200); f2 = pg.evaluate("[cur, slides.length - 1, document.querySelector('#ed-cm-list .cm-card.focus .cm-text')?.textContent]")
+    pg.click("#ed-cm-list .cm-card.focus .cm-acts button:text-is('Edit')"); pg.fill("#ed-cm-list .cm-editing textarea", "last note, edited"); pg.click("#ed-cm-list .cm-editing button:text-is('Save')"); pg.wait_for_timeout(500)
+    ed = json.loads((deck.parent / "comments.json").read_text())["comments"]; ed = [c for c in ed if c["text"].startswith("last note")]
+    pg.evaluate("(async () => { for (const c of [...cmList]) await cmFetch({ op: 'delete', id: c.id }); setCommentsPanel(false); go(0); })()"); pg.wait_for_timeout(500)
+    check("comments as Keynote: ⌥⌘K goes to the next comment (its slide, its card marked), Edit changes your comment in place (marked edited, saved in comments.json)",
+          f1 == [0, "first note"] and f2[0] == f2[1] and f2[2] == "last note" and ed and ed[0]["text"] == "last note, edited" and ed[0].get("edited"), f"{f1} {f2} {ed}")
     ob = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1);
       const a = makeBox({x: 100, y: 100, w: 300, h: 150, html: 'Back text'}), b = makeBox({x: 300, y: 200, w: 300, h: 200, shape: 'ellipse'}), c = makeBox({x: 500, y: 300, w: 400, h: 0, shape: 'line'});
       s.append(a, b, c); sel.clear(); render(); return [a.id, b.id, c.id]; })()""")

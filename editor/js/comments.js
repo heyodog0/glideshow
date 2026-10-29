@@ -30,18 +30,41 @@ function cmRender() {
     const card = cmEl('div', 'cm-card' + (cmN(c) === here ? ' here' : '') + (c.resolved ? ' done' : ''));
     const top = cmEl('div', 'cm-top'); top.append(cmEl('span', '', `Slide ${cmN(c)}`), cmEl('span', '', cmAgo(c.at))); card.append(top);
     if (c.quote) card.append(cmEl('div', 'cm-quote', c.quote));
-    card.append(cmEl('div', 'cm-by', c.by?.n || c.by?.e || ''), cmEl('div', 'cm-text', c.text));
-    for (const r of c.replies || []) { const d = cmEl('div', 'cm-reply' + (r.event ? ' event' : '')); d.append(cmEl('b', '', (r.by?.n || r.by?.e || '') + ' '), r.text); card.append(d); }
+    const txt = cmEl('div', 'cm-text', c.text); if (c.edited) txt.append(cmEl('span', 'cm-edited', ' (edited)'));
+    card.append(cmEl('div', 'cm-by', c.by?.n || c.by?.e || ''), txt);
+    txt.ondblclick = e => { e.stopPropagation(); cmEdit(txt, c, null); };
+    for (const r of c.replies || []) { const d = cmEl('div', 'cm-reply' + (r.event ? ' event' : '')); d.append(cmEl('b', '', (r.by?.n || r.by?.e || '') + ' '), r.text); if (r.edited) d.append(cmEl('span', 'cm-edited', ' (edited)'));
+      if (!r.event) d.ondblclick = e => { e.stopPropagation(); cmEdit(d, c, r); }; card.append(d); }
+    if (c.id === cmFocus) card.classList.add('focus');
     const acts = cmEl('div', 'cm-acts'), reply = cmEl('input'); reply.placeholder = 'Reply';
     reply.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter' && reply.value.trim()) cmFetch({ op: 'reply', id: c.id, text: reply.value }); };
     const res = cmEl('button', '', c.resolved ? 'Reopen' : 'Resolve'); res.onclick = e => { e.stopPropagation(); cmFetch({ op: 'resolve', id: c.id, resolved: !c.resolved }); };
     const del = cmEl('button', '', 'Delete'); del.onclick = e => { e.stopPropagation(); if (confirm('Delete this comment and its replies?')) cmFetch({ op: 'delete', id: c.id }); };
-    acts.append(reply, res, del); card.append(acts);
+    const ed = cmEl('button', '', 'Edit'); ed.onclick = e => { e.stopPropagation(); cmEdit(txt, c, null); };
+    acts.append(reply, ed, res, del); card.append(acts);
     card.onclick = e => { if (!e.target.closest('input, button, textarea')) cmShow(c); };
     out.push(card);
   }
   if (!out.length) out.push(cmEl('div', 'cm-empty', cmList.length ? 'All comments are resolved.' : 'No comments yet. People you share the deck with can comment on it; you can add your own with Comment (⌘⌥M).'));
   $('#ed-cm-list').replaceChildren(...out);
+}
+/* Edit a comment or a reply in place (Keynote and Slides: your own; the server checks): ⌘⏎ or Save keeps it, Esc drops it. */
+function cmEdit(el, c, r) {
+  const ta = cmEl('textarea'); ta.value = (r || c).text; ta.rows = 3; const ok = cmEl('button', '', 'Save'), no = cmEl('button', '', 'Cancel'), box = cmEl('div', 'cm-editing'), acts = cmEl('div', 'cm-acts');
+  ok.onclick = e => { e.stopPropagation(); if (ta.value.trim()) cmFetch({ op: 'edit', id: c.id, ...(r ? { reply: r.id } : {}), text: ta.value }); };
+  no.onclick = e => { e.stopPropagation(); cmRender(); };
+  ta.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) ok.click(); if (e.key === 'Escape') no.click(); };
+  ta.onclick = e => e.stopPropagation();
+  acts.append(ok, no); box.append(ta, acts); el.replaceWith(box); ta.focus(); ta.select();
+}
+/* Previous / next comment (Keynote's ⌥⇧⌘K / ⌥⌘K; the panel's arrows): through the open comments in slide order, each
+   shown on its slide with its card marked. */
+let cmFocus = null;
+function cmStep(d) {
+  const list = cmList.filter(c => !c.resolved).sort((a, b) => cmN(a) - cmN(b) || a.at.localeCompare(b.at)); if (!list.length) { if (cmPanel.hidden) setCommentsPanel(true); return setStatus('No open comments'); }
+  const i = list.findIndex(c => c.id === cmFocus), c = list[((i < 0 ? (d > 0 ? -1 : 0) : i) + d + list.length) % list.length];
+  cmFocus = c.id; if (cmPanel.hidden) setCommentsPanel(true); cmShow(c); cmRender();
+  $('#ed-cm-list .cm-card.focus')?.scrollIntoView({ block: 'nearest' });
 }
 /* A comment's slide (1-based): the one with its data-sid, wherever slides have moved since; else the number it was left on. */
 function cmN(c) { const i = c.sid ? slides.findIndex(s => s.dataset.sid === c.sid) : -1; return i >= 0 ? i + 1 : c.slide; }
@@ -79,6 +102,8 @@ $('#ed-comments-btn').onclick = () => setCommentsPanel(cmPanel.hidden);
 $('#ed-cm-close').onclick = () => setCommentsPanel(false);
 $('#ed-cm-add').onclick = addComment;
 $('#ed-cm-resolved').onchange = cmRender;
+$('#ed-cm-prev').onclick = () => cmStep(-1); $('#ed-cm-next').onclick = () => cmStep(1);
+addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyK') { e.preventDefault(); e.stopPropagation(); cmStep(e.shiftKey ? -1 : 1); } }, true);
 addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyM') { e.preventDefault(); e.stopPropagation(); addComment(); } }, true);
 const cmTyping = () => [...cmPanel.querySelectorAll('input:not([type=checkbox]), textarea')].some(i => i.value.trim() || i === document.activeElement);
 setInterval(() => { if (!cmPanel.hidden && !cmDraft && !cmTyping()) cmFetch(); }, 20000);   // new comments while it is open, never under someone's fingers

@@ -156,6 +156,8 @@ E = [
   ("Navigation", "Next / previous slide", "none", "PageUp", "cur === 0"),
   ("Navigation", "Next / previous slide while typing", "edit", "PageDown", "cur === 2 && !editing"),
   ("Navigation", "Next / previous slide while typing", "edit", "PageUp", "cur === 0 && !editing"),
+  ("Navigation", "Next / previous comment", "none", "Meta+Alt+k", "!$('#ed-comments').hidden"),
+  ("Navigation", "Next / previous comment", "none", ["js:setCommentsPanel(false)", "Meta+Alt+Shift+k"], "!$('#ed-comments').hidden"),
   ("Navigation", "Go to slide", "none", ["Control+Meta+g", "js:$('#ed-goto-n').value = '3'", "Enter"], "cur === 2 && $('#ed-gotodlg').hidden"),
   ("Navigation", "Zoom in", "none", "Meta+Equal", "$('#ed-canvas').getBoundingClientRect().width > __w"),
   ("Navigation", "Zoom out", "none", "Meta+Minus", "$('#ed-canvas').getBoundingClientRect().width < __w"),

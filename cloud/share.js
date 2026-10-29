@@ -104,6 +104,10 @@ async function changeComments(lib, deck, r, by, isOwner) {
   } else if (r.op === 'reply') {
     const c = find(r.id); if (!c || !text) return { ...doc, error: 'nothing to reply to' };
     c.replies.push({ id: rand(8), text, by: who, at: nowISO() });
+  } else if (r.op === 'edit') {   // your own comment or reply (by your email)
+    const c = find(r.id), t = c && (r.reply ? c.replies.find(x => x.id === r.reply) : c);
+    if (!t || t.event || !text || !(t.by?.e && t.by.e === who.e)) return { ...doc, error: "you can only edit your own comments" };
+    t.text = text; t.edited = nowISO();
   } else if (r.op === 'resolve') {
     const c = find(r.id); if (!c) return { ...doc, error: 'no such comment' };
     c.resolved = !!r.resolved; c.replies.push({ id: rand(8), text: r.resolved ? '(resolved)' : '(reopened)', by: who, at: nowISO(), event: true });

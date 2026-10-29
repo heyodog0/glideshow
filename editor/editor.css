@@ -55,6 +55,7 @@ input#ed-title:hover, input#ed-title:focus { border-color: var(--divider); outli
 .cm-card:hover { box-shadow: 0 1px 3px rgba(0, 0, 0, .15); } .cm-card.here { border-color: #fbbc04; box-shadow: inset 3px 0 0 #fbbc04; } .cm-card.done { opacity: .6; }
 .cm-card .cm-top { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; } .cm-card .cm-by { font-weight: 500; color: var(--ink); }
 .cm-card .cm-quote { border-left: 3px solid #fbbc04; padding-left: 8px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cm-card.focus { border-color: var(--blue); box-shadow: inset 3px 0 0 var(--blue); } .cm-edited { color: var(--muted); font-size: 11px; } .cm-editing { display: grid; gap: 6px; } .cm-editing textarea { width: 100%; box-sizing: border-box; font: inherit; }
 .cm-card .cm-text { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
 .cm-card .cm-reply { border-top: 1px solid var(--divider); padding-top: 6px; overflow-wrap: anywhere; } .cm-card .cm-reply.event { color: var(--muted); font-size: 12px; }
 .cm-card .cm-acts { display: flex; align-items: center; gap: 4px; } .cm-card .cm-acts button { height: 28px; padding: 0 8px; color: var(--blue); font-weight: 500; }

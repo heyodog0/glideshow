@@ -12,7 +12,7 @@ def read(deck: Path) -> dict:
 
 
 def change(deck: Path, r: dict, by: dict) -> dict:
-    """add {slide, sid, box, x, y, quote, text} / reply {id, text} / resolve {id, resolved} / delete {id}."""
+    """add {slide, sid, box, x, y, quote, text} / reply {id, text} / edit {id, reply?, text} / resolve {id, resolved} / delete {id}."""
     doc = read(deck); items = doc["comments"]
     find = lambda i: next((c for c in items if c.get("id") == i), None)
     text, now, rid = str(r.get("text", "")).strip()[:4000], time.strftime("%Y-%m-%dT%H:%MZ", time.gmtime()), lambda: secrets.token_hex(4)
@@ -24,6 +24,10 @@ def change(deck: Path, r: dict, by: dict) -> dict:
                       "quote": str(r.get("quote", ""))[:200], "text": text, "by": who, "at": now, "resolved": False, "replies": []})
     elif op == "reply" and (c := find(r.get("id"))) and text:
         c.setdefault("replies", []).append({"id": rid(), "text": text, "by": who, "at": now})
+    elif op == "edit" and (c := find(r.get("id"))) and text:   # the deck's own editor: any comment or reply (one person here)
+        t = next((x for x in c.get("replies", []) if x.get("id") == r.get("reply")), None) if r.get("reply") else c
+        if not t or t.get("event"): return {**doc, "error": "nothing to edit"}
+        t["text"], t["edited"] = text, now
     elif op == "resolve" and (c := find(r.get("id"))):
         c["resolved"] = bool(r.get("resolved"))
         c.setdefault("replies", []).append({"id": rid(), "text": "(resolved)" if c["resolved"] else "(reopened)", "by": who, "at": now, "event": True})

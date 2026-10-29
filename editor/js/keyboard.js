@@ -263,5 +263,5 @@ addEventListener('keydown', e => {
 });
 /* Modifier keys docs/shortcuts.md gives the editor, by e.code; ⌘C / ⌘X / ⌘V / ⌘L / ⌘R / ⌘W stay the browser's. */
 const CLAIMED = { meta: 'KeyB KeyI KeyU KeyK KeyD KeyM KeyY KeyZ KeyA KeyS KeyP KeyF Backslash Period Comma BracketLeft BracketRight Slash ArrowUp ArrowDown Enter',
-  shift: 'KeyX KeyL KeyE KeyR KeyJ KeyH KeyM Digit7 Digit8 Digit0 Period Comma ArrowUp ArrowDown Enter KeyZ', alt: 'KeyC KeyV KeyG KeyX', ctrl: 'KeyB KeyI KeyK KeyW KeyJ' };
+  shift: 'KeyX KeyL KeyE KeyR KeyJ KeyH KeyM Digit7 Digit8 Digit0 Period Comma ArrowUp ArrowDown Enter KeyZ', alt: 'KeyC KeyV KeyG KeyX KeyK', ctrl: 'KeyB KeyI KeyK KeyW KeyJ' };
 const claimed = e => (CLAIMED[e.metaKey && e.ctrlKey ? 'ctrl' : e.altKey ? 'alt' : e.shiftKey ? 'shift' : 'meta'] || '').split(' ').includes(e.code);
