@@ -105,3 +105,88 @@ function finishPoints() {
   guides.querySelector('.draw-preview')?.remove(); disarmShape();
   finishPath(d.pts, d.shape === 'smooth');
 }
+
+/* Point editing (Keynote's Edit Points): double-click a drawn path, or right-click → Edit points. Its anchors (squares)
+   and curve handles (dots) show in the box's own frame: drag either; double-click an anchor to make it smooth or a corner;
+   click the path to add an anchor; ⌫ removes the picked one; Esc or a click elsewhere ends. Right-click → Close path joins
+   the ends into a filled shape (a trailing Z in data-path), Open path splits it again. */
+let pointEdit = null, ptPick = -1;
+function parsePath(d) {
+  /** @typedef {{x: number, y: number}} Pt */ /** @type {(Pt & {in?: Pt, out?: Pt})[]} */ const nodes = []; const nums = s => s.trim().split(/[\s,]+/).map(Number); let closed = false;
+  for (const [, cmd, args] of d.matchAll(/([MLCZmlcz])([^MLCZmlcz]*)/g)) {
+    const v = nums(args);
+    if (/[Zz]/.test(cmd)) { closed = true; continue; }
+    if (/[ML]/i.test(cmd)) for (let i = 0; i + 1 < v.length; i += 2) nodes.push({ x: v[i], y: v[i + 1] });
+    if (/C/i.test(cmd)) for (let i = 0; i + 5 < v.length; i += 6) {   // a control point sitting on its anchor is no handle (pathString writes one for a corner)
+      const a = nodes.at(-1), n = { x: v[i + 4], y: v[i + 5] };
+      if (a && (v[i] !== a.x || v[i + 1] !== a.y)) a.out = { x: v[i], y: v[i + 1] };
+      nodes.push(v[i + 2] !== n.x || v[i + 3] !== n.y ? { ...n, in: { x: v[i + 2], y: v[i + 3] } } : n);
+    }
+  }
+  return { nodes, closed };
+}
+function pathString({ nodes, closed }) {
+  const r = v => Math.round(v * 1000) / 1000, p = q => `${r(q.x)},${r(q.y)}`;
+  let d = 'M' + p(nodes[0]);
+  for (let i = 1; i < nodes.length; i++) { const a = nodes[i - 1], n = nodes[i]; d += a.out || n.in ? ` C${p(a.out || a)} ${p(n.in || n)} ${p(n)}` : ` L${p(n)}`; }
+  return d + (closed ? ' Z' : '');
+}
+const isPath = b => b?.dataset.shape === 'path';
+function enterPointEdit(b) { if (!isPath(b) || isLocked(b)) return; stopEdit(); pointEdit = b; ptPick = -1; sel = new Set([b]); drawOverlay(); updateToolbar(); }
+function endPointEdit() { if (!pointEdit) return; pointEdit = null; ptPick = -1; drawOverlay(); }
+const toLocal = (b, ev) => {   // a pointer in the box's own frame (rotation and flips undone), in px
+  const g = geo(b), t = rot(b) * Math.PI / 180, [fx, fy] = flipXY(b), p = toCanvas(ev), dx = p.x - (g.x + g.w / 2), dy = p.y - (g.y + g.h / 2);
+  return { x: fx * (dx * Math.cos(t) + dy * Math.sin(t)) + g.w / 2, y: fy * (-dx * Math.sin(t) + dy * Math.cos(t)) + g.h / 2 };
+};
+function drawPoints(wrap, b, g, k) {   // render.js drawOverlay: the anchors and handles of the path being edited
+  const P = parsePath(b.dataset.path || ''), at = q => ({ x: q.x * g.w, y: q.y * g.h }), s = 9 * k;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'pt-lines');
+  P.nodes.forEach((n, i) => {
+    for (const side of ['in', 'out']) if (n[side]) {
+      const a = at(n), c = at(n[side]); svg.insertAdjacentHTML('beforeend', `<line x1="${a.x}" y1="${a.y}" x2="${c.x}" y2="${c.y}" stroke-width="${k}"/>`);
+      const h = div('handle ctl'); h.dataset.i = String(i); h.dataset.side = side; h.style.cssText = `left:${c.x - s / 2.6}px;top:${c.y - s / 2.6}px;width:${s / 1.3}px;height:${s / 1.3}px;--k:${k}px`; wrap.append(h);
+    }
+    const a = at(n), h = div('handle pt' + (i === ptPick ? ' on' : '')); h.dataset.i = String(i);
+    h.style.cssText = `left:${a.x - s / 2}px;top:${a.y - s / 2}px;width:${s}px;height:${s}px;--k:${k}px`; h.title = 'Drag; double-click: smooth / corner'; wrap.append(h);
+  });
+  wrap.prepend(svg);
+}
+function startPoint(e, h) {
+  const b = pointEdit, i = +h.dataset.i, side = h.dataset.side, g = geo(b), P = parsePath(b.dataset.path), n = P.nodes[i];
+  if (!side) ptPick = i;
+  const o = { x: n.x, y: n.y, in: n.in && { ...n.in }, out: n.out && { ...n.out } };
+  busy = true;
+  drag(e, ev => {
+    const l = toLocal(b, ev), u = { x: l.x / g.w, y: l.y / g.h };
+    if (side) { n[side] = u; const other = side === 'in' ? 'out' : 'in'; if (n[other] && !ev.altKey) n[other] = { x: 2 * n.x - u.x, y: 2 * n.y - u.y }; }   // smooth: the other handle mirrors (⌥ breaks it)
+    else { const dx = u.x - o.x, dy = u.y - o.y; n.x = u.x; n.y = u.y; if (o.in) n.in = { x: o.in.x + dx, y: o.in.y + dy }; if (o.out) n.out = { x: o.out.x + dx, y: o.out.y + dy }; }
+    b.dataset.path = pathString(P); renderShape(b); drawOverlay();
+  }, () => { busy = false; refitPath(b); commit(); });
+}
+function refitPath(b) {   // after an edit, the box hugs the path again (unrotated boxes; a rotated one keeps its frame)
+  if (rot(b)) return;
+  const P = parsePath(b.dataset.path), g = geo(b), xs = P.nodes.flatMap(n => [n, n.in, n.out].filter(Boolean)).map(q => q.x), ys = P.nodes.flatMap(n => [n, n.in, n.out].filter(Boolean)).map(q => q.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), w = Math.max(1e-3, x1 - x0), h = Math.max(1e-3, y1 - y0);
+  if (Math.abs(x0) < 1e-3 && Math.abs(y0) < 1e-3 && Math.abs(x1 - 1) < 1e-3 && Math.abs(y1 - 1) < 1e-3) return;
+  const m = q => q && { x: (q.x - x0) / w, y: (q.y - y0) / h };
+  P.nodes.forEach(n => { const a = m(n); n.x = a.x; n.y = a.y; n.in = m(n.in); n.out = m(n.out); if (!n.in) delete n.in; if (!n.out) delete n.out; });
+  setGeo(b, { x: g.x + x0 * g.w, y: g.y + y0 * g.h, w: Math.max(1, w * g.w), h: Math.max(1, h * g.h) }); b.dataset.path = pathString(P); renderShape(b); drawOverlay();
+}
+function togglePointSmooth(i) {
+  const b = pointEdit, P = parsePath(b.dataset.path), n = P.nodes[i], a = P.nodes[i - 1] || (P.closed && P.nodes.at(-1)), z = P.nodes[i + 1] || (P.closed && P.nodes[0]);
+  if (n.in || n.out) { delete n.in; delete n.out; }
+  else { const dx = ((z || n).x - (a || n).x) / 6, dy = ((z || n).y - (a || n).y) / 6; if (i > 0) n.in = { x: n.x - dx, y: n.y - dy }; if (i < P.nodes.length - 1) n.out = { x: n.x + dx, y: n.y + dy }; }
+  b.dataset.path = pathString(P); renderShape(b); refitPath(b); drawOverlay(); commit();
+}
+function addPointAt(ev) {   // a click on the path: a new anchor on the nearest segment
+  const b = pointEdit, P = parsePath(b.dataset.path), g = geo(b), l = toLocal(b, ev), u = { x: l.x / g.w, y: l.y / g.h };
+  let best = 1, bd = Infinity;
+  for (let i = 1; i < P.nodes.length; i++) { const a = P.nodes[i - 1], c = P.nodes[i], vx = c.x - a.x, vy = c.y - a.y, t = Math.max(0, Math.min(1, ((u.x - a.x) * vx + (u.y - a.y) * vy) / (vx * vx + vy * vy || 1)));
+    const d = Math.hypot(a.x + t * vx - u.x, a.y + t * vy - u.y); if (d < bd) { bd = d; best = i; } }
+  P.nodes.splice(best, 0, { x: u.x, y: u.y }); ptPick = best; b.dataset.path = pathString(P); renderShape(b); drawOverlay(); commit();
+}
+function deletePoint() {
+  const b = pointEdit, P = parsePath(b.dataset.path); if (ptPick < 0 || P.nodes.length <= 2) return;
+  P.nodes.splice(ptPick, 1); ptPick = -1; b.dataset.path = pathString(P); renderShape(b); refitPath(b); drawOverlay(); commit();
+}
+function setPathClosed(b, on) { const P = parsePath(b.dataset.path); P.closed = on; b.dataset.path = pathString(P); if (on && !b.style.getPropertyValue('--fill')) b.style.setProperty('--fill', '#4a86e8'); renderShape(b); drawOverlay(); updateToolbar(); commit(); }

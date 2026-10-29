@@ -805,6 +805,23 @@ def checks(pg, deck: Path, errors):
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
     check(f"Arrange → Lock ({lock_ms} ms): grey handles that don't drag, no move / nudge / delete / text editing, a drag-select passes over it, saved; right-click offers Unlock, which frees it",
           held == [True, "200px", False, True, True, "none"] and marq == [ids[1]] and "Unlock" in rmenu and saved and freed == [False, "300px"], f"{held} {marq} {rmenu} {saved} {freed}")
+    pid = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1); finishPath([{x: 300, y: 300}, {x: 700, y: 700}, {x: 1100, y: 300}], false); return boxes().at(-1).id; })()""")
+    pb = lambda: pg.evaluate(f"(() => {{ const r = document.getElementById('{pid}').getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }})()")
+    r = pb(); pg.mouse.dblclick(r[0] + r[2] / 4, r[1] + r[3] / 2)
+    n_pt = pg.evaluate("document.querySelectorAll('#ed-ui .handle.pt').length")
+    h = pg.locator("#ed-ui .handle.pt >> nth=1").bounding_box(); sc = pg.evaluate("scale")
+    pg.mouse.move(h["x"] + h["width"] / 2, h["y"] + h["height"] / 2); pg.mouse.down(); pg.mouse.move(h["x"] + h["width"] / 2, h["y"] + h["height"] / 2 + 100 * sc, steps=4); pg.mouse.up()
+    moved = pg.evaluate(f"[document.getElementById('{pid}').style.height, document.getElementById('{pid}').dataset.path]")
+    h = pg.locator("#ed-ui .handle.pt >> nth=1").bounding_box(); pg.mouse.dblclick(h["x"] + h["width"] / 2, h["y"] + h["height"] / 2)
+    smooth = pg.evaluate(f"[document.querySelectorAll('#ed-ui .handle.ctl').length, /C/.test(document.getElementById('{pid}').dataset.path)]")
+    pg.screenshot(path=str(HERE / "edit-points.png"))
+    pg.keyboard.press("Backspace"); after_del = pg.evaluate("document.querySelectorAll('#ed-ui .handle.pt').length")
+    pg.keyboard.press("Escape"); out = pg.evaluate("[pointEdit, document.querySelectorAll('#ed-ui .handle.pt').length]")
+    r = pb(); pg.mouse.click(r[0] + r[2] / 2, r[1] + r[3] / 2, button="right"); pg.click(".menu-item:has(.menu-label:text-is('Close path'))")
+    closed = pg.evaluate(f"(() => {{ const b = document.getElementById('{pid}'); return [/Z$/.test(b.dataset.path), b.querySelector('svg.shape path.f') !== null, isStroke(b)]; }})()")
+    pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
+    check("Edit points, as Keynote: double-click a path shows its anchors, drag one (the box refits), double-click makes it smooth (curve handles), ⌫ removes it, Esc ends; Close path fills it",
+          n_pt == 3 and moved[0] == "500px" and smooth == [2, True] and after_del == 2 and out == [None, 0] and closed == [True, True, False], f"{n_pt} {moved} {smooth} {after_del} {out} {closed}")
     ob = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1);
       const a = makeBox({x: 100, y: 100, w: 300, h: 150, html: 'Back text'}), b = makeBox({x: 300, y: 200, w: 300, h: 200, shape: 'ellipse'}), c = makeBox({x: 500, y: 300, w: 400, h: 0, shape: 'line'});
       s.append(a, b, c); sel.clear(); render(); return [a.id, b.id, c.id]; })()""")

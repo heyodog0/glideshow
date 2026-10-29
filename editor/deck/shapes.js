@@ -199,7 +199,7 @@
         t.textContent = b.dataset.icon || 'star'; out = [t]; break;
       }
       case 'path': {   // a freehand curve, polyline or scribble: data-path in 0..1 units of the box, scaled with it
-        const d = b.dataset.path || 'M0,0 L1,1', width = isNaN(sw) ? 4 : sw, main = unitPath(d, 0, 0, w, h, 'l');
+        const d = b.dataset.path || 'M0,0 L1,1', width = isNaN(sw) ? 4 : sw, main = unitPath(d, 0, 0, w, h, /z\s*$/i.test(d) ? 'f' : 'l');   // closed (… Z): filled, as a shape
         dash(main, b, width); out = [unitPath(d, 0, 0, w, h, 'hit'), main]; break;
       }
       case 'line': case 'arrowline': case 'elbow': case 'curve': {

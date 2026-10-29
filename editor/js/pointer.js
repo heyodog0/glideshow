@@ -320,6 +320,9 @@ function startMarquee(e) {
   }, () => { busy = false; m.remove(); updateToolbar(); maybeReload(); });
 }
 
+stage.addEventListener('dblclick', e => {   // double-click an anchor: smooth ↔ corner
+  const h = /** @type {Element} */ (e.target).closest('.handle.pt'); if (h && pointEdit) { e.stopPropagation(); togglePointSmooth(+(/** @type {HTMLElement} */ (h)).dataset.i); }
+}, true);
 stage.addEventListener('pointerdown', e => {
   if (e.button !== 0) return;
   if (document.activeElement?.matches('input, select') || filmFocused()) document.activeElement.blur();   // keys now act on the canvas, not the filmstrip
@@ -334,7 +337,9 @@ stage.addEventListener('pointerdown', e => {
   if (handle?.classList.contains('rotate')) return startRotate(e);
   if (handle?.classList.contains('adjust')) return startAdjust(e, +handle.dataset.i);
   if (handle && 'crop' in handle.dataset) return startCrop(e, handle.dataset.dir);
+  if (handle && pointEdit && (handle.classList.contains('pt') || handle.classList.contains('ctl'))) return startPoint(e, handle);
   if (handle) return startResize(e, handle.dataset.dir);
+  if (pointEdit) { if (topBox(e.target) === pointEdit) { e.preventDefault(); addPointAt(e); return; } endPointEdit(); }
   if (cropping && topBox(e.target) !== cropping) endCrop();
   const b = topBox(e.target);
   if (scope && !(b && b !== scope && scope.contains(b))) scope = null;   // a click outside the entered group leaves it
@@ -399,6 +404,7 @@ const caretAt = (x, y) => {
 canvas.addEventListener('dblclick', e => {
   const b = topBox(e.target);
   if (b && isLocked(b)) return;
+  if (b && isPath(b) && !pointEdit) { enterPointEdit(b); return; }   // a drawn path: edit its points
   if (b && b.classList.contains('image')) { enterCrop(b); return; }   // double-click a picture: crop it, as Slides
   if (b && b.classList.contains('live')) { editLive(b); return; }   // a live box: its page
   if (b && isGroup(b)) {   // enter the group: the member under the pointer gets selected (Esc goes back out)

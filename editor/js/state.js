@@ -46,7 +46,7 @@ function fitGroups(s = slides[cur]) {
 const isLine = b => /^(line|arrowline|elbow|curve)$/.test(b.dataset.shape || '');
 const isLocked = b => b.hasAttribute('data-locked');   // Arrange → Lock: can't be moved, resized, edited or deleted until unlocked
 const isMedia = b => b.classList.contains('image') || b.classList.contains('video') || b.classList.contains('embed') || b.classList.contains('live');   // pictures, videos, web embeds: no text, aspect kept
-const isStroke = b => isLine(b) || b.dataset.shape === 'path';   // lines and freehand paths: a stroke, no fill or text
+const isStroke = b => isLine(b) || (b.dataset.shape === 'path' && !/z\s*$/i.test(b.dataset.path || ''));   // lines and open freehand paths: a stroke, no fill or text (a closed path is a shape)
 const r1 = v => Math.round(v * 10) / 10;
 const div = (cls) => { const d = document.createElement('div'); d.className = cls; return d; };
 /* Status next to the title, worded as Slides. `icon` is a Material Symbols name (cloud states) or none. */

@@ -57,7 +57,7 @@ Rules:
   three segments with the middle one at `data-bend` (0..1 of the span, default 0.5; the yellow handle; right-click → Reroute connector resets it),
   one of each gives a single bend, and two ends on the same side (`b` and `b`, or `r` and `r`, …) give a U that runs `data-out` px
   (default 60; the yellow handle) past the further end: a feedback edge. A curved connector (`curve`) routes the same way, its S bending at `data-bend` (handle on the curve); with one bend it is OOXML's curvedConnector2, a gentle arc whose controls sit at the midpoints of the two legs.
-  `data-shape="path"` with `data-path="M0,0 C… L…"` is a freehand stroke (Curve, Polyline, Scribble): SVG path commands in 0..1 units of the box, so it scales with it.
+  `data-shape="path"` with `data-path="M0,0 C… L…"` is a freehand stroke (Curve, Polyline, Scribble): SVG path commands in 0..1 units of the box, so it scales with it. Ending it with ` Z` closes it into a filled shape (`--fill`, Close path); Edit points changes it in place.
   Shapes are drawn from the OOXML preset geometry Google Slides uses (ECMA-376 `presetShapeDefinitions`), including where text sits.
   `data-adj`, `data-adj2`, … are the preset's adj1, adj2, … scaled 0–1 (e.g. `arrow` = rightArrow: adj1 shaft thickness of the height,
   adj2 head length of the shorter side, both 0.5 by default; `roundrect`: corner radius of the shorter side, 0.1667); the editor's yellow handles set them.

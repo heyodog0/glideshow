@@ -232,6 +232,8 @@ addEventListener('keydown', e => {
     e.preventDefault(); $({ b: '#ed-bold', i: '#ed-italic', u: '#ed-underline' }[k]).click(); return;
   }
   if (mod) { if (claimed(e)) e.preventDefault(); return; }   // a Slides key with nothing to act on still never reaches Chrome (⌘I opened Mail)
+  if (pointEdit && (e.key === 'Backspace' || e.key === 'Delete')) { e.preventDefault(); deletePoint(); return; }
+  if (pointEdit && e.key === 'Escape') { e.preventDefault(); endPointEdit(); return; }
   if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); deleteSelection(); return; }
   if (cropping && (e.key === 'Escape' || e.key === 'Enter')) { e.preventDefault(); endCrop(); return; }
   if (e.key === 'Escape' && scope && sel.size === 1 && scope.contains([...sel][0])) { e.preventDefault(); sel = new Set([scope]); scope = null; drawOverlay(); updateToolbar(); return; }   // out of the group

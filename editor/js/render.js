@@ -244,6 +244,7 @@ function drawOverlay() {
     }
     frameFor(b).append(wrap); return;
   }
+  if (pointEdit === b) { drawPoints(wrap, b, g, k); frameFor(b).append(wrap); return; }   // Edit points: anchors and handles instead
   addHandles(wrap, g, dirs, d => resizeCursor(b, d), k, isLine(b));
   if (locked) { frameFor(b).append(wrap); return; }
   if (isLine(b)) [b.dataset.from, b.dataset.to].forEach((at, i) => at && wrap.querySelector(`.handle[data-dir="${dirs[i]}"]`)?.classList.add('linked'));   // attached ends: filled, as Slides

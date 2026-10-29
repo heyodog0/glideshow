@@ -234,6 +234,8 @@ body.ruler-off .ruler, body.ruler-off #ed-ruler-marks { display: none; }
 .tab-stop.l { border-width: 0 0 2px 2px; } .tab-stop.r { margin-left: -7px; border-width: 0 2px 2px 0; }
 .tab-stop.c, .tab-stop.d { margin-left: -4px; border-width: 0 0 2px; } .tab-stop.c::before, .tab-stop.d::before { content: ""; position: absolute; left: 3px; bottom: 0; width: 2px; height: 7px; background: var(--blue); }
 .tab-stop.d::after { content: ""; position: absolute; left: 7px; bottom: 3px; width: 2px; height: 2px; background: var(--blue); }
+.handle.pt { border-radius: 1px; } .handle.pt.on { background: var(--blue); } .handle.ctl { border-radius: 50%; background: var(--blue); box-shadow: none; }
+.sel-wrap > svg.pt-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; } .pt-lines line { stroke: var(--blue); }
 .ind-mark.first { top: 2px; height: 5px; border-radius: 1px; background: var(--blue); }
 #ed-stage.zoomed { overflow: auto; }
 #ed-stage > #ed-frame { margin: auto; flex: none; }   /* centred when it fits, scrollable from the edge when it doesn't */
