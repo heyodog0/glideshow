@@ -86,6 +86,7 @@ function openPalette(btn) {
     m.append(div('menu-sep'), row);
   }
   if (btn.dataset.for === 'fill' && sel.size && !cellTargets().length) gradientTabs(m, solidStart, { get: () => gradSpec([...sel][0]), set: setGradient, image: true });
+  if (btn.dataset.for === 'color' && sel.size && !editing) gradientTabs(m, solidStart, { get: () => [...sel][0]?.dataset.textGradient || '', set: setTextGradient });   // whole boxes' text
   if (btn.dataset.for === 'bg' && slides[cur]) gradientTabs(m, solidStart, { get: () => specOfCss(slides[cur].dataset.backgroundGradient || ''), set: setBgGradient });
   document.body.append(m);
   const r = btn.getBoundingClientRect();
@@ -347,7 +348,9 @@ async function openFontMenu(btn) {
   build(); q.focus();
 }
 $('#ed-font').onclick = () => openAnchor === $('#ed-font') ? closeMenu() : openFontMenu($('#ed-font'));
-$('#ed-color').oninput = e => styleText('foreColor', e.target.value, c => { c.style.color = e.target.value; });
+$('#ed-color').oninput = e => { if (!editing) setTextGradient(null); styleText('foreColor', e.target.value, c => { c.style.color = e.target.value; }); };
+/* Text colour → Gradient (Keynote's gradient text fill): the whole text of the selected boxes, as data-text-gradient. */
+function setTextGradient(spec) { for (const b of sel) { if (spec) b.dataset.textGradient = spec; else delete b.dataset.textGradient; gradBox(b); } drawOverlay(); }
 function setSize(v) {   // the selected characters while editing; otherwise whole boxes, the runs' own sizes giving way
   const s = editing && editSelection();
   if (s && s.rangeCount && !s.isCollapsed) { spanStyle('font-size', v + 'px'); showTextStyle(editing); return; }

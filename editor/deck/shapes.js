@@ -253,8 +253,8 @@
      (angle in degrees, CSS's: 90 runs left to right) or "radial #inner #outer". Shapes draw it in their SVG; other boxes
      get it as --grad (derived, never saved). */
   let gradN = 0;
-  function gradOf(b) {
-    const m = (b.dataset.gradient || '').trim().split(/\s+/), radial = m[0] === 'radial';
+  function gradOf(b, spec = b.dataset.gradient) {
+    const m = (spec || '').trim().split(/\s+/), radial = m[0] === 'radial';
     if (!radial && m[0] !== 'linear') return null;
     const stops = m.slice(radial ? 1 : 2).filter(c => /^#[0-9a-f]{3,8}$/i.test(c));
     return stops.length >= 2 ? { radial, angle: radial ? 0 : +m[1] || 0, stops } : null;
@@ -263,6 +263,8 @@
      tile | original. Text boxes take both fills as derived CSS (--grad, --fimg, --fsize, --frep). */
   const FILL_SIZE = { fill: 'cover', fit: 'contain', stretch: '100% 100%', tile: 'auto', original: 'auto' };
   function gradBox(b) {
+    const tg = gradOf(b, b.dataset.textGradient);   // a gradient on the text itself (data-text-gradient), as --tgrad
+    if (tg) b.style.setProperty('--tgrad', tg.radial ? `radial-gradient(circle, ${tg.stops.join(', ')})` : `linear-gradient(${tg.angle}deg, ${tg.stops.join(', ')})`); else b.style.removeProperty('--tgrad');
     if (b.dataset.shape) { renderShape(b); return; }
     const g = gradOf(b);
     if (g) b.style.setProperty('--grad', g.radial ? `radial-gradient(circle, ${g.stops.join(', ')})` : `linear-gradient(${g.angle}deg, ${g.stops.join(', ')})`);
@@ -436,7 +438,7 @@
   document.querySelectorAll('.box[data-shadow]').forEach(shadeBox);
   document.querySelectorAll('.box[data-crop]').forEach(cropBox);
   document.querySelectorAll('.box[data-adjust]').forEach(adjustImage);
-  document.querySelectorAll('.box:is([data-gradient], [data-fill-image]):not([data-shape])').forEach(gradBox);
+  document.querySelectorAll('.box:is([data-gradient], [data-fill-image]):not([data-shape]), .box[data-text-gradient]').forEach(gradBox);
   const fitAll = () => { document.querySelectorAll('.box[data-autofit="shrink"]').forEach(fitText); document.querySelectorAll('.reveal .present .box, #ed-canvas .box').forEach(fitTabs); };
   fitAll(); document.fonts?.ready.then(fitAll);   // web fonts change text metrics
   if (window.Reveal?.on) { Reveal.on('ready', fitAll); Reveal.on('slidechanged', fitAll); }   // slides are hidden until shown

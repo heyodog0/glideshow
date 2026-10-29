@@ -124,7 +124,7 @@ function cleanBox(b) {
   c.querySelectorAll('img[style*="#adj-"]').forEach(e => { e.style.filter = ''; if (!e.getAttribute('style')) e.removeAttribute('style'); });   // derived from data-adjust
   unrenderMath(c);   // the deck keeps the equation source
   c.querySelectorAll('[contenteditable], [spellcheck]').forEach(e => { e.removeAttribute('contenteditable'); e.removeAttribute('spellcheck'); });
-  [c, ...c.querySelectorAll('.box')].forEach(e => ['--shx', '--shy', '--shb', '--shc', '--grad', '--fimg', '--fsize', '--frep', '--fit', '--ct', '--cr', '--cb', '--cl', '--tx-l', '--tx-t', '--tx-r', '--tx-b'].forEach(k => e.style.removeProperty(k)));   // derived; shapes.js recomputes them
+  [c, ...c.querySelectorAll('.box')].forEach(e => ['--shx', '--shy', '--shb', '--shc', '--grad', '--tgrad', '--fimg', '--fsize', '--frep', '--fit', '--ct', '--cr', '--cb', '--cl', '--tx-l', '--tx-t', '--tx-r', '--tx-b'].forEach(k => e.style.removeProperty(k)));   // derived; shapes.js recomputes them
   c.querySelectorAll('[data-ph]').forEach(e => e.removeAttribute('data-ph'));   // the editor's copy of the placeholder prompt
   c.querySelectorAll('span.tb').forEach(e => e.replaceWith('\t'));   // a tab drawn to its stop (shapes.js): the deck keeps the character
   c.querySelectorAll('.cell-on').forEach(e => { e.classList.remove('cell-on'); if (!e.className) e.removeAttribute('class'); });   // the editor's cell selection

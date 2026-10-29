@@ -54,6 +54,11 @@
 .box.table > .content { align-self: stretch; height: 100%; }
 .box > .content table { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; }
 .box > .content td, .box > .content th { border: 2.667px solid #000000; padding: 9.6px 19.2px; vertical-align: top; text-align: left; overflow-wrap: anywhere; }
+/* Text effects: a gradient through the text (data-text-gradient → --tgrad), underline styles (--u-style / --u-weight on
+   .content), a drop cap (data-dropcap) */
+.box[data-text-gradient] > .content { background-image: var(--tgrad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.box > .content, .box > .content :is(u, s, span, a) { text-decoration-style: var(--u-style, solid); text-decoration-thickness: var(--u-weight, auto); }
+.box[data-dropcap] > .content::first-letter { float: left; font-size: 3.4em; line-height: .82; margin: .06em .08em 0 0; }
 .box > .content span.tb { display: inline-block; white-space: pre; overflow: hidden; vertical-align: baseline; }   /* a tab, sized by shapes.js to its stop */
 .box > .content th { font-weight: bold; }   /* header cells (Format options → Table → Header rows / columns) */
 .box.table[data-alt-rows] .content tr:nth-child(even) > td { background-color: var(--alt-row, #f3f3f3); }

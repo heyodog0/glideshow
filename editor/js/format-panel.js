@@ -20,6 +20,8 @@ function updatePanel() {
   fmt.querySelectorAll('[name=ed-f-fit]').forEach(r => { r.checked = r.value === mode; });
   ['pt', 'pb', 'pl', 'pr'].forEach((k, i) => { F(k).value = toIn(parseFloat(cs[['paddingTop', 'paddingBottom', 'paddingLeft', 'paddingRight'][i]])); });
   F('shadow').checked = 'shadow' in b.dataset;
+  const ts = c.style.webkitTextStroke.match(/([\d.]+)px\s*(.*)/); F('tout').checked = !!ts;
+  F('tout-w').value = F('tout-w-n').value = ts ? ts[1] : '2'; F('tout-color').value = toHex(ts?.[2] || '#000000', '#000000');
   for (const [k, def] of Object.entries(SHADOW_UI)) { const v = b.dataset['shadow' + k[0].toUpperCase() + k.slice(1)] ?? def; F('sh-' + k).value = k === 'opacity' ? Math.round(v * 100) : v; if (F('sh-' + k + '-n')) F('sh-' + k + '-n').value = F('sh-' + k).value; }
   const img = b.querySelector('.content > img'); fmt.classList.toggle('is-image', !!img);
   const vid = b.querySelector('.content > video'); fmt.classList.toggle('is-video', !!vid);
@@ -67,6 +69,17 @@ F('fit').onchange = one(b => {
   fitHeight(b);
 }); });
 F('shadow').onclick = e => e.stopPropagation();
+/* Text outline (Keynote's Outline in the Text tab): a stroke round every letter, outside the fill, as -webkit-text-stroke on .content. */
+function setTextOutline(b, on) {
+  const s = content(b).style;
+  if (on) { s.setProperty('-webkit-text-stroke', `${Math.max(0.5, +F('tout-w').value || 2)}px ${F('tout-color').value}`); s.setProperty('paint-order', 'stroke fill'); }
+  else { s.removeProperty('-webkit-text-stroke'); s.removeProperty('paint-order'); }
+}
+F('tout').onclick = e => e.stopPropagation();
+F('tout').onchange = one(b => setTextOutline(b, F('tout').checked));
+F('tout-w').oninput = () => { F('tout-w-n').value = F('tout-w').value; const b = [...sel][0]; if (b) { F('tout').checked = true; setTextOutline(b, true); } };
+for (const k of ['tout-w', 'tout-w-n', 'tout-color']) F(k).onchange = one(b => { if (k === 'tout-w-n') F('tout-w').value = F('tout-w-n').value; F('tout').checked = true; setTextOutline(b, true); });
+F('tout-color').oninput = () => { const b = [...sel][0]; if (b) { F('tout').checked = true; setTextOutline(b, true); } };
 /* Format options → Table, as Keynote's Table tab: a style, header rows and columns (real <th> cells), footer rows, and an
    alternating row colour (data-table-style, data-header-rows / -cols, data-footer-rows, data-alt-rows with --alt-row). */
 function setTableHeads(b) {

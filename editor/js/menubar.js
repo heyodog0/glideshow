@@ -14,6 +14,8 @@ const FORMAT_MENU = [
       ] },
       { label: 'Color', run: () => openPalette(document.querySelector('.swatch[data-for=color]')), off: noSel },
       { label: 'Highlight color', run: () => openPalette(document.querySelector('.swatch[data-for=hilite]')), off: noSel },
+      { label: 'Underline style', icon: 'format_underlined', items: () => UNDERLINES.map(([v, label]) => ({ label, on: () => sel.size && curUnderline() === v, run: () => setUnderline(v), off: noSel })) },
+      { label: 'Drop cap', icon: 'format_size', on: () => sel.size && [...sel].every(b => 'dropcap' in b.dataset), run: toggleDropcap, off: noSel },
       { label: 'Capitalization', items: [['lowercase', 'lower'], ['UPPERCASE', 'upper'], ['Title Case', 'title']].map(([label, m]) => ({ label, run: () => recase(m), off: noSel })) },
       { label: 'Columns', icon: 'view_column', items: () => [1, 2, 3].map(n => ({ label: ['One', 'Two', 'Three'][n - 1] + (n > 1 ? ' columns' : ' column'), on: () => sel.size && curCols() === n, run: () => setColumns(n), off: noSel })) },
     ] },

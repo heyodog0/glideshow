@@ -156,6 +156,20 @@ def checks(pg, deck: Path, errors):
     check("tab stops as Keynote: ⌥Tab types a tab, a click on the ruler adds a left stop, right-click makes it right or decimal (text lines up at it), dragged off it goes; the deck keeps a tab character",
           left[0] == "384l" and abs(left[1] - 384) <= 2 and right[0] == "384r" and abs(right[2] - 384) <= 2 and dec[0] == "384d" and right[1] < dec[1] < left[1] and saved == "Name\t12.5" and gone == "",
           f"{left} {right} {dec} {saved!r} {gone!r}")
+    te = pg.evaluate("""(() => { window.__prev = [...sel]; stopEdit(); const b = addText('x'); stopEdit(); b.querySelector('.content').innerHTML = '<u>Effects</u> on text'; sel = new Set([b]); render(); updateToolbar(); return b.id; })()""")
+    pg.click(".swatch[data-for=color]"); pg.click(".palette-tabs button[data-t=gradient]"); pg.click(".grad-pane .cells .cell >> nth=6")
+    pg.click("#ed-menubar [data-menu=Format]"); pg.hover(".menu-item:has-text('Text')"); pg.hover(".menu-item:has-text('Underline style')"); pg.click(".menu-item:has(.menu-label:text-is('Wavy'))")
+    pg.click("#ed-menubar [data-menu=Format]"); pg.hover(".menu-item:has-text('Text')"); pg.click(".menu-item:has(.menu-label:text-is('Drop cap'))")
+    pg.evaluate("setPanel(true)"); pg.check("#ed-f-tout"); pg.evaluate("$('#ed-f-tout').closest('details').open = true"); pg.fill("#ed-f-tout-w-n", "3"); pg.dispatch_event("#ed-f-tout-w-n", "change")
+    pg.locator(f"#{te}").screenshot(path=str(HERE / "text-effects.png"))
+    fx = pg.evaluate(f"""(() => {{ const b = document.getElementById('{te}'), c = b.querySelector('.content'), cs = getComputedStyle(c);
+      return [b.dataset.textGradient?.split(' ')[0], cs.webkitTextFillColor, cs.backgroundImage.startsWith('linear-gradient'), getComputedStyle(c.querySelector('u')).textDecorationStyle,
+        getComputedStyle(c, '::first-letter').float, cs.webkitTextStrokeWidth, !cleanBox(b).style.getPropertyValue('--tgrad')]; }})()""")
+    pg.evaluate("setPanel(false)"); pg.click(".swatch[data-for=color]"); pg.click(".palette-tabs button[data-t=solid]"); pg.click(".palette .cells.std .cell >> nth=11")
+    solid = pg.evaluate(f"document.getElementById('{te}').dataset.textGradient ?? ''")
+    pg.evaluate("(() => { sel.forEach(b => b.remove()); sel = new Set(__prev); render(); commit(); })()")
+    check("text effects as Keynote: Text colour → Gradient through the letters, Underline style (Wavy), Drop cap, Text outline 3px; a solid text colour removes the gradient",
+          fx == ["linear", "rgba(0, 0, 0, 0)", True, "wavy", "left", "3px", True] and solid == "", f"{fx} {solid!r}")
     check("paragraph spacing: Add space before paragraph puts 10pt (26.67px) above each paragraph and toggles to Remove", sp == ["26.67px", "26.67px"] and lbl and gone == "", f"{sp} {lbl} {gone!r}")
     pg.keyboard.press("Meta+k"); pg.fill("#ed-link-url", "example.com"); pg.keyboard.press("Enter")
     check("⌘K links the box text", pg.evaluate("[...document.querySelectorAll('#ed-canvas .box')].pop().querySelector('.content a')?.getAttribute('href')") == "https://example.com")

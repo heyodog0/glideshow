@@ -66,6 +66,17 @@ function autoFormat(/** @type {InputEvent} */ e) {
     lastRange = s.getRangeAt(0).cloneRange(); listText(m[1] ? 'insertUnorderedList' : 'insertOrderedList');
   }
 }
+/* Format → Text → Underline style (Keynote's underline styles) and Drop cap, on whole boxes: --u-style / --u-weight on
+   .content (base.css), data-dropcap on the box. */
+const UNDERLINES = [['', 'Single'], ['double', 'Double'], ['thick', 'Thick'], ['dotted', 'Dotted'], ['dashed', 'Dashed'], ['wavy', 'Wavy']];
+const curUnderline = () => { const c = [...sel][0] && content([...sel][0]); return !c ? '' : c.style.getPropertyValue('--u-weight') ? 'thick' : c.style.getPropertyValue('--u-style'); };
+function setUnderline(v) {
+  for (const b of sel) { if (isMedia(b) || isStroke(b)) continue; const s = content(b).style;
+    if (v && v !== 'thick') s.setProperty('--u-style', v); else s.removeProperty('--u-style');
+    if (v === 'thick') s.setProperty('--u-weight', '0.12em'); else s.removeProperty('--u-weight'); }
+  commit();
+}
+function toggleDropcap() { const on = ![...sel].every(b => 'dropcap' in b.dataset); for (const b of sel) { if (isMedia(b) || isStroke(b)) continue; if (on) b.dataset.dropcap = ''; else delete b.dataset.dropcap; fitHeight(b); } commit(); }
 function stopEdit() {
   if (!editing) return;
   clearCellSel();
