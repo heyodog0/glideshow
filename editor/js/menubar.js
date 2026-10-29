@@ -257,6 +257,7 @@ const SLIDESHOW = [
   { label: 'Open in new tab', icon: 'open_in_new', run: () => openDeckTab(cur) },
   { label: 'Open as a scrolling page', icon: 'view_day', run: () => window.open('deck.html?view=scroll', '_blank') },   // reveal's scroll view: reads like a page, good on a phone
   '-',
+  { label: 'Record slideshow', icon: 'mic', run: () => recordSlideshow() },
   { label: 'Slideshow settings', icon: 'tune', run: () => showShowDialog(true) },
 ];
 document.querySelectorAll('#ed-menubar [data-menu]').forEach(btn => {

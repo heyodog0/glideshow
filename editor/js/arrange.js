@@ -178,6 +178,7 @@ async function present(from = cur, opts = {}) {
 function endPresent(h, v) {
   const ov = $('#ed-show');
   if (ov.hidden) return;
+  if (rec) { stopRecording(); return; }   // Esc while recording: stop and save
   ov.hidden = true; ov.replaceChildren();
   if (document.fullscreenElement) document.exitFullscreen();
   if (h != null) go(indexOf(h, v || 0));
@@ -185,8 +186,42 @@ function endPresent(h, v) {
 const presenting = () => !$('#ed-show').hidden;
 addEventListener('message', e => {
   if (e.data?.slides === 'exit') endPresent(e.data.h, e.data.v);
+  if (e.data?.slides === 'at' && rec) rec.steps.push([(performance.now() - rec.t0 - rec.paused) / 1000, e.data.h, e.data.v || 0, e.data.f ?? -1]);   // Record slideshow: where the show is, when
   if (e.data?.slides === 'note') addNote(indexOf(e.data.h, e.data.v), e.data.x, e.data.y, e.data.text);   // M while presenting
 });
+/* Slideshow ▾ → Record slideshow (Keynote's): presents from the first slide with a recording bar on top; the microphone
+   is recorded while each slide and build is noted with its time. Stop (or Esc) saves both with the deck:
+   data-narration (the sound) and data-narration-steps ("seconds:h.v.f" each) on .slides; Slideshow settings → Recorded
+   plays them back. */
+let rec = null;
+async function recordSlideshow() {
+  let stream; try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch { return setStatus('No microphone: allow it to record a slideshow', 'error'); }
+  const mr = new MediaRecorder(stream), chunks = []; mr.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  rec = { mr, stream, chunks, t0: performance.now(), paused: 0, pausedAt: 0, steps: [[0, 0, 0, -1]] };
+  await present(0); mr.start(1000);
+  const bar = div('rec-bar'); bar.id = 'ed-rec-bar';
+  bar.innerHTML = '<span class="dot"></span><span class="t">0:00</span><button class="pause" title="Pause"><span class="icon">pause</span></button><button class="stop" title="Stop and save"><span class="icon">stop</span></button>';
+  document.body.append(bar);
+  const tick = setInterval(() => { if (!rec) return clearInterval(tick); const s = Math.floor((performance.now() - rec.t0 - rec.paused - (rec.pausedAt ? performance.now() - rec.pausedAt : 0)) / 1000); bar.querySelector('.t').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }, 250);
+  bar.querySelector('.pause').onclick = () => {
+    if (!rec) return;
+    if (rec.pausedAt) { rec.paused += performance.now() - rec.pausedAt; rec.pausedAt = 0; mr.resume(); bar.classList.remove('paused'); bar.querySelector('.pause .icon').textContent = 'pause'; }
+    else { rec.pausedAt = performance.now(); mr.pause(); bar.classList.add('paused'); bar.querySelector('.pause .icon').textContent = 'fiber_manual_record'; }
+    $('#ed-show iframe')?.contentWindow?.focus();
+  };
+  bar.querySelector('.stop').onclick = () => stopRecording();
+}
+async function stopRecording() {
+  const r = rec; if (!r) return; rec = null; $('#ed-rec-bar')?.remove();
+  const done = new Promise(ok => { r.mr.onstop = ok; }); if (r.mr.state !== 'inactive') r.mr.stop(); await done; r.stream.getTracks().forEach(t => t.stop());
+  endPresent();
+  const blob = new Blob(r.chunks, { type: r.mr.mimeType || 'audio/webm' }); if (!blob.size) return setStatus('Nothing was recorded');
+  setStatus('Saving the recording…');
+  const { src } = await (await fetch('/api/upload?ext=' + (/mp4/.test(blob.type) ? 'm4a' : 'weba'), { method: 'POST', body: blob })).json();
+  const d = deckDoc.querySelector('.slides').dataset;
+  d.narration = src; d.narrationSteps = r.steps.map(([t, h, v, f]) => `${Math.round(t * 100) / 100}:${h}.${v}.${f}`).join(' '); d.play = 'recorded';
+  scheduleSave(); setStatus('Recording saved: Slideshow settings → Recorded plays it', 'check');
+}
 /* A note for the AI (AGENTS.md): yellow in the editor, hidden in the deck, stamped with its time. */
 function addNote(i, x, y, text) {
   const s = slides[i]; if (!s) return;

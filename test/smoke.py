@@ -576,8 +576,15 @@ def checks(pg, deck: Path, errors):
     pg.click("#ed-menubar [data-menu=Slide]"); pg.click(".menu-item:has-text('Skip slide')")
     check("menus as Slides: Google key labels, Center on page, Rotate 90°, Skip slide",
           keys.get("Paste without formatting") == "⌘+Shift+V" and keys.get("Redo") == "⌘Y" and ar == [960, 90] and sk == ["hidden", True] and pg.evaluate("!slides[cur].dataset.visibility"), f"{keys} {ar} {sk}")
+    pg.evaluate("navigator.mediaDevices.getUserMedia = async () => { const ac = new AudioContext(), o = ac.createOscillator(), d = ac.createMediaStreamDestination(); o.connect(d); o.start(); return d.stream; }")   # a stand-in microphone
+    pg.evaluate("recordSlideshow()"); pg.wait_for_timeout(1500); bar = pg.evaluate("!!document.getElementById('ed-rec-bar')")
+    pg.keyboard.press("ArrowRight"); pg.wait_for_timeout(700); pg.keyboard.press("ArrowRight"); pg.wait_for_timeout(700)
+    pg.click("#ed-rec-bar .stop"); pg.wait_for_function("!!deckDoc.querySelector('.slides').dataset.narration", timeout=10000)
+    rc = pg.evaluate("(() => { const d = deckDoc.querySelector('.slides').dataset, out = [d.play, d.narration.startsWith('assets/'), d.narrationSteps.split(' ').length, presenting(), !document.getElementById('ed-rec-bar')]; delete d.play; delete d.narration; delete d.narrationSteps; scheduleSave(); return out; })()")
+    check("Slideshow ▾ → Record slideshow: presents with a recording bar, keeps the voice and every slide change's time, saves them with the deck as Recorded",
+          bar and rc[0] == "recorded" and rc[1] and rc[2] >= 2 and rc[3:] == [False, True], f"{bar} {rc}")
     pg.click("#ed-present-menu")
-    check("Slideshow ▾ lists present options", pg.evaluate("[...document.querySelectorAll('.menu .menu-label')].map(e => e.textContent)") == ["Present from this slide", "Present from beginning", "Present fullscreen", "Presenter view", "Open in new tab", "Open as a scrolling page", "Slideshow settings"])
+    check("Slideshow ▾ lists present options", pg.evaluate("[...document.querySelectorAll('.menu .menu-label')].map(e => e.textContent)") == ["Present from this slide", "Present from beginning", "Present fullscreen", "Presenter view", "Open in new tab", "Open as a scrolling page", "Record slideshow", "Slideshow settings"])
     pg.click(".menu-item:has(.menu-label:text-is('Slideshow settings'))"); pg.select_option("#ed-show-type", "self"); pg.fill("#ed-show-slide", "8"); pg.dispatch_event("#ed-show-slide", "change")
     pg.check("#ed-show-loop"); pg.check("#ed-show-idle-on"); pg.fill("#ed-show-idle", "3"); pg.dispatch_event("#ed-show-idle", "change")
     pg.locator("#ed-showdlg .dialog").screenshot(path=str(HERE / "slideshow-settings.png")); pg.click("#ed-show-done")
@@ -1813,6 +1820,11 @@ def checks(pg, deck: Path, errors):
       b.querySelector('audio').addEventListener('play', () => { window.__played = true; }); })()""")
     h0 = s5.evaluate("Reveal.getIndices().h"); s5.click("#au-t"); s5.wait_for_timeout(300); played = s5.evaluate("[!!window.__played, Reveal.getIndices().h]"); s5.close()
     check("the slideshow: a soundtrack plays through the show (looping), and a click on an audio icon plays it without advancing", trk == [True, True] and played == [True, h0], f"{trk} {played}")
+    import base64, struct
+    pcm = bytes([128]) * 16000; wav2 = "data:audio/wav;base64," + base64.b64encode(b"RIFF" + struct.pack("<I", 36 + len(pcm)) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, 8000, 8000, 1, 8) + b"data" + struct.pack("<I", len(pcm)) + pcm).decode()
+    s6 = show_with({"play": "recorded", "narration": wav2, "narrationSteps": "0:0.0.-1 0.6:1.0.-1"}); s6.mouse.click(5, 5); s6.wait_for_timeout(1600)
+    recd = s6.evaluate("[!!document.getElementById('sl-narration'), Reveal.getIndices().h]"); s6.close()
+    check("the slideshow plays a recorded slideshow: the narration runs and the show follows its steps", recd == [True, 1], str(recd))
     check("Slideshow settings play in the deck: Self-playing moves on by itself, Links only ignores keys and clicks, Loop goes round", selfp == 0 and links == 0 and looped == 0, f"{selfp} {links} {looped}")
     check("decks carry present.js (Slides' presenting keys)", v.evaluate("!!document.getElementById('deck-present') && !Reveal.getConfig().keyboard[79] && Reveal.getConfig().keyboard[79] === null"))
     check("viewer loads the notes plugin (S = speaker view)", v.evaluate("!!(window.Reveal && Reveal.hasPlugin('notes'))"))

@@ -391,6 +391,11 @@ body.notes-off #ed-splitter { display: block; }
 .panel button.play { height: 34px; padding: 0 22px; border: 0; border-radius: 4px; background: #fbbc04; color: #202124; font-weight: 500; }
 .panel button.play:disabled { background: none; color: var(--muted); }   /* Slides greys Play out when there is nothing to play */
 #ed-trans.no-trans .range { display: none; }
+#ed-rec-bar { position: fixed; z-index: 1000; top: 16px; left: 50%; translate: -50% 0; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px 0 14px;
+  border-radius: 20px; background: #202124; color: #fff; font: 500 14px var(--font); box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+#ed-rec-bar .dot { width: 10px; height: 10px; border-radius: 50%; background: #ea4335; animation: rec-blink 1s infinite; } #ed-rec-bar.paused .dot { animation: none; background: #9aa0a6; }
+#ed-rec-bar button { min-width: 32px; height: 32px; border: 0; border-radius: 16px; background: none; color: #fff; } #ed-rec-bar button:hover { background: rgba(255,255,255,.15); }
+@keyframes rec-blink { 50% { opacity: .3; } }
 .obj-row { display: flex; align-items: center; gap: 10px; height: 40px; padding-right: 8px; cursor: pointer; font-size: 13px; color: var(--ink); }
 .obj-row:hover { background: var(--hover); } .obj-row.on { background: var(--selected); }
 .obj-row .kind { font-size: 20px; color: var(--muted); } .obj-row .name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

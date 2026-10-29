@@ -158,7 +158,7 @@ function showShowDialog(on) {
   const d = deckDoc.querySelector('.slides').dataset;
   SD('type').value = d.play || ''; SD('slide').value = d.playSlide || '5'; SD('build').value = d.playBuild || '2';
   SD('loop').checked = 'loop' in d; SD('idle-on').checked = !!d.idle; SD('idle').value = d.idle || '5';
-  syncTrack();
+  syncTrack(); $('#ed-show-recorded').disabled = !d.narration; $('#ed-show-rec-row').hidden = !d.narration;
   syncShowDialog();
 }
 function syncShowDialog() { showDlg.querySelectorAll('[data-self]').forEach(r => { /** @type {HTMLElement} */ (r).hidden = SD('type').value !== 'self'; }); SD('idle').disabled = !SD('idle-on').checked; }
@@ -175,6 +175,7 @@ for (const k of ['type', 'slide', 'build', 'loop', 'idle-on', 'idle']) SD(k).onc
 function syncTrack() { const d = deckDoc.querySelector('.slides').dataset; $('#ed-show-track-name').textContent = d.soundtrack ? d.soundtrack.split('/').pop() : '';
   $('#ed-show-track-off').hidden = !d.soundtrack; SD('track-loop').checked = 'soundtrackLoop' in d; SD('track-loop').disabled = !d.soundtrack; }
 $('#ed-show-track').onclick = () => SD('track-file').click();
+$('#ed-show-rec-off').onclick = () => { const d = deckDoc.querySelector('.slides').dataset; delete d.narration; delete d.narrationSteps; if (d.play === 'recorded') delete d.play; showShowDialog(true); scheduleSave(); };
 SD('track-file').onchange = async () => { const f = SD('track-file').files?.[0]; SD('track-file').value = ''; if (!f) return;
   setStatus('Uploading audio…'); const ext = (f.name.split('.').pop() || 'mp3').toLowerCase();
   const { src } = await (await fetch('/api/upload?ext=' + ext, { method: 'POST', body: f })).json(); setStatus('');

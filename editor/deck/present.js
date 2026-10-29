@@ -188,6 +188,15 @@
      (minutes without a key or click) goes back to the first slide. */
   const show = document.querySelector('.reveal .slides')?.dataset || {}, linksOnly = show.play === 'links';
   if ('loop' in show) Reveal.configure({ loop: true });
+  if (show.play === 'recorded' && show.narration) {   // a recorded slideshow: the narration plays and the show follows its steps
+    const steps = (show.narrationSteps || '').split(/\s+/).map(s => s.match(/^([\d.]+):(\d+)\.(\d+)\.(-?\d+)$/)).filter(Boolean).map(m => [+m[1], +m[2], +m[3], +m[4]]);
+    const voice = Object.assign(new Audio(show.narration), { id: 'sl-narration' }); document.body.append(voice);
+    let last = '';
+    voice.addEventListener('timeupdate', () => { const s = steps.filter(x => x[0] <= voice.currentTime + 0.05).at(-1); if (!s) return; const k = s.slice(1).join('.');
+      if (k !== last) { last = k; Reveal.slide(s[1], s[2], s[3]); } });
+    const go = () => voice.play().then(() => ['keydown', 'pointerdown'].forEach(ev => removeEventListener(ev, go, true))).catch(() => {});
+    Reveal.isReady() ? go() : Reveal.on('ready', go); ['keydown', 'pointerdown'].forEach(ev => addEventListener(ev, go, true));
+  }
   let selfT = 0;
   const selfPlay = () => {
     clearTimeout(selfT); if (show.play !== 'self') return;
@@ -203,6 +212,7 @@
   Reveal.isReady() ? cue() : Reveal.on('ready', cue);
   Reveal.configure({ keyboard: { 79: null, 86: null, 191: null, 190: null, 27: null, 72: null, 74: null, 75: null } });   // O, V, ?, ., Esc, and H / J / K (neither Slides' nor Keynote's)
   if (embedded) Reveal.on('ready', () => window.focus());
+  if (embedded) for (const ev of ['slidechanged', 'fragmentshown', 'fragmenthidden']) Reveal.on(ev, () => { const i = Reveal.getIndices(); parent.postMessage({ slides: 'at', h: i.h, v: i.v || 0, f: i.f ?? -1 }, '*'); });   // Record slideshow listens
   if (/print-pdf/.test(location.search)) {   // PDF, as Slides prints it: one page per slide, edge to edge, no numbers, colours kept
     Reveal.configure({ slideNumber: false, margin: 0, pdfSeparateFragments: false, pdfMaxPagesPerSlide: 1, showNotes: false });
     const css = document.createElement('style');
