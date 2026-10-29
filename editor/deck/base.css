@@ -126,6 +126,14 @@
 .reveal .slides > section[data-transition="move-in-l"]:is(.future, .past) { transform: translate(100%, 0); }
 .reveal .slides > section[data-transition="move-in-d"]:is(.future, .past) { transform: translate(0, -100%); }
 .reveal .slides > section[data-transition="move-in-u"]:is(.future, .past) { transform: translate(0, 100%); }
+/* More effects (D7): Iris (the new slide opens from a circle in the middle, over the old one) and Reveal (the old slide
+   moves off to the left, uncovering the new one beneath). */
+.reveal .slides > section[data-transition="iris"] { transition-property: transform, visibility, opacity, clip-path; }
+.reveal .slides > section.past:has(+ section.present[data-transition="iris"]) { opacity: 1; visibility: visible; transform: none; transition: none; }
+.reveal .slides > section[data-transition="iris"]:is(.future, .past) { opacity: 1; clip-path: circle(0% at 50% 50%); }
+.reveal .slides > section[data-transition="iris"].present { clip-path: circle(75% at 50% 50%); }
+.reveal .slides > section[data-transition="reveal-l"]:is(.future, .past) { opacity: 1; transform: none; transition: none; }
+.reveal .slides > section.past:has(+ section.present[data-transition="reveal-l"]) { z-index: 12; opacity: 1; visibility: visible; transform: translate(-100%, 0); transition: transform .8s cubic-bezier(.26, .86, .44, .985); }
 /* Object animation "Appear" (class fragment appear): reveal fragment without the fade. */
 .reveal .slides section .fragment.appear { transition: none; }
 /* Keynote's builds: Wipe (wipe-r = from the left …) and Move In (from off the slide, no fade) use clip-path and translate,
@@ -161,6 +169,21 @@
 .reveal.ready .slides section .fragment:is(.line-draw, .line-erase) svg.shape > :not(.l, .hit, defs) { transition: opacity .15s; }
 .reveal.ready .slides section .fragment.line-draw:not(.visible) svg.shape > :not(.l, .hit, defs), .reveal.ready .slides section .fragment.line-erase.visible svg.shape > :not(.l, .hit, defs) { opacity: 0; }
 .reveal.ready .slides section .fragment.line-draw.visible svg.shape > :not(.l, .hit, defs) { transition-delay: calc(var(--gs-delay, 0s) + var(--gs-dur, .5s)); }
+/* More effects (D7): Blur, Drop (falls in and bounces), Spin, Iris, Scale big (in); Disappear, Blur out, Scale out, Iris out. */
+.reveal.ready .slides section .fragment:is(.blur-in, .blur-out) { transition-property: opacity, filter, visibility; transition-duration: .5s; }
+.reveal.ready .slides section .fragment.blur-in:not(.visible), .reveal.ready .slides section .fragment.blur-out.visible { filter: blur(24px); }
+.reveal.ready .slides section .fragment:is(.drop-in, .iris-in, .iris-out, .scale-out, .disappear) { opacity: 1; transition-property: clip-path, scale, visibility; transition-duration: .5s; }
+.reveal.ready .slides section .fragment.drop-in.visible { animation: gs-drop .7s both; }
+.reveal.ready .slides section .fragment:is(.spin-in, .scale-big) { transition-property: opacity, rotate, scale, visibility; transition-duration: .5s; }
+.reveal.ready .slides section .fragment.spin-in:not(.visible) { rotate: -360deg; }
+.reveal.ready .slides section .fragment.scale-big:not(.visible) { scale: 3; }
+.reveal.ready .slides section .fragment.iris-in:not(.visible), .reveal.ready .slides section .fragment.iris-out.visible { clip-path: circle(0% at 50% 50%); }
+.reveal.ready .slides section .fragment:is(.iris-in.visible, .iris-out:not(.visible)) { clip-path: circle(75% at 50% 50%); }
+.reveal.ready .slides section .fragment:is(.scale-out, .disappear, .blur-out, .iris-out) { visibility: inherit; }
+.reveal.ready .slides section .fragment.scale-out.visible { scale: 0; }
+.reveal.ready .slides section .fragment.blur-out:not(.visible) { opacity: 1; } .reveal.ready .slides section .fragment.blur-out.visible { opacity: 0; }
+.reveal.ready .slides section .fragment.disappear { transition: none; } .reveal.ready .slides section .fragment.disappear.visible { visibility: hidden; }
+@keyframes gs-drop { from { translate: 0 calc(-1 * var(--slide-h, 1080px)); } 60% { translate: 0 0; } 75% { translate: 0 -6%; } 87% { translate: 0 0; } 93% { translate: 0 -2%; } to { translate: 0 0; } }
 @keyframes gs-pop-in { from { scale: 0; } 60% { scale: 1.12; } 80% { scale: .96; } to { scale: 1; } }
 @keyframes gs-pulse { 50% { scale: 1.15; } }
 @keyframes gs-pop { 30% { scale: 1.25; } 60% { scale: .95; } to { scale: 1; } }

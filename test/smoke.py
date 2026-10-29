@@ -1904,6 +1904,13 @@ def reveal_checks(b, errors, deck_file: Path):
           kn[0][:3] == [True, "90", "Rotate"] and kn[0][4] is True and kn[0][5] == "Wipe from left" and kn[0][3] < 100
           and {"wipe-r", "wipe-l", "wipe-d", "wipe-u", "move-in-r", "move-in-l", "move-in-d", "move-in-u", "sl-up", "sl-down"} <= set(kn[1])
           and {"Wipe from left", "Move in from bottom", "Scale", "Pop", "Rotate", "Pulse", "Pop (emphasis)"} <= set(kn[2]), str(kn[0]))
+    more = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1); slides[cur].dataset.transition = 'iris';
+      const effs = ['blur-in', 'drop-in', 'spin-in', 'iris-in', 'scale-big', 'disappear', 'blur-out', 'scale-out', 'iris-out'];
+      effs.forEach((e, i) => { const b = makeBox({ x: 60 + i * 200, y: 400, w: 150, h: 150, html: e }); b.style.setProperty('--fill', '#34a853'); slides[cur].append(b); render(); sel = new Set([b]); addAnim(); setEffect(b, e); });
+      commit(); setTransPanel(true); renderAnims(); const g = document.querySelector('.anim-row select.e optgroup'), t = document.querySelector('#ed-t-kind optgroup');
+      const out = [g?.label, [...(g?.children || [])].map(o => o.value), [...(t?.children || [])].map(o => o.textContent)]; setTransPanel(false); return out; }""")
+    check("Motion panel → More effects (D7): Blur, Drop, Spin, Iris, Scale big in; Disappear, Blur, Scale, Iris out; transitions Iris and Reveal",
+          more[0] == "More effects" and more[1] == ["blur-in", "drop-in", "spin-in", "iris-in", "scale-big", "disappear", "blur-out", "scale-out", "iris-out"] and more[2] == ["Iris", "Reveal"], str(more))
     ld = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
       const l = makeBox({ x: 200, y: 300, w: 800, h: 200, shape: 'arrowline' }), r = makeBox({ x: 200, y: 600, w: 300, h: 200, html: 'r' });
       const e = makeBox({ x: 200, y: 900, w: 800, h: 100, shape: 'line' });
@@ -1987,6 +1994,20 @@ def reveal_checks(b, errors, deck_file: Path):
       Reveal.slide(Reveal.getIndices(s).h, 0, -1); await wait(600); while (!b.classList.contains('visible')) Reveal.nextFragment(); await wait(900);
       const r = b.getBoundingClientRect(), sc = s.getBoundingClientRect().width / s.offsetWidth, out = [Math.round((r.x - s.getBoundingClientRect().x) / sc), Math.round((r.y - s.getBoundingClientRect().y) / sc), b.dataset.to];
       Reveal.slide(0); return out; }""")
+    mo = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => x.dataset.transition === 'iris'), h = Reveal.getIndices(s).h, cs = e => getComputedStyle(e), wait = ms => new Promise(r => setTimeout(r, ms));
+      Reveal.slide(h - 1, 0, -1); await wait(900); Reveal.slide(h, 0, -1); await wait(250); const t = [cs(s).clipPath, +cs(s.previousElementSibling).opacity]; await wait(900); t.push(cs(s).clipPath);
+      const bs = [...s.querySelectorAll('.box.fragment')], st = b => [+cs(b).opacity, cs(b).visibility, cs(b).filter, cs(b).scale, cs(b).clipPath, cs(b).rotate];
+      const before = bs.map(st), after = []; for (const b of bs) { Reveal.nextFragment(); await wait(900); after.push(st(b)); } Reveal.slide(0); return [t, before, after]; }""")
+    t, b0, b1 = mo
+    rv = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => x.dataset.transition === 'iris'), h = Reveal.getIndices(s).h, cs = e => getComputedStyle(e), wait = ms => new Promise(r => setTimeout(r, ms));
+      s.dataset.transition = 'reveal-l'; Reveal.slide(h - 1, 0, -1); await wait(900); Reveal.slide(h, 0, -1); await wait(250); const p = s.previousElementSibling;
+      const out = [+cs(s).opacity, cs(p).zIndex, new DOMMatrix(cs(p).transform).m41 < 0]; await wait(900); out.push(new DOMMatrix(cs(p).transform).m41 <= -p.offsetWidth * .99); s.dataset.transition = 'iris'; Reveal.slide(0); return out; }""")
+    check("…Reveal: the old slide moves off to the left over the new one, which is already there", rv == [1, "12", True, True], str(rv))
+    shown = lambda x: x[0] == 1 and x[1] == "visible"
+    check("…in the slideshow Iris opens the new slide from a circle over the old one; More effects build in and out", t[0].startswith("circle(") and t[1] == 1 and t[2].startswith("circle(75%")
+          and not any(shown(x) for x in b0[:5]) and all(shown(x) for x in b0[5:]) and b0[0][2].startswith("blur") and b0[2][5] == "-360deg" and b0[4][3] == "3"
+          and all(shown(x) for x in b1[:5]) and b1[0][2] == "none" and b1[2][5] in ("0deg", "none") and b1[4][3] in ("none", "1")
+          and b1[5][1] == "hidden" and b1[6][0] == 0 and b1[7][3] == "0" and b1[8][4].startswith("circle(0%"), f"{mo}")
     check("…in the slideshow the Move action ends the box at its data-to and it stays there", mvv[2] and [abs(mvv[0] - int(mvv[2].split(",")[0])), abs(mvv[1] - int(mvv[2].split(",")[1]))] <= [2, 2], str(mvv))
 
     # live box: its own page in assets/, sandboxed in the slide and served with a sandbox policy; double-click edits it

@@ -2,11 +2,17 @@
 
 /* Slides' transitions mapped onto reveal.js, stored per slide as data-transition / data-transition-speed.
    Dissolve and Fade both fade (written differently so the choice round-trips); Slide from left is ours. */
+/** @type {[string, string, number?][]} */
 const TRANSITIONS = [['none', 'None'], ['fade', 'Dissolve'], ['fade-in fade-out', 'Fade'], ['slide', 'Slide from right'],
   ['sl-left', 'Slide from left'], ['sl-up', 'Slide from bottom'], ['sl-down', 'Slide from top'], ['convex', 'Flip'], ['concave', 'Cube'], ['zoom', 'Gallery'],
   // Keynote's Wipe and Move In (base.css)
   ['wipe-r', 'Wipe from left'], ['wipe-l', 'Wipe from right'], ['wipe-d', 'Wipe from top'], ['wipe-u', 'Wipe from bottom'],
-  ['move-in-r', 'Move in from left'], ['move-in-l', 'Move in from right'], ['move-in-d', 'Move in from top'], ['move-in-u', 'Move in from bottom'], ['morph', 'Morph']];
+  ['move-in-r', 'Move in from left'], ['move-in-l', 'Move in from right'], ['move-in-d', 'Move in from top'], ['move-in-u', 'Move in from bottom'], ['morph', 'Morph'],
+  // D7: the rest of Keynote's, under "More effects" (base.css)
+  ['iris', 'Iris', 1], ['reveal-l', 'Reveal', 1]];
+/* A list's options, with its third-column entries under "More effects" (D7). */
+const optionsOf = list => list.filter(x => !x[2]).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')
+  + (list.some(x => x[2]) ? `<optgroup label="More effects">${list.filter(x => x[2]).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</optgroup>` : '');
 const SPEEDS = ['slow', '', 'fast'];
 /* Morph is reveal's Auto-Animate (Keynote's Magic Move): data-auto-animate on the slide, its speed as
    data-auto-animate-duration. Boxes pair with the previous slide's by data-morph (Duplicate slide sets it), else by id. */
@@ -14,7 +20,7 @@ const MORPH_S = { slow: '1.4', fast: '0.5' };
 const kindOf = s => s.hasAttribute('data-auto-animate') ? 'morph' : s.dataset.transition || 'none';
 const speedOf = s => s.hasAttribute('data-auto-animate') ? Object.keys(MORPH_S).find(k => MORPH_S[k] === s.dataset.autoAnimateDuration) || '' : s.dataset.transitionSpeed || '';
 const trans = $('#ed-trans');
-$('#ed-t-kind').innerHTML = TRANSITIONS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+$('#ed-t-kind').innerHTML = optionsOf(TRANSITIONS);
 function setTransPanel(open) { trans.hidden = !open; if (open) { $('#ed-objects').hidden = true; fmt.hidden = true; $('#ed-theme').hidden = true; $('#ed-comments').hidden = true; updateTransPanel(); } fit(); }
 function updateTransPanel() {
   if (trans.hidden || !slides[cur]) return;
@@ -36,6 +42,7 @@ $('#ed-t-all').onclick = () => { slides.forEach(writeTransition); commit(); setS
 $('#ed-trans-close').onclick = () => setTransPanel(false);
 $('#ed-transition').onclick = () => setTransPanel(trans.hidden);
 /* Object animations, as reveal fragments in the order of data-fragment-index (Motion panel). */
+/** @type {[string, string, number?][]} */
 const EFFECTS = [['appear', 'Appear'], ['fade-in', 'Fade in'], ['fade-right', 'Fly in from left'], ['fade-left', 'Fly in from right'],
   ['fade-up', 'Fly in from bottom'], ['fade-down', 'Fly in from top'], ['zoom-in', 'Zoom in'],
   // Keynote's builds (base.css): Wipe and Move In from each side, Scale, Pop
@@ -46,7 +53,10 @@ const EFFECTS = [['appear', 'Appear'], ['fade-in', 'Fade in'], ['fade-right', 'F
   ['fade-out', 'Fade out'], ['line-erase', 'Line draw out'], ['semi-fade-out', 'Dim'], ['fade-in-then-out', 'Fade in, then out'], ['fade-in-then-semi-out', 'Fade in, then dim'],
   ['highlight-current-blue', 'Highlight while current'], ['grow', 'Grow'], ['shrink', 'Shrink'], ['strike', 'Strike through'],
   // Keynote's actions: Rotate by data-angle (degrees, negative counterclockwise; 360 by default), Pulse, Pop
-  ['spin', 'Rotate'], ['pulse', 'Pulse'], ['pop', 'Pop (emphasis)'], ['move-to', 'Move']];
+  ['spin', 'Rotate'], ['pulse', 'Pulse'], ['pop', 'Pop (emphasis)'], ['move-to', 'Move'],
+  // D7: more of Keynote's, under "More effects" (base.css): in, then out
+  ['blur-in', 'Blur', 1], ['drop-in', 'Drop', 1], ['spin-in', 'Spin', 1], ['iris-in', 'Iris', 1], ['scale-big', 'Scale big', 1],
+  ['disappear', 'Disappear', 1], ['blur-out', 'Blur out', 1], ['scale-out', 'Scale out', 1], ['iris-out', 'Iris out', 1]];
 const effectOf = b => EFFECTS.find(([c]) => b.classList.contains(c))?.[0] || 'fade-in';
 const animBoxes = () => boxes().filter(b => b.classList.contains('fragment'))
   .map((b, i) => [b, +(b.dataset.fragmentIndex ?? i), 'withPrevious' in b.dataset ? 1 : 0])
@@ -117,7 +127,7 @@ function renderAnims() {
     const r = div('anim-row' + (sel.has(b) ? ' on' : '') + (open ? ' open' : '')); r.draggable = true; r.dataset.i = String(i);
     r.innerHTML = `<div class="anim-head"><span class="n icon" title="Drag to reorder">drag_indicator</span><span class="icon chev">chevron_right</span>
       <span class="step" title="Build ${step}">${step}</span><span class="eff"></span><span class="what"></span><button title="Delete animation"><span class="icon">delete</span></button></div>
-      <div class="anim-body"><select class="e">${effectsFor(b).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+      <div class="anim-body"><select class="e">${optionsOf(effectsFor(b))}</select>
       <select class="t">${Object.entries(START_LABEL).filter(([v]) => v !== 'transition' || !i).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <div class="timing"><label>Duration (s)<input class="dur" type="number" min="0.1" max="20" step="0.1" placeholder="0.5"></label>
       <label>Delay (s)<input class="del" type="number" min="0" max="60" step="0.1" placeholder="0"></label></div>
@@ -203,7 +213,11 @@ async function playAnims() {
     'move-in-r': [{ translate: `-${W}px 0` }, { translate: '0 0' }], 'move-in-l': [{ translate: `${W}px 0` }, { translate: '0 0' }],
     'move-in-d': [{ translate: `0 -${H}px` }, { translate: '0 0' }], 'move-in-u': [{ translate: `0 ${H}px` }, { translate: '0 0' }],
     'scale-in': [{ scale: 0 }, { scale: 1 }], 'pop-in': [{ scale: 0 }, { scale: 1.12, offset: .6 }, { scale: .96, offset: .8 }, { scale: 1 }],
-    pulse: [{ scale: 1 }, { scale: 1.15 }, { scale: 1 }], pop: [{ scale: 1 }, { scale: 1.25, offset: .3 }, { scale: .95, offset: .6 }, { scale: 1 }] };
+    pulse: [{ scale: 1 }, { scale: 1.15 }, { scale: 1 }],
+    'blur-in': [{ opacity: 0, filter: 'blur(24px)' }, { opacity: 1, filter: 'blur(0)' }], 'drop-in': [{ translate: `0 -${H}px` }, { translate: '0 0', offset: .6 }, { translate: '0 -6%', offset: .75 }, { translate: '0 0', offset: .87 }, { translate: '0 -2%', offset: .93 }, { translate: '0 0' }],
+    'spin-in': [{ opacity: 0, rotate: '-360deg' }, { opacity: 1, rotate: '0deg' }], 'iris-in': [{ clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(75% at 50% 50%)' }],
+    'scale-big': [{ opacity: 0, scale: 3 }, { opacity: 1, scale: 1 }], disappear: [{ opacity: 1 }, { opacity: 1, offset: .99 }, { opacity: 0 }],
+    'blur-out': [{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(24px)' }], 'scale-out': [{ scale: 1 }, { scale: 0 }], 'iris-out': [{ clipPath: 'circle(75% at 50% 50%)' }, { clipPath: 'circle(0% at 50% 50%)' }], pop: [{ scale: 1 }, { scale: 1.25, offset: .3 }, { scale: .95, offset: .6 }, { scale: 1 }] };
   const spin = b => [{ rotate: '0deg' }, { rotate: (b.dataset.angle ?? 360) + 'deg' }];
   const move = b => { const g = geo(b), [x, y] = moveTo(b); return [{ translate: '0 0' }, { translate: `${x - g.x}px ${y - g.y}px` }]; };
   const list = animBoxes(), wait = ms => new Promise(r => setTimeout(r, ms));
@@ -234,7 +248,8 @@ function playTransition() {
     'wipe-r': [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0)' }], 'wipe-l': [{ clipPath: 'inset(0 0 0 100%)' }, { clipPath: 'inset(0)' }],
     'wipe-d': [{ clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0)' }], 'wipe-u': [{ clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0)' }],
     'move-in-r': [{ transform: 'translateX(-100%)' }, { transform: 'none' }], 'move-in-l': [{ transform: 'translateX(100%)' }, { transform: 'none' }],
-    'move-in-d': [{ transform: 'translateY(-100%)' }, { transform: 'none' }], 'move-in-u': [{ transform: 'translateY(100%)' }, { transform: 'none' }] }[k];
+    'move-in-d': [{ transform: 'translateY(-100%)' }, { transform: 'none' }], 'move-in-u': [{ transform: 'translateY(100%)' }, { transform: 'none' }],
+    iris: [{ clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(75% at 50% 50%)' }], 'reveal-l': [{ opacity: 0 }, { opacity: 1 }] }[k];
   if (frames) s.animate(frames, { duration: ms, easing: 'cubic-bezier(.26,.86,.44,.985)' });
 }
 
