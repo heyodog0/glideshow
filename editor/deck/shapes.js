@@ -290,6 +290,39 @@
     return out;
   }
   window.bgCss = bgCss;
+  /* Tab stops (Keynote's Left, Center, Right, Decimal): data-tabs="192l 576c 960r 1152d" on .content, canvas px from the
+     text's left edge; past the last one, every 0.5 in. A tab in the text is drawn as a span.tb sized to reach its stop
+     (derived: the deck keeps a plain tab character). */
+  const TAB = 96;
+  const tabsOf = c => (c.dataset.tabs || '').split(/\s+/).map(s => s.match(/^(\d+(?:\.\d+)?)([lcrd])$/)).filter(Boolean).map(m => ({ at: +m[1], kind: m[2] })).sort((a, b) => a.at - b.at);
+  function fitTabs(b) {
+    const c = b.querySelector(':scope > .content'); if (!c || !c.textContent.includes('\t')) return;
+    const tw = document.createTreeWalker(c, NodeFilter.SHOW_TEXT), raw = [];
+    for (let n; (n = /** @type {Text} */ (tw.nextNode()));) if (n.data.includes('\t') && !n.parentElement.closest('.tb, pre, code')) raw.push(n);
+    for (const n of raw) {
+      const f = document.createDocumentFragment();
+      n.data.split('\t').forEach((p, i) => { if (i) { const s = document.createElement('span'); s.className = 'tb'; s.contentEditable = 'false'; s.textContent = '\t'; f.append(s); } if (p) f.append(p); });
+      n.replaceWith(f);
+    }
+    const tbs = [...c.querySelectorAll('span.tb')]; if (!tbs.length) return;
+    const cr = c.getBoundingClientRect(), k = cr.width / (c.offsetWidth || 1); if (!k) return;   // hidden: sized when shown
+    const x0 = cr.left + parseFloat(getComputedStyle(c).paddingLeft) * k, stops = tabsOf(c);
+    tbs.forEach(s => { s.style.width = '0px'; });
+    for (const s of tbs) {
+      const x = (s.getBoundingClientRect().left - x0) / k, stop = stops.find(t => t.at > x + 0.5) || { at: (Math.floor(x / TAB + 1e-6) + 1) * TAB, kind: 'l' };
+      let seg = 0;
+      if (stop.kind !== 'l') {   // the text after the tab, up to the next tab or the paragraph's end (for decimal: up to its point)
+        const blk = s.parentElement.closest('p, div, li, h1, h2, h3, h4, h5, h6') || c, r = document.createRange(); r.setStartAfter(s);
+        const next = tbs.find(t => t !== s && blk.contains(t) && (s.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING));
+        if (next) r.setEndBefore(next); else r.setEnd(blk, blk.childNodes.length);
+        if (stop.kind === 'd') { const w2 = document.createTreeWalker(r.commonAncestorContainer, NodeFilter.SHOW_TEXT);
+          for (let n; (n = /** @type {Text} */ (w2.nextNode()));) { if (!r.intersectsNode(n)) continue; const i = n.data.indexOf('.', n === r.startContainer ? r.startOffset : 0); if (i >= 0) { r.setEnd(n, i); break; } } }
+        seg = r.getBoundingClientRect().width / k;
+      }
+      s.style.width = Math.max(1, stop.kind === 'c' ? stop.at - x - seg / 2 : stop.kind === 'l' ? stop.at - x : stop.at - x - seg) + 'px';
+    }
+  }
+  window.fitTabs = fitTabs;
 
   /* A drop shadow is drawn in the box's own frame (filter runs before transform), so counter-rotate
      its offset to keep it falling straight down the page whatever the box's rotate/flip. */
@@ -404,7 +437,7 @@
   document.querySelectorAll('.box[data-crop]').forEach(cropBox);
   document.querySelectorAll('.box[data-adjust]').forEach(adjustImage);
   document.querySelectorAll('.box:is([data-gradient], [data-fill-image]):not([data-shape])').forEach(gradBox);
-  const fitAll = () => document.querySelectorAll('.box[data-autofit="shrink"]').forEach(fitText);
+  const fitAll = () => { document.querySelectorAll('.box[data-autofit="shrink"]').forEach(fitText); document.querySelectorAll('.reveal .present .box, #ed-canvas .box').forEach(fitTabs); };
   fitAll(); document.fonts?.ready.then(fitAll);   // web fonts change text metrics
   if (window.Reveal?.on) { Reveal.on('ready', fitAll); Reveal.on('slidechanged', fitAll); }   // slides are hidden until shown
   // reveal.js writes background images as an unquoted url(…), which drops data: URIs containing quotes; quote them

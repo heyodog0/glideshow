@@ -139,6 +139,23 @@ def checks(pg, deck: Path, errors):
     pg.keyboard.press("Escape"); pg.evaluate("(() => { sel.forEach(b => b.remove()); sel = new Set(__prev); render(); commit(); })()")
     check("ruler indent markers while editing (first line, left, right, as Slides): dragging the left one ½ in sets a hanging indent, with its inches in a tip",
           marks == ["first", "left", "right"] and rmk == ["96px", "-96px", True] and tipt == "0.50 in", f"{marks} {rmk} {tipt} {rm_ms}")
+    pg.evaluate("(() => { window.__prev = [...sel]; stopEdit(); })()"); pg.click("#ed-add-text"); tb = pg.evaluate("editing.id")
+    pg.keyboard.type("Name"); pg.keyboard.press("Alt+Tab"); pg.keyboard.type("12.5")
+    o0 = pg.evaluate(f"(() => {{ const c = document.getElementById('{tb}').querySelector('.content'), cr = c.getBoundingClientRect(); return [cr.left + parseFloat(getComputedStyle(c).paddingLeft) * scale, scale]; }})()")
+    pg.mouse.click(o0[0] + 384 * o0[1], pg.locator("#ed-ruler-h").bounding_box()["y"] + 10)   # a click on the ruler 2 in along: a left tab there
+    num = lambda: pg.evaluate(f"""(() => {{ const c = document.getElementById('{tb}').querySelector('.content'), r = document.createRange(), s = c.querySelector('span.tb'); r.setStartAfter(s); r.setEnd(s.parentNode, s.parentNode.childNodes.length);
+      const q = r.getBoundingClientRect(); return [c.dataset.tabs, Math.round((q.left - {o0[0]}) / {o0[1]}), Math.round((q.right - {o0[0]}) / {o0[1]})]; }})()""")
+    left = num()
+    pg.locator("#ed-ruler-marks .tab-stop").click(button="right"); pg.click(".menu-item:has(.menu-label:text-is('Right tab'))"); right = num()
+    pg.locator("#ed-ruler-marks .tab-stop").click(button="right"); pg.click(".menu-item:has(.menu-label:text-is('Decimal tab'))"); dec = num()
+    saved = pg.evaluate(f"cleanBox(document.getElementById('{tb}')).querySelector('.content').textContent")
+    pg.screenshot(path=str(HERE / "tab-stops.png"), clip={"x": 0, "y": 0, "width": 1280, "height": 400})
+    st = pg.locator("#ed-ruler-marks .tab-stop").bounding_box(); pg.mouse.move(st["x"] + 4, st["y"] + 3); pg.mouse.down(); pg.mouse.move(st["x"] + 4, st["y"] + 80, steps=4); pg.mouse.up()
+    gone = pg.evaluate(f"document.getElementById('{tb}').querySelector('.content').dataset.tabs ?? ''")
+    pg.keyboard.press("Escape"); pg.evaluate("(() => { sel.forEach(b => b.remove()); sel = new Set(__prev); render(); commit(); })()")
+    check("tab stops as Keynote: ⌥Tab types a tab, a click on the ruler adds a left stop, right-click makes it right or decimal (text lines up at it), dragged off it goes; the deck keeps a tab character",
+          left[0] == "384l" and abs(left[1] - 384) <= 2 and right[0] == "384r" and abs(right[2] - 384) <= 2 and dec[0] == "384d" and right[1] < dec[1] < left[1] and saved == "Name\t12.5" and gone == "",
+          f"{left} {right} {dec} {saved!r} {gone!r}")
     check("paragraph spacing: Add space before paragraph puts 10pt (26.67px) above each paragraph and toggles to Remove", sp == ["26.67px", "26.67px"] and lbl and gone == "", f"{sp} {lbl} {gone!r}")
     pg.keyboard.press("Meta+k"); pg.fill("#ed-link-url", "example.com"); pg.keyboard.press("Enter")
     check("⌘K links the box text", pg.evaluate("[...document.querySelectorAll('#ed-canvas .box')].pop().querySelector('.content a')?.getAttribute('href')") == "https://example.com")

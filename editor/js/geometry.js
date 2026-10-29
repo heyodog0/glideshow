@@ -122,8 +122,40 @@ function drawIndentMarks() {
   const at = { left: left0 + L, first: left0 + L + F, right: right0 - R };
   if (host.querySelectorAll('.ind-mark').length !== 3) host.replaceChildren(...['first', 'left', 'right'].map(n => { const m = div('ind-mark ' + n); m.dataset.n = n; m.title = { first: 'First line indent', left: 'Left indent', right: 'Right indent' }[n]; return m; }));
   for (const m of /** @type {HTMLElement[]} */ ([...host.querySelectorAll('.ind-mark')])) m.style.left = at[m.dataset.n] + 'px';
+  if (indDrag !== 'tab') {   // the tab stops: click the ruler to add a left one, drag to move, drag off the ruler to remove, right-click for its kind
+    host.querySelectorAll('.tab-stop').forEach(e => e.remove());
+    for (const s of (c.dataset.tabs || '').split(/\s+/).filter(Boolean)) { const m = s.match(/^(\d+(?:\.\d+)?)([lcrd])$/); if (!m) continue;
+      const t = div('tab-stop ' + m[2]); t.dataset.at = m[1]; t.title = { l: 'Left tab', c: 'Center tab', r: 'Right tab', d: 'Decimal tab' }[m[2]]; t.style.left = left0 + +m[1] * k + 'px'; host.append(t); }
+  }
 }
+const TAB_KINDS = [['l', 'Left tab'], ['c', 'Center tab'], ['r', 'Right tab'], ['d', 'Decimal tab']];
+function setTabs(c, list) { const v = list.sort((a, b) => a[0] - b[0]).map(([at, k]) => Math.round(at) + k).join(' '); if (v) c.dataset.tabs = v; else delete c.dataset.tabs; fitTabs(c.closest('.box')); }
+const tabList = c => (c.dataset.tabs || '').split(/\s+/).map(s => s.match(/^(\d+(?:\.\d+)?)([lcrd])$/)).filter(Boolean).map(m => [+m[1], m[2]]);
+const tabOrigin = c => { const cr = c.getBoundingClientRect(), k = cr.width / (c.offsetWidth || 1); return { x0: cr.left + parseFloat(getComputedStyle(c).paddingLeft) * k, k }; };
+$('#ed-ruler-h').addEventListener('click', e => {   // a click (not a guide drag) while editing text adds a left tab, in 1/16 in steps
+  const b = editing; if (!b || isMedia(b) || rot(b) || content(b).querySelector('table')) return;
+  const c = content(b), { x0, k } = tabOrigin(c), at = Math.round((e.clientX - x0) / k / 12) * 12;
+  if (at <= 0 || at > c.offsetWidth) return;
+  setTabs(c, [...tabList(c).filter(([a]) => Math.abs(a - at) > 6), [at, 'l']]); drawIndentMarks(); commit();
+  if (lastRange) { const s = getSelection(); s.removeAllRanges(); s.addRange(lastRange); }
+});
+$('#ed-ruler-marks').addEventListener('contextmenu', e => {
+  const t = /** @type {HTMLElement} */ (e.target).closest('.tab-stop'), b = editing; if (!t || !b) return;
+  const c = content(b), at = +t.dataset.at, kind = [...t.classList].find(x => /^[lcrd]$/.test(x));
+  openContextMenu(e, [...TAB_KINDS.map(([v, label]) => ({ label, on: () => kind === v, run: () => { setTabs(c, tabList(c).map(([a, k]) => [a, a === at ? v : k])); drawIndentMarks(); commit(); } })),
+    '-', { label: 'Remove tab stop', icon: 'delete', run: () => { setTabs(c, tabList(c).filter(([a]) => a !== at)); drawIndentMarks(); commit(); } }]);
+});
 $('#ed-ruler-marks').addEventListener('pointerdown', e => {
+  const t = /** @type {HTMLElement} */ (e.target).closest('.tab-stop'), b0 = editing;
+  if (t && b0 && e.button === 0) {   // drag a tab stop along the ruler; off it (down onto the slide) removes it
+    e.preventDefault(); e.stopPropagation();
+    const c = content(b0), at0 = +t.dataset.at, kind = [...t.classList].find(x => /^[lcrd]$/.test(x)) || 'l', { x0, k } = tabOrigin(c), y0 = e.clientY, sel0 = lastRange;
+    const rest = tabList(c).filter(([a]) => a !== at0); let at = at0, gone = false; indDrag = 'tab';
+    drag(e, ev => { at = Math.max(0, Math.round((ev.clientX - x0) / k / 12) * 12); gone = ev.clientY - y0 > 24;
+      t.style.left = (x0 - $('#ed-ruler-marks').getBoundingClientRect().left + at * k) + 'px'; t.style.opacity = gone ? '.3' : ''; setTabs(c, gone ? rest : [...rest, [at, kind]]); fitHeight(b0); },
+      () => { indDrag = null; drawIndentMarks(); commit(); if (sel0) { const s = getSelection(); s.removeAllRanges(); s.addRange(sel0); } });
+    return;
+  }
   const m = /** @type {HTMLElement} */ (e.target).closest('.ind-mark'), b = editing; if (!m || !b || e.button !== 0) return;
   e.preventDefault(); e.stopPropagation();
   const c = content(b), k = scale, px = name => parseFloat(c.style.getPropertyValue(name)) || 0, n = m.dataset.n, x0 = e.clientX, sel0 = lastRange;

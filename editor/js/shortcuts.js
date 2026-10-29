@@ -8,7 +8,7 @@ const SHORTCUTS = {
     ['Save', '⌘S'], ['Print', '⌘P'], ['Hide menus', '⌃⇧F'], ['Show speaker notes', '⌥⇧⌘S'], ['Show spelling suggestions', '⌥⌘X'], ['Grid view', '⌥⌘1'], ['Insert comment', '⌥⌘M'], ['Keyboard shortcuts', '⌘/']],
   'Text formatting': [['Bold', '⌘B'], ['Italic', '⌘I'], ['Underline', '⌘U'], ['Strikethrough', '⇧⌘X'], ['Superscript', '⌘.'],
     ['Subscript', '⌘,'], ['Increase font size', '⇧⌘.'], ['Decrease font size', '⇧⌘,'], ['Clear formatting', '⌘\\']],
-  'Paragraph formatting': [['Bulleted list', '⇧⌘8'], ['Numbered list', '⇧⌘7'], ['Increase / decrease indent', '⌘] / ⌘['], ['Indent in a list', 'Tab / ⇧Tab'],
+  'Paragraph formatting': [['Bulleted list', '⇧⌘8'], ['Numbered list', '⇧⌘7'], ['Increase / decrease indent', '⌘] / ⌘['], ['Indent in a list', 'Tab / ⇧Tab'], ['Tab character (to the next tab stop)', '⌥Tab'],
     ['Align left / center / right', '⇧⌘L / ⇧⌘E / ⇧⌘R'], ['Justify', '⇧⌘J']],
   'Objects': [['Select next / previous object', 'Tab / ⇧Tab'], ['Bring forward / send backward', '⌘↑ / ⌘↓'],
     ['Rotate 15° / 1°', '⌥← ⌥→ / ⇧⌥← ⇧⌥→'], ['Larger horizontally / vertically / both', '⌃⌘B / ⌃⌘I / ⌃⌘K'],

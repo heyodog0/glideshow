@@ -13,7 +13,7 @@ function startEdit(b, pt) {
   c.contentEditable = 'true'; c.spellcheck = spellOn();
   editFloor = parseFloat(b.dataset.minh) || geo(b).h;
   c.onbeforeinput = autoFormat;
-  c.oninput = e => { if (e.inputType === 'insertText' && /^[ \u00a0]$/.test(e.data || '') && latexOn()) latexShortcut(); if (b.dataset.placeholder) markPlaceholder(c); fitHeight(b); };
+  c.oninput = e => { if (e.inputType === 'insertText' && /^[ \u00a0]$/.test(e.data || '') && latexOn()) latexShortcut(); if (b.dataset.placeholder) markPlaceholder(c); if (c.querySelector('span.tb')) fitTabs(b); fitHeight(b); };
   c.focus();
   let r = pt && caretAt(pt.x, pt.y);
   if (!r || !c.contains(r.startContainer)) { r = document.createRange(); r.selectNodeContents(c); }

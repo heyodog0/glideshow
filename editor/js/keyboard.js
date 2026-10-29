@@ -177,6 +177,11 @@ addEventListener('keydown', e => {
     e.preventDefault(); e.key === '0' ? setZoom(null) : zoomStep(e.key === '-' ? -1 : 1); return;
   }
   if (mod && !e.shiftKey && (e.key === ']' || e.key === '[') && (editing || sel.size)) { e.preventDefault(); indentText(e.key === ']' ? 1 : -1); return; }
+  if (editing && e.key === 'Tab' && e.altKey && !e.shiftKey && !cellAt()) {   // ⌥Tab: a tab character, to the next tab stop (Tab stays Slides' indent)
+    e.preventDefault(); const s = getSelection(); if (!s.rangeCount) return;
+    const r = s.getRangeAt(0); r.deleteContents(); const t = document.createElement('span'); t.className = 'tb'; t.contentEditable = 'false'; t.textContent = '\t';
+    r.insertNode(t); r.setStartAfter(t); r.collapse(true); s.removeAllRanges(); s.addRange(r); lastRange = r.cloneRange(); fitTabs(editing); fitHeight(editing); return;
+  }
   if (editing && e.key === 'Tab' && !cellAt()) { e.preventDefault(); indentText(e.shiftKey ? -1 : 1); return; }
   if (editing) {
     if ((e.key === 'Backspace' || e.key === 'Delete') && cellSel.size > 1) { e.preventDefault(); cellSel.forEach(td => td.replaceChildren()); fitHeight(editing); return; }   // empty the picked cells

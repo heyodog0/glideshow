@@ -98,6 +98,7 @@ E = [
   ("Paragraph formatting", "Numbered list", "box", "Meta+Shift+7", "!!A().querySelector('ol li')"),
   ("Paragraph formatting", "Increase / decrease indent", "box", "Meta+BracketRight", "parseFloat(getComputedStyle(content(A())).paddingLeft) > 19.2"),
   ("Paragraph formatting", "Increase / decrease indent", "box", ["Meta+BracketRight", "js:window.__p = parseFloat(getComputedStyle(content(A())).paddingLeft)", "Meta+BracketLeft"], "parseFloat(getComputedStyle(content(A())).paddingLeft) < __p"),
+  ("Paragraph formatting", "Tab character (to the next tab stop)", "edit", "Alt+Tab", "!!A().querySelector('span.tb')"),
   ("Paragraph formatting", "Indent in a list", "edit", ["js:listText('insertUnorderedList')", "Tab"], "!!A().querySelector('li ul, li ol, ul ul, ol ol')"),
   ("Paragraph formatting", "Align left / center / right", "box", "Meta+Shift+e", "content(A()).style.textAlign === 'center'"),
   ("Paragraph formatting", "Align left / center / right", "box", "Meta+Shift+r", "content(A()).style.textAlign === 'right'"),
