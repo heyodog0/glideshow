@@ -2008,6 +2008,36 @@ def reveal_checks(b, errors, deck_file: Path):
           and not any(shown(x) for x in b0[:5]) and all(shown(x) for x in b0[5:]) and b0[0][2].startswith("blur") and b0[2][5] == "-360deg" and b0[4][3] == "3"
           and all(shown(x) for x in b1[:5]) and b1[0][2] == "none" and b1[2][5] in ("0deg", "none") and b1[4][3] in ("none", "1")
           and b1[5][1] == "hidden" and b1[6][0] == 0 and b1[7][3] == "0" and b1[8][4].startswith("circle(0%"), f"{mo}")
+    # presenter view (S): current / next or builds remaining, notes, clock, timer, ready bar, layout, keys
+    v.evaluate("""(() => { const s = Reveal.getSlides().find(x => x.dataset.transition === 'wipe-r'), a = document.createElement('aside'); a.className = 'notes'; a.textContent = 'Say the wipe line';
+      s.append(a); Reveal.slide(Reveal.getIndices(s).h, 0, -1); })()"""); v.wait_for_timeout(1000)
+    t_pv = time.perf_counter()
+    with v.expect_popup() as pop_info: v.keyboard.press("s")
+    pw = pop_info.value
+    pw.wait_for_function("document.querySelector('.next h2')?.textContent.startsWith('Builds') && document.querySelectorAll('iframe')[1].contentWindow?.Reveal?.getIndices?.().f === 0", timeout=10000)
+    pv_ms = round((time.perf_counter() - t_pv) * 1000)
+    p1 = pw.evaluate("""() => [document.title, document.querySelector('.cur h2').textContent, document.querySelector('.next h2').textContent, document.querySelector('.nt').textContent,
+      /^\\d\\d:\\d\\d:\\d\\d$/.test(document.querySelector('.clock').textContent), /^00:00:0\\d$/.test(document.querySelector('.timer .t').textContent), document.querySelector('.ready').classList.contains('busy')]""")
+    pw.screenshot(path=str(HERE / "presenter-view.png"))
+    fr = pw.evaluate("[...document.querySelectorAll('.frame')].map(f => { const r = f.getBoundingClientRect(); return Math.round(r.width / r.height * 100); })")
+    pw.keyboard.press("ArrowRight"); busy = pw.evaluate("document.querySelector('.ready').classList.contains('busy')"); pw.wait_for_timeout(900)
+    p2 = pw.evaluate("""() => { const [c, n] = [...document.querySelectorAll('iframe')].map(f => f.contentWindow.Reveal.getIndices().f);
+      return [document.querySelector('.next h2').textContent, document.querySelector('.ready').classList.contains('busy'), c, n]; }""") + [v.evaluate("Reveal.getIndices().f")]
+    pw.click("[data-a=layout]"); pw.click(".pop.lay input[data-k=notes]")
+    p3 = pw.evaluate("[getComputedStyle(document.querySelector('.notes')).display, JSON.parse(localStorage.getItem('gs-presenter')).notes]")
+    pw.click(".pop.lay input[data-k=notes]"); pw.keyboard.press("Escape")
+    pw.wait_for_timeout(1100); pw.keyboard.press("r"); reset = pw.evaluate("document.querySelector('.timer .t').textContent")
+    pw.keyboard.press("?"); keys = pw.evaluate("document.querySelectorAll('.pop.keys div').length"); pw.keyboard.press("Escape")
+    still = pw.evaluate("!!document.querySelector('.pop')")
+    try: pw.keyboard.press("Escape")   # ends the show: the window closes under the key
+    except Exception: pass
+    v.wait_for_timeout(300)
+    check(f"presenter view (S) in its own window: Current: Slide n of m, Builds remaining, the notes, clock and timer ({pv_ms} ms to open with both previews)",
+          p1[0] == "Presenter view" and p1[1].startswith("Current: Slide ") and p1[2] == "Builds remaining: 6" and p1[3] == "Say the wipe line" and p1[4] and p1[5] and pv_ms < 3000 and fr == [178, 178], f"{p1} {pv_ms} {fr}")
+    check("…a key there drives the show; the ready bar turns red while the build plays, then green; the previews follow (current, and after the next build)",
+          busy and p2 == ["Builds remaining: 5", False, 0, 1, 0], f"{busy} {p2}")
+    check("…Layout turns parts off (kept in this browser); R resets the timer; ? lists the keys; Esc closes the list, then ends the show and the window",
+          p3 == ["none", 0] and reset == "00:00:00" and keys >= 10 and not still and pw.is_closed(), f"{p3} {reset} {keys} {still} {pw.is_closed()}")
     check("…in the slideshow the Move action ends the box at its data-to and it stays there", mvv[2] and [abs(mvv[0] - int(mvv[2].split(",")[0])), abs(mvv[1] - int(mvv[2].split(",")[1]))] <= [2, 2], str(mvv))
 
     # live box: its own page in assets/, sandboxed in the slide and served with a sandbox policy; double-click edits it

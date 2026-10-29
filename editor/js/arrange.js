@@ -240,15 +240,15 @@ function refreshPresent() {
   if (at) f.src = `deck.html?embedded&t=${Date.now()}#/${at.h}/${at.v || 0}${at.f != null && at.f >= 0 ? '/' + at.f : ''}`;
   else w?.location.reload();
 }
-/* The standalone deck in a new tab (a second screen), optionally with reveal's speaker window. */
+/* The standalone deck in a new tab (a second screen), optionally with the presenter view (present.js). */
 async function openDeckTab(from = cur, notes = false) {
   await flushSave();
   const w = window.open('deck.html#/' + hv(from).join('/'), '_blank');
   if (!notes || !w) return;
   setStatus('Presenter view: press S in the slideshow if it doesn\'t open');
   const t0 = Date.now(), poll = setInterval(() => {
-    const plugin = w.closed ? null : w.Reveal?.getPlugin?.('notes');
-    if (plugin || w.closed || Date.now() - t0 > 5000) { clearInterval(poll); plugin?.open(); }
+    const open = w.closed ? null : /** @type {any} */ (w).gsPresenter;   // present.js's presenter view, once the deck is ready
+    if (open || w.closed || Date.now() - t0 > 5000) { clearInterval(poll); open?.(); }
   }, 100);
 }
 $('#ed-present').onclick = () => present();

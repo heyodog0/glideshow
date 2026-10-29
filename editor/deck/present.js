@@ -77,6 +77,20 @@
     if (new URLSearchParams(location.search).get('view') === 'scroll') Reveal.configure({ view: 'scroll' });   // read as a page (reveal's scroll view)
   };
   Reveal.isReady() ? prepare() : Reveal.on('ready', prepare);
+  /* A preview in the presenter view (?gs-view): this deck, sent to a slide and build by the presenter, without animating,
+     keys, clicks, sound or the toolbar. */
+  if (new URLSearchParams(location.search).has('gs-view')) {
+    for (const ev of ['keydown', 'keyup', 'click', 'mousedown', 'pointerdown', 'wheel', 'touchstart']) addEventListener(ev, e => { e.stopImmediatePropagation(); e.preventDefault(); }, { capture: true, passive: false });
+    const st = document.createElement('style');
+    st.textContent = 'html, body, .reveal { background: #000 !important; } .reveal .backgrounds { display: none; } .reveal .slides section, .reveal .slides .fragment, .reveal .slides .fragment * { transition: none !important; animation: none !important; }';
+    document.head.append(st);
+    Reveal.configure({ keyboard: false, controls: false, progress: false, slideNumber: false, margin: 0, hash: false, autoSlide: 0, autoPlayMedia: false });
+    const still = () => document.querySelectorAll('.reveal .slides section').forEach(x => { Object.assign(x.style, window.bgCss ? window.bgCss(x) : { background: x.dataset.backgroundColor || '#fff' });
+      x.querySelectorAll('video, audio').forEach(m => { /** @type {HTMLMediaElement} */ (m).muted = true; /** @type {HTMLMediaElement} */ (m).pause(); }); });
+    Reveal.isReady() ? still() : Reveal.on('ready', still); Reveal.on('slidechanged', still);
+    addEventListener('message', e => { const m = e.data; if (m && m.gsView) Reveal.slide(m.h, m.v, m.f); });
+    return;
+  }
   const embedded = new URLSearchParams(location.search).has('embedded');
   let typed = '', screen = null, laser = null;
 
@@ -161,7 +175,7 @@
     if (k === 'b' || k === 'w') { e.preventDefault(); e.stopImmediatePropagation(); cover(k === 'b' ? '#000' : '#fff'); }
     else if (k === 'l') { e.preventDefault(); e.stopImmediatePropagation(); toggleLaser(); }
     else if ((k === 'n' || k === 'p') && !e.shiftKey) { e.preventDefault(); e.stopImmediatePropagation(); k === 'n' ? Reveal.right() : Reveal.left(); }   // Slides: N / P = → / ←, past a stack
-    else if (k === 's' && Reveal.hasPlugin('notes')) { e.preventDefault(); e.stopImmediatePropagation(); Reveal.getPlugin('notes').open(); }
+    else if (k === 's') { e.preventDefault(); e.stopImmediatePropagation(); openPresenter(); }
 
     else if (k === 'm' && embedded) { e.preventDefault(); e.stopImmediatePropagation(); openMemo(); }
     else if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); exit(); }
@@ -322,7 +336,7 @@
         { on: h === at.h && v === (at.v || 0), indent: v > 0 }]);
     })); }
     if (a === 'more') openPop(btn, [
-      [I.notes, 'Open speaker notes', () => Reveal.getPlugin?.('notes')?.open(), { key: 'S' }],
+      [I.notes, 'Open speaker notes', () => openPresenter(), { key: 'S' }],
       [I.laser, laser ? 'Turn off the laser pointer' : 'Turn on the laser pointer', toggleLaser, { key: 'L' }],
       [I.full, isFull() ? 'Exit full screen' : 'Full screen', () => isFull() ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(), { key: 'F' }],
       [I.exit, 'Exit slideshow', exit, { key: 'Esc' }], '-',
@@ -384,6 +398,145 @@
     if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4 || String(getSelection())) return;
     Reveal.next();
   });
+  /* Presenter view (S, ⋮ → Open speaker notes, or the editor's Slideshow ▾ → Presenter view): Keynote's presenter display
+     in the Slides look, in a window of its own. The current slide and the next one, or the current slide after its next
+     build ("Builds remaining: n"); the speaker notes (A− / A+, ⌘+ / ⌘−, Invert, U / D to scroll); the clock; a timer
+     counting up or down from a time (Pause, Reset, R); Keynote's ready-to-advance bar, red while a transition or build
+     plays. Layout turns each part on or off, kept in this browser. Keys there drive the show; ? lists them. The previews
+     are this deck in frames (?gs-view). */
+  let pv = null;
+  const PV_KEYS = [['→ ↓ Space or click', 'Next build or slide'], ['← ↑', 'Previous slide'], ['[', 'Previous build'], [']', 'Next slide, skipping builds'],
+    ['Home / End', 'First / last slide'], ['n then ↵', 'Go to slide n'], ['Z', 'Back through viewed slides'], ['B / W', 'Black / white screen'],
+    ['R', 'Reset the timer'], ['U / D', 'Scroll the notes up / down'], ['⌘+ / ⌘−', 'Notes larger / smaller'], ['?', 'These keys'], ['Esc', 'End the slideshow']];
+  const PV_PARTS = [['cur', 'Current slide'], ['next', 'Next slide'], ['notes', 'Speaker notes'], ['ready', 'Ready-to-advance bar'], ['clock', 'Clock'], ['timer', 'Timer']];
+  const pvPrefs = () => { try { return { cur: 1, next: 1, notes: 1, ready: 1, clock: 1, timer: 1, size: 20, invert: 0, count: 'up', minutes: 20, ...JSON.parse(localStorage.getItem('gs-presenter') || '{}') }; } catch { return { cur: 1, next: 1, notes: 1, ready: 1, clock: 1, timer: 1, size: 20, invert: 0, count: 'up', minutes: 20 }; } };
+  const openPresenter = () => {
+    if (pv && !pv.closed) { pv.focus(); return pv; }
+    pv = window.open('', 'gs-presenter', 'width=1280,height=800'); if (!pv?.document?.open) return (pv = null);   // blocked (or a stand-in)
+    const d = pv.document, u = new URL(location.href), o = pvPrefs(); u.hash = ''; u.searchParams.delete('embedded'); u.searchParams.set('gs-view', '1');
+    const save = () => { try { localStorage.setItem('gs-presenter', JSON.stringify(o)); } catch { /* private window */ } };
+    d.open(); d.write(`<!doctype html><html><head><meta charset="utf-8"><title>Presenter view</title><style>
+      :root { --ink: #1f1f1f; --muted: #444746; --line: #c4c7c5; --hover: #e9eef6; --blue: #0b57d0; }
+      * { box-sizing: border-box; } html, body { margin: 0; height: 100%; }
+      body { display: flex; flex-direction: column; background: #f8fafd; color: var(--ink); font: 14px Roboto, "Google Sans", -apple-system, Arial, sans-serif; overflow: hidden; }
+      .ready { height: 6px; flex: none; background: #34a853; transition: background .15s; } .ready.busy { background: #ea4335; }
+      header { display: flex; align-items: center; gap: 24px; height: 64px; padding: 0 16px 0 24px; flex: none; }
+      .clock, .timer .t { font: 400 28px/1 "Google Sans", Roboto, Arial, sans-serif; font-variant-numeric: tabular-nums; }
+      .timer { display: flex; align-items: center; gap: 8px; } .timer .t.over { color: #b3261e; }
+      button { font: 500 14px Roboto, Arial, sans-serif; color: var(--blue); background: none; border: 1px solid #747775; border-radius: 18px; height: 32px; padding: 0 14px; cursor: pointer; }
+      button:hover { background: var(--hover); } .sp { flex: 1; }
+      button.ic { border: 0; width: 40px; height: 40px; padding: 8px; border-radius: 50%; color: var(--muted); } button.ic svg { width: 24px; height: 24px; fill: currentColor; display: block; }
+      main { flex: 2 1 0; min-height: 0; display: flex; gap: 24px; padding: 0 24px 16px; }   /* the slides take two thirds, the notes one */
+      main .pane { display: flex; flex-direction: column; min-width: 0; } .cur { flex: 3; } .next { flex: 2; }
+      h2 { margin: 0 0 8px; font: 500 14px Roboto, Arial, sans-serif; color: var(--muted); }
+      .fit { flex: 1; min-height: 0; container-type: size; }   /* the frame: as large as fits, in the slide's shape */
+      .frame { position: relative; width: min(100cqw, 100cqh * var(--arn)); aspect-ratio: var(--ar); background: #000; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+      .frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; } .frame.end iframe { visibility: hidden; }
+      .notes { flex: 1 1 0; min-height: 120px; display: flex; flex-direction: column; margin: 0 24px 24px; background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+      .nh { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 8px 0 16px; border-bottom: 1px solid #e3e3e3; } .nh span { flex: 1; font-weight: 500; color: var(--muted); }
+      .nt { flex: 1; overflow: auto; padding: 12px 16px; line-height: 1.45; } .nt:empty::before { content: "No speaker notes"; color: #747775; }
+      .notes.inv, .notes.inv .nh { background: #1f1f1f; color: #fff; border-color: #444746; } .notes.inv .nh span { color: #c4c7c5; }
+      body.no-cur .cur, body.no-next .next, body.no-notes .notes, body.no-ready .ready, body.no-clock .clock, body.no-timer .timer { display: none; }
+      body.no-notes main { flex: 1; } body.no-cur.no-next main { display: none; }
+      .pop { position: absolute; z-index: 5; min-width: 260px; padding: 8px 0; background: #fff; border-radius: 4px; box-shadow: 0 2px 6px 2px rgba(60,64,67,.15), 0 1px 2px rgba(60,64,67,.3); }
+      .pop label { display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 16px; cursor: pointer; } .pop label:hover { background: #f1f3f4; }
+      .pop hr { margin: 8px 0; border: 0; border-top: 1px solid #e3e3e3; } .pop input[type=number] { width: 56px; height: 28px; margin-left: auto; }
+      .keys { left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 16px 24px; } .keys h3 { margin: 0 0 8px; font: 500 16px Roboto, Arial, sans-serif; }
+      .keys div { display: flex; gap: 24px; height: 30px; align-items: center; } .keys b { min-width: 150px; font-weight: 500; color: var(--muted); }
+    </style></head><body>
+      <div class="ready" title="Green: ready to advance. Red: a transition or build is playing"></div>
+      <header><div class="clock"></div><div class="timer"><span class="t"></span><button data-a="pause">Pause</button><button data-a="reset">Reset</button></div><span class="sp"></span>
+        <button class="ic" data-a="layout" title="Layout">${icon('M3 3h8v8H3zm10 0h8v5h-8zM3 13h8v8H3zm10-3h8v11h-8z')}</button>
+        <button class="ic" data-a="help" title="Keyboard shortcuts (?)">${icon('M11 18h2v-2h-2zm1-16a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm0-14a4 4 0 0 0-4 4h2a2 2 0 1 1 4 0c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5a4 4 0 0 0-4-4z')}</button>
+        <button class="ic" data-a="end" title="End slideshow (Esc)">${icon(I.exit)}</button></header>
+      <main><div class="pane cur"><h2></h2><div class="fit"><div class="frame"><iframe title="Current slide"></iframe></div></div></div>
+        <div class="pane next"><h2></h2><div class="fit"><div class="frame"><iframe title="Next"></iframe></div></div></div></main>
+      <div class="notes"><div class="nh"><span>Speaker notes</span><button data-a="smaller" title="Smaller (⌘−)">A−</button><button data-a="bigger" title="Larger (⌘+)">A+</button><button data-a="invert">Invert colours</button></div><div class="nt"></div></div>
+    </body></html>`   /* (no section tags: the deck file carries this script, and a deck's slides are counted by them) */); d.close();
+    const $p = q => /** @type {HTMLElement} */ (d.querySelector(q)), [fc, fn] = [...d.querySelectorAll('iframe')], cfg = Reveal.getConfig();
+    d.body.style.setProperty('--ar', `${cfg.width} / ${cfg.height}`); d.body.style.setProperty('--arn', String(cfg.width / cfg.height));
+    const apply = () => { PV_PARTS.forEach(([k]) => d.body.classList.toggle('no-' + k, !o[k])); $p('.nt').style.fontSize = o.size + 'px'; $p('.notes').classList.toggle('inv', !!o.invert); };
+    // the timer: counting up from the start, or down from o.minutes; Pause / Reset as Slides' presenter view
+    let t0 = Date.now(), pausedAt = 0;
+    const tick = () => {
+      if (pv.closed) return clearInterval(clock);
+      $p('.clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      const ms = (pausedAt || Date.now()) - t0, left = o.minutes * 60000 - ms, v = o.count === 'down' ? Math.abs(left) : ms, sec = Math.floor(v / 1000);
+      $p('.timer .t').textContent = (o.count === 'down' && left < 0 ? '−' : '') + [Math.floor(sec / 3600), Math.floor(sec / 60) % 60, sec % 60].map(n => String(n).padStart(2, '0')).join(':');
+      $p('.timer .t').classList.toggle('over', o.count === 'down' && left < 0);
+    };
+    const clock = setInterval(tick, 250);
+    const resetTimer = () => { t0 = Date.now(); if (pausedAt) pausedAt = t0; tick(); };
+    // what's shown: current and next, as Keynote's labels; the ready bar red while the change plays
+    let busyT = 0;
+    const sync = (ms = 0) => {
+      if (pv.closed) return;
+      const all = Reveal.getSlides(), sl = Reveal.getCurrentSlide(), at = Reveal.getIndices(sl), f = Reveal.getIndices().f ?? -1;
+      const steps = [...new Set([...sl.querySelectorAll('.fragment')].map(e => +(e.dataset.fragmentIndex ?? 0)))].sort((a, b) => a - b).filter(n => n > f);
+      const n = all[all.indexOf(sl) + 1], i = all.indexOf(sl) + 1;
+      $p('.cur h2').textContent = `Current: Slide ${i} of ${all.length}`;
+      $p('.next h2').textContent = steps.length ? `Builds remaining: ${steps.length}` : n ? `Next: Slide ${i + 1} of ${all.length}` : 'End of slideshow';
+      fc.contentWindow?.postMessage({ gsView: 1, h: at.h, v: at.v || 0, f }, '*');
+      const to = steps.length ? { h: at.h, v: at.v || 0, f: steps[0] } : n ? { ...Reveal.getIndices(n), f: -1 } : null;
+      $p('.next .frame').classList.toggle('end', !to); if (to) fn.contentWindow?.postMessage({ gsView: 1, h: to.h, v: to.v || 0, f: to.f }, '*');
+      const nt = sl.querySelector('aside.notes'); $p('.nt').innerHTML = nt ? nt.innerHTML : ''; $p('.nt').scrollTop = 0;
+      clearTimeout(busyT); $p('.ready').classList.toggle('busy', ms > 0); if (ms > 0) busyT = setTimeout(() => $p('.ready').classList.remove('busy'), ms);
+    };
+    const playMs = e => {   // how long the change that just happened plays: the slide's transition, or the builds just shown
+      if (e.type === 'slidechanged') { const sl = e.currentSlide, kind = sl.dataset.transition || cfg.transition, sp = sl.dataset.transitionSpeed || cfg.transitionSpeed;
+        return sl.hasAttribute('data-auto-animate') ? (+sl.dataset.autoAnimateDuration || 1) * 1000 : kind === 'none' ? 0 : ({ fast: 400, slow: 1200 }[sp] || 800); }
+      return Math.max(0, ...(e.fragments || []).map(x => (Math.max(secs(x, 'transitionDuration'), secs(x, 'animationDuration')) + secs(x, 'transitionDelay')) * 1000));
+    };
+    const onShow = e => sync(playMs(e));
+    for (const ev of ['slidechanged', 'fragmentshown', 'fragmenthidden']) Reveal.on(ev, onShow);
+    fc.onload = fn.onload = () => sync(); fc.src = fn.src = u.href;
+    // the buttons, the Layout menu and the key list
+    let pop = null; const close = () => { pop?.remove(); pop = null; };
+    const popUp = (cls, html, at) => { close(); pop = d.createElement('div'); pop.className = 'pop ' + cls; pop.innerHTML = html; d.body.append(pop);
+      if (at) { const r = at.getBoundingClientRect(); pop.style.left = Math.max(8, r.right - pop.offsetWidth) + 'px'; pop.style.top = r.bottom + 4 + 'px'; } return pop; };
+    const layout = btn => {
+      const p = popUp('lay', PV_PARTS.map(([k, l]) => `<label><input type="checkbox" data-k="${k}"${o[k] ? ' checked' : ''}>${l}</label>`).join('')
+        + `<hr><label><input type="radio" name="c" value="up"${o.count === 'up' ? ' checked' : ''}>Timer counts up</label><label><input type="radio" name="c" value="down"${o.count === 'down' ? ' checked' : ''}>Counts down from<input type="number" min="1" max="600" value="${o.minutes}"> min</label>`, btn);
+      p.onchange = e => { const t = /** @type {HTMLInputElement} */ (e.target);
+        if (t.dataset.k) o[t.dataset.k] = t.checked ? 1 : 0; else if (t.type === 'radio') { o.count = t.value; resetTimer(); } else { o.minutes = Math.max(1, +t.value || 20); resetTimer(); }
+        save(); apply(); tick(); };
+    };
+    const help = () => { if (pop?.classList.contains('keys')) return close(); popUp('keys', '<h3>Keyboard shortcuts</h3>' + PV_KEYS.map(([k, l]) => `<div><b>${k}</b><span>${l}</span></div>`).join('')); };
+    const size = dz => { o.size = Math.max(12, Math.min(64, o.size + dz)); save(); apply(); };
+    d.addEventListener('click', e => {
+      const b = /** @type {HTMLElement} */ (e.target).closest?.('button'), a = b?.dataset.a;
+      if (!b) { if (pop && !pop.contains(/** @type {Node} */ (e.target))) close(); return; }
+      if (a === 'pause') { if (pausedAt) { t0 += Date.now() - pausedAt; pausedAt = 0; b.textContent = 'Pause'; } else { pausedAt = Date.now(); b.textContent = 'Resume'; } tick(); }
+      if (a === 'reset') resetTimer();
+      if (a === 'layout') pop?.classList.contains('lay') ? close() : layout(b);
+      if (a === 'help') help();
+      if (a === 'end') { exit(); pv.close(); }
+      if (a === 'smaller' || a === 'bigger') size(a === 'smaller' ? -2 : 2);
+      if (a === 'invert') { o.invert = o.invert ? 0 : 1; save(); apply(); }
+    });
+    d.addEventListener('keydown', e => {
+      if (/** @type {HTMLElement} */ (e.target).matches?.('input[type=number]')) return;   // typing the countdown's minutes
+      const k = e.key, mod = e.metaKey || e.ctrlKey;
+      if (mod && (k === '+' || k === '=' || k === '-')) { e.preventDefault(); size(k === '-' ? -2 : 2); return; }
+      if (mod || e.altKey) return;
+      if (k === 'Escape') { e.preventDefault(); if (pop) close(); else { exit(); pv.close(); } return; }
+      if (k === '?' || k === '/') { e.preventDefault(); help(); return; }
+      const lk = k.toLowerCase(), all = Reveal.getSlides(), go = {
+        ArrowRight: () => Reveal.next(), ArrowDown: () => Reveal.next(), ' ': () => Reveal.next(), PageDown: () => Reveal.next(),
+        ArrowLeft: () => Reveal.prev(), ArrowUp: () => Reveal.prev(), PageUp: () => Reveal.prev(), Home: () => Reveal.slide(0, 0, -1), End: () => toSlide(all.at(-1), -1),
+        '[': () => { if (!Reveal.prevFragment()) Reveal.prev(); }, ']': () => instant(() => toSlide(all[all.indexOf(Reveal.getCurrentSlide()) + 1], -1)) }[k];
+      if (go && !e.shiftKey) { e.preventDefault(); go(); return; }
+      if (lk === 'r') { e.preventDefault(); resetTimer(); return; }
+      if (lk === 'u' || lk === 'd') { e.preventDefault(); $p('.nt').scrollBy({ top: lk === 'u' ? -80 : 80 }); return; }
+      // the rest (a slide number then ↵, B / W, Z, ⇧-arrows …) as the show's own keys
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: k, shiftKey: e.shiftKey, bubbles: true, cancelable: true })); e.preventDefault();
+    });
+    pv.addEventListener('beforeunload', () => { for (const ev of ['slidechanged', 'fragmentshown', 'fragmenthidden']) Reveal.off(ev, onShow); clearInterval(clock); });
+    addEventListener('beforeunload', () => pv?.close());
+    apply(); tick();
+    return pv;
+  };
+  /** @type {any} */ (window).gsPresenter = openPresenter;   // the editor's Slideshow ▾ → Presenter view
   Reveal.on('ready', () => { document.body.append(bar); paint(); showNum(); wake(); });
   Reveal.on('slidechanged', showNum);
 })();
