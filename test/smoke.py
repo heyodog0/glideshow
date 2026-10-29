@@ -1910,6 +1910,24 @@ def reveal_checks(b, errors, deck_file: Path):
       slides[cur].append(l, r, e); render(); sel = new Set([l, r]); addAnim(); setEffect(l, 'line-draw'); sel = new Set([e]); addAnim(); setEffect(e, 'line-erase'); commit(); render();
       return [effectsFor(l).some(e => e[0] === 'line-draw'), effectsFor(r).some(e => e[0] === 'line-draw'), l.querySelector('svg.shape path.l')?.getAttribute('pathLength')]; }""")
     check("Line draw (in and out) is offered on lines and open drawings only, as Keynote; it measures the stroke for drawing", ld == [True, False, "1"], str(ld))
+    rest = pg.evaluate("""() => { const all = slides.flatMap(x => boxes(x)), by = c => all.find(b => b.classList.contains(c)), cs = b => getComputedStyle(b);
+      const was = cur, ln = by('line-draw'); go(slides.indexOf(ln.closest('section'))); const p = ln.querySelector('path.l');
+      const out = [cs(p).strokeDashoffset, cs(p).strokeDasharray]; go(slides.indexOf(by('wipe-r').closest('section')));
+      out.push(cs(by('wipe-r')).clipPath, cs(by('scale-in')).scale, cs(by('pop-in')).scale, cs(by('move-in-l')).translate); go(was); return out; }""")
+    check("the editor shows every animated box at rest (Wipe, Scale, Pop, Move in, Line draw play only in the slideshow)", rest == ["0px", "none", "none", "none", "none", "none"], str(rest))
+    mv = pg.evaluate("""() => { const m = makeBox({ x: 1300, y: 200, w: 200, h: 150, html: 'mv' }); m.style.setProperty('--fill', '#4285f4'); slides[cur].append(m); render();
+      sel = new Set([m]); addAnim(); setEffect(m, 'move-to'); commit(); setTransPanel(true); sel = new Set([m]); drawOverlay(); renderAnims();
+      const gh = document.querySelector('#ed-ui .move-ghost'), r = gh?.getBoundingClientRect(), row = document.querySelector('.anim-row.open');
+      return [m.dataset.to, !!document.querySelector('#ed-ui .move-line line'), r ? [r.x + r.width / 2, r.y + r.height / 2] : null, scale, !row.querySelector('.pos').hidden, row.querySelector('.mx').value]; }""")
+    pg.mouse.move(*mv[2]); pg.mouse.down(); pg.mouse.move(mv[2][0] - 100, mv[2][1] + 50, steps=5)
+    tip = pg.evaluate("document.querySelector('#ed-ui .move-tip')?.textContent || ''"); pg.screenshot(path=str(HERE / "move-action.png")); pg.mouse.up()
+    mv2 = pg.evaluate("""() => { const m = [...sel][0], to = m.dataset.to; place(m, { ...geo(m), x: 100 }); commit(); drawOverlay();
+      const r = document.querySelector('#ed-ui .move-ghost').getBoundingClientRect(); setTransPanel(false); return [to, m.dataset.to, !!document.querySelector('#ed-ui .move-ghost')]; }""")
+    want = [1300 + 200 + 60 - round(100 / mv[3]), 200 + round(50 / mv[3])]
+    got = [int(v) for v in mv2[0].split(",")]
+    check("Move action: a ghost at the end joined by a red path, beside the box at first (as k07); dragging the ghost sets the end with an x / y readout; moving the box keeps it; Position X / Y in the row",
+          mv[0] == "1560,200" and mv[1] and mv[4] and mv[5] == "8.13" and abs(got[0] - want[0]) <= 2 and abs(got[1] - want[1]) <= 2 and tip.startswith("x ")
+          and mv2[1] == mv2[0] and mv2[2] is False, f"{mv} {tip} {mv2} {want}")
     pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
       const t = makeBox({ x: 100, y: 100, w: 900, h: 500, html: '<ul><li>One</li><li>Two</li><li>Three</li></ul>' }), after = makeBox({ x: 1100, y: 100, w: 500, h: 200, html: 'After' });
       slides[cur].append(t, after); render(); sel = new Set([t]); addAnim(); sel = new Set([after]); addAnim();
@@ -1965,6 +1983,11 @@ def reveal_checks(b, errors, deck_file: Path):
       Reveal.nextFragment(); await wait(900); const erased = parseFloat(cs(ep).strokeDashoffset); Reveal.slide(0); return [p.getAttribute('pathLength'), before, mid, after, [shown, erased]]; }""")
     check("…in the slideshow Line draw draws the arrow's stroke from its start, then shows the arrowhead", lv[0] == "1" and lv[1] == [1, 0] and 0 < lv[2] < 1 and lv[3] == [0, 1, "visible"], str(lv))
     check("…and Line draw out undraws a line that was showing", lv[4] == [0, 1], str(lv[4]))
+    mvv = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => x.querySelector('.box.move-to')), b = s.querySelector('.box.move-to'), wait = ms => new Promise(r => setTimeout(r, ms));
+      Reveal.slide(Reveal.getIndices(s).h, 0, -1); await wait(600); while (!b.classList.contains('visible')) Reveal.nextFragment(); await wait(900);
+      const r = b.getBoundingClientRect(), sc = s.getBoundingClientRect().width / s.offsetWidth, out = [Math.round((r.x - s.getBoundingClientRect().x) / sc), Math.round((r.y - s.getBoundingClientRect().y) / sc), b.dataset.to];
+      Reveal.slide(0); return out; }""")
+    check("…in the slideshow the Move action ends the box at its data-to and it stays there", mvv[2] and [abs(mvv[0] - int(mvv[2].split(",")[0])), abs(mvv[1] - int(mvv[2].split(",")[1]))] <= [2, 2], str(mvv))
 
     # live box: its own page in assets/, sandboxed in the slide and served with a sandbox policy; double-click edits it
     pg.evaluate("go(slides.length - 1)"); pg.evaluate("addLive()"); pg.wait_for_function("boxes(slides[cur]).some(b => b.classList.contains('live'))"); settle()

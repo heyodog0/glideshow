@@ -223,6 +223,7 @@ function drawOverlay() {
       const t = div('sel-box thin'); place(t, geo(m)); t.style.setProperty('--k', k + 'px'); t.style.transform = m.style.transform; frameFor(m).append(t);
     }
   }
+  drawMovePath();   // a Move action's ghost and path (motion.js)
   if (editing || !sel.size) return;
   const locked = [...sel].some(isLocked);   // Keynote: grey handles that can't be dragged
   if (sel.size > 1) {   // Slides: one box with resize handles around the whole selection (no rotation knob)

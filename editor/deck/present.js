@@ -43,7 +43,7 @@
     all.forEach(sl => {
       const frags = [...sl.querySelectorAll('.box.fragment[data-build]')].sort((a, b) => (+a.dataset.fragmentIndex || 0) - (+b.dataset.fragmentIndex || 0));
       frags.reverse().forEach(box => {   // from the last, so each one's room doesn't move the ones before it
-        const mode = box.dataset.build, cls = [...box.classList].filter(c => /^(appear|fade-[\w-]+|zoom-in|wipe-[rldu]|move-in-[rldu]|scale-in|pop-in|spin|pulse|pop|line-draw|line-erase|grow|shrink|strike|semi-fade-out|current-visible|highlight-[\w-]+)$/.test(c));   // its effect
+        const mode = box.dataset.build, cls = [...box.classList].filter(c => /^(appear|fade-[\w-]+|zoom-in|wipe-[rldu]|move-in-[rldu]|scale-in|pop-in|spin|pulse|pop|line-draw|line-erase|move-to|grow|shrink|strike|semi-fade-out|current-visible|highlight-[\w-]+)$/.test(c));   // its effect
         if (mode === 'word' || mode === 'character') { wordByWord(box, mode, cls); return; }
         const table = box.querySelector(':scope > .content table'), cells = table ? [...table.querySelectorAll('td, th')] : [];
         const groups = mode === 'row' ? [...(table?.rows || [])].map(r => [r]) : mode === 'cell' ? cells.map(c => [c])
@@ -70,6 +70,8 @@
       if (d.ease) { st.transitionTimingFunction = st.animationTimingFunction = d.ease; st.setProperty('--gs-ease', d.ease); }
       if (d.delay && !/^(after|transition)$/.test(d.start || '')) { st.transitionDelay = st.animationDelay = d.delay + 's'; st.setProperty('--gs-delay', d.delay + 's'); }   // (--gs-*: Line Draw's stroke)
       if (d.angle) st.setProperty('--gs-angle', d.angle + 'deg');   // the Rotate action's turn
+      const to = (d.to || '').split(',').map(Number);   // the Move action's end: data-to = its top-left there
+      if (f.classList.contains('move-to') && to.length === 2 && to.every(isFinite)) { st.setProperty('--gs-mx', to[0] - (parseFloat(st.left) || 0) + 'px'); st.setProperty('--gs-my', to[1] - (parseFloat(st.top) || 0) + 'px'); }
     });
     if (changed) Reveal.sync();
     if (new URLSearchParams(location.search).get('view') === 'scroll') Reveal.configure({ view: 'scroll' });   // read as a page (reveal's scroll view)
