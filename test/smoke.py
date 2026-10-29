@@ -129,6 +129,16 @@ def checks(pg, deck: Path, errors):
       ['--ind-left', '--ind-right', '--ind-first'].forEach(k => c.style.removeProperty(k)); return out; })()""")
     check("Format → Align & indent → Indentation options: left 0.5 in, right 0.25 in, hanging 0.25 in (left 0.75 in, first line -0.25 in), Enter applies",
           ind[:2] == ["144px", "-48px"] and ind[2] in ("-48px", "list") and ind[3] == "48px" and ind[4], str(ind))
+    rb = pg.evaluate("""(() => { window.__prev = [...sel]; stopEdit(); const b = addText('Ruler marks paragraph text that wraps onto a second line for the hanging indent'); sel = new Set([b]); startEdit(b); render(); drawRulers(); return b.id; })()""")
+    marks = pg.evaluate("[...document.querySelectorAll('#ed-ruler-marks .ind-mark')].map(m => m.dataset.n)")
+    lm = pg.locator("#ed-ruler-marks .ind-mark.left").bounding_box(); sc = pg.evaluate("scale")
+    t0 = pg.evaluate("performance.now()"); pg.mouse.move(lm["x"] + 6, lm["y"] + 4); pg.mouse.down(); pg.mouse.move(lm["x"] + 6 + 96 * sc, lm["y"] + 4, steps=5)
+    tipt = pg.evaluate("document.querySelector('.ind-tip')?.textContent"); pg.mouse.up(); rm_ms = pg.evaluate(f"Math.round(performance.now() - {t0})")
+    rmk = pg.evaluate(f"(() => {{ const c = document.getElementById('{rb}').querySelector('.content'); return [c.style.getPropertyValue('--ind-left'), c.style.getPropertyValue('--ind-first'), !!editing]; }})()")
+    pg.screenshot(path=str(HERE / "ruler-indents.png"), clip={"x": 0, "y": 0, "width": 1280, "height": 260})
+    pg.keyboard.press("Escape"); pg.evaluate("(() => { sel.forEach(b => b.remove()); sel = new Set(__prev); render(); commit(); })()")
+    check("ruler indent markers while editing (first line, left, right, as Slides): dragging the left one ½ in sets a hanging indent, with its inches in a tip",
+          marks == ["first", "left", "right"] and rmk == ["96px", "-96px", True] and tipt == "0.50 in", f"{marks} {rmk} {tipt} {rm_ms}")
     check("paragraph spacing: Add space before paragraph puts 10pt (26.67px) above each paragraph and toggles to Remove", sp == ["26.67px", "26.67px"] and lbl and gone == "", f"{sp} {lbl} {gone!r}")
     pg.keyboard.press("Meta+k"); pg.fill("#ed-link-url", "example.com"); pg.keyboard.press("Enter")
     check("⌘K links the box text", pg.evaluate("[...document.querySelectorAll('#ed-canvas .box')].pop().querySelector('.content a')?.getAttribute('href')") == "https://example.com")

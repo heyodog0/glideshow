@@ -74,6 +74,7 @@ const rulersShown = () => stored('slides-ruler-off') !== '1';
 function setRulersShown(on) { store('slides-ruler-off', on ? undefined : '1'); document.body.classList.toggle('ruler-off', !on); drawRulers(); }
 function queueRulers() { if (!rulerQueued) { rulerQueued = true; requestAnimationFrame(() => { rulerQueued = false; drawRulers(); }); } }
 function drawRulers() {
+  drawIndentMarks();
   if (!rulersShown() || !slides.length) return;
   const css = getComputedStyle(document.body), tok = k => css.getPropertyValue(k).trim();   // body: dark mode overrides the tokens there
   const fr = frame.getBoundingClientRect(), dpr = devicePixelRatio || 1, step = 192 * scale / 8;
@@ -108,6 +109,37 @@ function drawRulers() {
     }
   }
 }
+/* Indent markers (Keynote's ruler markers; Slides' look): while editing a text box that isn't rotated, the left and right
+   indent triangles and the first-line bar sit on the top ruler at the box's --ind-* values; dragging one sets it, in
+   1/16 in steps, with the inches in a tip. The left one leaves the first line where it was (a hanging indent). */
+let indDrag = null;
+function drawIndentMarks() {
+  const host = $('#ed-ruler-marks'), b = editing;
+  if (!b || isMedia(b) || rot(b) || !rulersShown() || content(b).querySelector('table')) { if (!indDrag) host.replaceChildren(); return; }
+  const c = content(b), cs = getComputedStyle(c), cr = c.getBoundingClientRect(), hr = host.getBoundingClientRect(), k = cr.width / (c.offsetWidth || 1);
+  const left0 = cr.left - hr.left + parseFloat(cs.paddingLeft) * k, right0 = cr.right - hr.left - parseFloat(cs.paddingRight) * k;
+  const v = name => (parseFloat(c.style.getPropertyValue(name)) || 0) * k, L = v('--ind-left'), F = v('--ind-first'), R = v('--ind-right');
+  const at = { left: left0 + L, first: left0 + L + F, right: right0 - R };
+  if (host.querySelectorAll('.ind-mark').length !== 3) host.replaceChildren(...['first', 'left', 'right'].map(n => { const m = div('ind-mark ' + n); m.dataset.n = n; m.title = { first: 'First line indent', left: 'Left indent', right: 'Right indent' }[n]; return m; }));
+  for (const m of /** @type {HTMLElement[]} */ ([...host.querySelectorAll('.ind-mark')])) m.style.left = at[m.dataset.n] + 'px';
+}
+$('#ed-ruler-marks').addEventListener('pointerdown', e => {
+  const m = /** @type {HTMLElement} */ (e.target).closest('.ind-mark'), b = editing; if (!m || !b || e.button !== 0) return;
+  e.preventDefault(); e.stopPropagation();
+  const c = content(b), k = scale, px = name => parseFloat(c.style.getPropertyValue(name)) || 0, n = m.dataset.n, x0 = e.clientX, sel0 = lastRange;
+  const L0 = px('--ind-left'), F0 = px('--ind-first'), R0 = px('--ind-right'), tip = div('rule-at ind-tip'); tip.style.setProperty('--k', '1px'); $('#ed-ruler-marks').append(tip);
+  const set = (name, val) => { if (Math.abs(val) > 0.05) c.style.setProperty(name, Math.round(val * 10) / 10 + 'px'); else c.style.removeProperty(name); };
+  indDrag = n; blockify(c);
+  drag(e, ev => {
+    const d = Math.round((ev.clientX - x0) / k / 12) * 12;   // 1/16 in
+    if (n === 'left') { const L = Math.max(0, L0 + d); set('--ind-left', L); set('--ind-first', L0 + F0 - L); }
+    else if (n === 'first') set('--ind-first', Math.max(-L0, F0 + d));
+    else set('--ind-right', Math.max(0, R0 - d));
+    const now = { left: px('--ind-left'), first: px('--ind-left') + px('--ind-first'), right: px('--ind-right') }[n];
+    tip.textContent = `${(now / 192).toFixed(2)} in`; tip.style.left = (parseFloat(m.style.left) + 8) + 'px'; tip.style.top = '0px';
+    fitHeight(b); drawIndentMarks();
+  }, () => { indDrag = null; tip.remove(); commit(); if (sel0) { const s = getSelection(); s.removeAllRanges(); s.addRange(sel0); } drawIndentMarks(); });
+});
 $('#ed-stage').addEventListener('pointermove', e => { rulerPtr = { x: e.clientX, y: e.clientY }; queueRulers(); });
 $('#ed-stage').addEventListener('pointerleave', () => { rulerPtr = null; queueRulers(); });
 $('#ed-stage').addEventListener('scroll', queueRulers);
