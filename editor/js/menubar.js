@@ -24,6 +24,8 @@ const FORMAT_MENU = [
       '-',
       { label: 'Increase indent', icon: 'format_indent_increase', key: '⌘]', run: () => indentText(1), off: noSel },
       { label: 'Decrease indent', icon: 'format_indent_decrease', key: '⌘[', run: () => indentText(-1), off: noSel },
+      '-',
+      { label: 'Indentation options', run: () => showIndentDialog(true), off: noSel },
     ] },
     { label: 'Line & paragraph spacing', icon: 'format_line_spacing', items: lhItems },
     { label: 'Bullets & numbering', icon: 'format_list_bulleted', items: () => [

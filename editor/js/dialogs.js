@@ -106,6 +106,31 @@ addEventListener('keydown', e => {
   if (e.key === 'Enter') applySpacing(); else showSpaceDialog(false);
 }, true);
 
+/* Format → Align & indent → Indentation options, as Slides (Keynote's first-line, left and right indents): inches, on the
+   box's paragraphs, kept as --ind-left / --ind-right / --ind-first on .content (base.css; a hanging indent is a negative
+   first line with the left indent moved in by as much). */
+const indDlg = $('#ed-inddlg'), IN = k => /** @type {HTMLInputElement} */ ($('#ed-ind-' + k)), indTargets = [];
+const pxIn = v => Math.round((parseFloat(v) || 0) / 192 * 100) / 100;
+function showIndentDialog(on) {
+  closeMenu(); indDlg.hidden = !on; if (!on) return;
+  indTargets.splice(0, indTargets.length, ...[...sel].filter(b => !isMedia(b) && !isLine(b)));
+  const s = content(indTargets[0] || [...sel][0]).style, first = pxIn(s.getPropertyValue('--ind-first'));
+  IN('left').value = String(pxIn(s.getPropertyValue('--ind-left')) + (first < 0 ? first : 0)); IN('right').value = String(pxIn(s.getPropertyValue('--ind-right')));
+  IN('special').value = first > 0 ? 'first' : first < 0 ? 'hanging' : ''; IN('by').value = String(Math.abs(first)); IN('left').focus(); IN('left').select();
+}
+function applyIndent() {
+  const L = Math.max(0, +IN('left').value || 0), R = Math.max(0, +IN('right').value || 0), by = Math.max(0, +IN('by').value || 0), sp = IN('special').value;
+  const first = sp === 'first' ? by : sp === 'hanging' ? -by : 0, px = v => Math.round(v * 192 * 10) / 10 + 'px';
+  indTargets.forEach(b => { const c = content(b); blockify(c);
+    for (const [k, v] of [['--ind-left', L - Math.min(0, first)], ['--ind-right', R], ['--ind-first', first]]) if (v) c.style.setProperty(k, px(v)); else c.style.removeProperty(k);
+    fitHeight(b); });
+  showIndentDialog(false); commit();
+}
+$('#ed-ind-apply').onclick = applyIndent;
+$('#ed-ind-cancel').onclick = indDlg.querySelector('.sc-close').onclick = () => showIndentDialog(false);
+indDlg.addEventListener('pointerdown', e => { if (e.target === indDlg) showIndentDialog(false); });
+addEventListener('keydown', e => { if (!indDlg.hidden && (e.key === 'Escape' || e.key === 'Enter')) { e.preventDefault(); e.stopImmediatePropagation(); if (e.key === 'Enter') applyIndent(); else showIndentDialog(false); } }, true);
+
 /* Slideshow ▾ → Slideshow settings, as Keynote's Document settings: the presentation type (Normal, Links only, Self-playing
    with its delays), Loop and Restart if idle, saved on the deck's .slides element; present.js plays them. */
 const showDlg = $('#ed-showdlg'), SD = k => /** @type {HTMLInputElement} */ ($('#ed-show-' + k));

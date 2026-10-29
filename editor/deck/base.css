@@ -27,10 +27,12 @@
 .box.group { display: block; }   /* members are positioned inside it, relative to its top-left */
 .box[data-valign="top"] { justify-content: flex-start; }
 .box[data-valign="bottom"] { justify-content: flex-end; }
-.box > .content > * { margin: var(--space-before, 0px) 0 var(--space-after, 0px); }   /* paragraph spacing, set on .content */
+.box > .content > * { margin: var(--space-before, 0px) var(--ind-right, 0px) var(--space-after, 0px) var(--ind-left, 0px); }   /* paragraph spacing and indents, set on .content */
+.box > .content > :not(ul, ol) { text-indent: var(--ind-first, 0px); }   /* first-line indent (negative: hanging) */
 /* A superscript or subscript doesn't make its line taller, as in Slides (and Word, Docs): it rides on the line. */
 .box > .content sup, .box > .content sub { line-height: 0; }
 .box > .content ul, .box > .content ol { display: block; margin: 0; padding-left: 1.2em; text-align: left; }
+.box > .content > :is(ul, ol) { margin-left: var(--ind-left, 0px); margin-right: var(--ind-right, 0px); }   /* a list takes the box's left / right indent too */
 .box > .content ul { list-style: disc; }
 .box > .content ol { list-style: decimal; }
 /* Nested levels as Slides' defaults: ● ○ ■ and 1. a. i. */

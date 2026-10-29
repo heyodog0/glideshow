@@ -121,6 +121,14 @@ def checks(pg, deck: Path, errors):
     tc = pg.evaluate("(() => { const c = [...document.querySelectorAll('#ed-canvas .box')].pop().querySelector('.content'); return [c.querySelector('li').textContent, c.style.letterSpacing]; })()")
     check("Format → Text → Capitalization rewrites to Title Case; Letter spacing sets letter-spacing", tc == ["Hello World", "0.1em"], str(tc))
     check("Custom spacing dialog: 12pt after (32px) and line spacing 1.5 (CSS 1.725), Enter applies and closes", cs == ["32px", "1.725", True], str(cs))
+    pg.click("#ed-menubar [data-menu=Format]"); pg.hover(".menu-item:has-text('Align & indent')"); pg.click(".menu-item:has(.menu-label:text-is('Indentation options'))")
+    pg.fill("#ed-ind-left", "0.5"); pg.fill("#ed-ind-right", "0.25"); pg.select_option("#ed-ind-special", "hanging"); pg.fill("#ed-ind-by", "0.25")
+    pg.locator("#ed-inddlg .dialog").screenshot(path=str(HERE / "indent-dialog.png")); pg.press("#ed-ind-by", "Enter")
+    ind = pg.evaluate("""(() => { const c = [...document.querySelectorAll('#ed-canvas .box')].pop().querySelector('.content'), p = c.firstElementChild, cs = getComputedStyle(p);
+      const out = [c.style.getPropertyValue('--ind-left'), c.style.getPropertyValue('--ind-first'), p.tagName === 'UL' ? 'list' : cs.textIndent, cs.marginRight, $('#ed-inddlg').hidden];
+      ['--ind-left', '--ind-right', '--ind-first'].forEach(k => c.style.removeProperty(k)); return out; })()""")
+    check("Format → Align & indent → Indentation options: left 0.5 in, right 0.25 in, hanging 0.25 in (left 0.75 in, first line -0.25 in), Enter applies",
+          ind[:2] == ["144px", "-48px"] and ind[2] in ("-48px", "list") and ind[3] == "48px" and ind[4], str(ind))
     check("paragraph spacing: Add space before paragraph puts 10pt (26.67px) above each paragraph and toggles to Remove", sp == ["26.67px", "26.67px"] and lbl and gone == "", f"{sp} {lbl} {gone!r}")
     pg.keyboard.press("Meta+k"); pg.fill("#ed-link-url", "example.com"); pg.keyboard.press("Enter")
     check("⌘K links the box text", pg.evaluate("[...document.querySelectorAll('#ed-canvas .box')].pop().querySelector('.content a')?.getAttribute('href')") == "https://example.com")
