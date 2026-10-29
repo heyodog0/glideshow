@@ -204,6 +204,10 @@ const MENUS = {
     { label: 'Lock', icon: 'lock', run: () => lockSel(true), off: () => !sel.size || [...sel].every(isLocked) },
     { label: 'Unlock', icon: 'lock_open', run: () => lockSel(false), off: () => !anyLocked() },
     '-',
+    { label: 'Combine shapes', icon: 'join', items: () => [['union', 'Unite', 'join_full'], ['intersect', 'Intersect', 'join_inner'], ['subtract', 'Subtract', 'join_left'], ['exclude', 'Exclude', 'join']]
+      .map(([op, label, icon]) => ({ label, icon, run: () => combineSel(op), off: () => boxes().filter(b => sel.has(b) && combinable(b)).length < 2 })) },
+    { label: 'Break apart', icon: 'call_split', run: breakApart, off: () => ![...sel].some(x => isPath(x) && (x.dataset.path.match(/M/g) || []).length > 1) },
+    '-',
     { label: 'Flip line direction', icon: 'swap_horiz', run: flipLines, off: () => ![...sel].some(isLine) },
     '-',
     { label: 'Stack as a sequence', icon: 'stacks', run: () => stackSequence(), off: () => [...sel].filter(b => isMedia(b)).length < 2 },   // pictures shown one after another in one place

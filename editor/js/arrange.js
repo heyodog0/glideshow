@@ -70,6 +70,57 @@ function renderObjects() {
     return r;
   }));
 }
+/* Arrange → Combine shapes (Keynote's Unite, Intersect, Subtract, Exclude) and Break apart. Each shape's drawn outline,
+   in slide coordinates (curves sampled every few px), goes through polygon-clipping; the result is one path box in the
+   back shape's style (Subtract takes the others from the back one). Break apart splits a path of several outlines. */
+function outlineOf(b) {   // [[ [x, y], … ], …]: the shape's fill outlines on the slide
+  const svg = b.querySelector(':scope > svg.shape'); if (!svg) { const g = aabb(b); return [[[g.x, g.y], [g.x + g.w, g.y], [g.x + g.w, g.y + g.h], [g.x, g.y + g.h]]]; }
+  const g = geo(b), t = rot(b) * Math.PI / 180, [fx, fy] = flipXY(b), cx = g.x + g.w / 2, cy = g.y + g.h / 2;
+  const toSlide = (x, y) => { const lx = fx * (x - g.w / 2), ly = fy * (y - g.h / 2); return [cx + lx * Math.cos(t) - ly * Math.sin(t), cy + lx * Math.sin(t) + ly * Math.cos(t)]; };
+  const rings = [];
+  for (const f of /** @type {SVGGeometryElement[]} */ ([...svg.querySelectorAll('.f')]).filter(e => e.style.fill !== 'none')) {
+    const ds = f.tagName === 'path' ? (f.getAttribute('d') || '').split(/(?=M)/).filter(s => s.trim()) : [null];
+    for (const d of ds) {
+      let el = f; if (d) { el = /** @type {SVGPathElement} */ (document.createElementNS('http://www.w3.org/2000/svg', 'path')); el.setAttribute('d', d); svg.append(el); }
+      const L = el.getTotalLength(), n = Math.max(8, Math.min(600, Math.ceil(L / 4))), ring = [];
+      for (let i = 0; i < n; i++) { const p = el.getPointAtLength(L * i / n); ring.push(toSlide(p.x, p.y)); }
+      if (d) el.remove();
+      if (ring.length > 2) rings.push(ring);
+    }
+  }
+  return rings;
+}
+const combinable = b => !!b && !isMedia(b) && !isLine(b) && !isGroup(b) && !(b.dataset.shape === 'path' && !/z\s*$/i.test(b.dataset.path || '')) && !/^(wordart|icon)$/.test(b.dataset.shape || '');
+function pathFromRings(rings, like) {   // a path box drawing these slide-coordinate outlines, styled as `like`
+  const pts = rings.flat(), xs = pts.map(p => p[0]), ys = pts.map(p => p[1]), g = { x: Math.min(...xs), y: Math.min(...ys), w: 0, h: 0 };
+  g.w = Math.max(1, Math.max(...xs) - g.x); g.h = Math.max(1, Math.max(...ys) - g.y);
+  const r = v => Math.round(v * 10000) / 10000;
+  const d = rings.map(ring => 'M' + ring.map(([x, y]) => `${r((x - g.x) / g.w)},${r((y - g.y) / g.h)}`).join(' L') + ' Z').join(' ');
+  const b = makeBox({ ...g, shape: 'path' }); b.dataset.path = d;
+  for (const k of ['--fill', '--stroke', '--sw']) { const v = like.style.getPropertyValue(k) || (k === '--fill' ? getComputedStyle(like.querySelector('svg.shape .f') || like).fill : ''); if (v) b.style.setProperty(k, v); }
+  if (like.dataset.dash) b.dataset.dash = like.dataset.dash;
+  return b;
+}
+function combineSel(op) {
+  const items = boxes().filter(b => sel.has(b) && combinable(b)); if (items.length < 2 || anyLocked()) return;
+  stopEdit();
+  const geo2 = items.map(b => outlineOf(b));
+  let res = op === 'union' ? polygonClipping.union(geo2[0], ...geo2.slice(1)) : op === 'intersect' ? polygonClipping.intersection(geo2[0], ...geo2.slice(1))
+    : op === 'subtract' ? polygonClipping.difference(geo2[0], ...geo2.slice(1)) : polygonClipping.xor(geo2[0], ...geo2.slice(1));
+  const rings = res.flatMap(poly => poly.map(ring => ring.slice(0, -1)));   // polygon-clipping repeats each ring's first point at its end
+  if (!rings.length) return setStatus('Those shapes have nothing in common');
+  const b = pathFromRings(rings, items[0]); items[0].before(b); items.forEach(x => x.remove());
+  renderShape(b); sel = new Set([b]); drawOverlay(); updateToolbar(); commit();
+}
+function breakApart() {
+  const b = [...sel].find(x => isPath(x) && (x.dataset.path.match(/M/g) || []).length > 1); if (!b || isLocked(b)) return;
+  const g = geo(b), parts = b.dataset.path.split(/(?=M)/).filter(s => s.trim()), out = [];
+  for (const part of parts) {
+    const ring = [...part.matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map(m => [g.x + +m[1] * g.w, g.y + +m[2] * g.h]);
+    if (ring.length > 2) { const n = pathFromRings([ring], b); b.before(n); renderShape(n); out.push(n); }
+  }
+  b.remove(); sel = new Set(out); drawOverlay(); updateToolbar(); commit();
+}
 /* Slide → Skip slide: reveal.js leaves data-visibility="hidden" slides out of the slideshow. */
 function skipSlides() {
   const on = !pickedIdx().every(i => slides[i].dataset.visibility === 'hidden');

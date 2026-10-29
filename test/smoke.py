@@ -834,6 +834,18 @@ def checks(pg, deck: Path, errors):
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
     check(f"Make editable ({me[0]} ms for three): star, rounded rectangle and ellipse become closed paths with their outline (curves keep handles); the Pen drags out handles and a click on its first point closes the shape",
           [x[:2] + [x[4]] for x in me[1:]] == [["path", True, True]] * 3 and me[1][2] == 10 and me[3][2] == 4 and me[3][3] >= 4 and pen == ["path", True, True, 3, False], f"{me} {pen}")
+    cb = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1);
+      const mk = (x, y, w, h, shape) => { const b = makeBox({x, y, w, h, shape}); s.append(b); renderShape(b); return b; }, g = b => { const q = geo(b); return [q.x, q.y, q.w, q.h].map(Math.round); };
+      let a = mk(100, 100, 400, 300, 'rect'), c = mk(300, 200, 400, 300, 'rect'); render(); sel = new Set([a, c]); const t0 = performance.now(); combineSel('union'); const ms = Math.round(performance.now() - t0);
+      const u = [...sel][0], U = [g(u), (u.dataset.path.match(/M/g) || []).length, boxes().length];
+      a = mk(100, 600, 400, 300, 'rect'); c = mk(300, 700, 400, 300, 'ellipse'); render(); sel = new Set([a, c]); combineSel('intersect'); const I = g([...sel][0]);
+      a = mk(1100, 100, 600, 600, 'rect'); c = mk(1250, 250, 300, 300, 'ellipse'); render(); sel = new Set([a, c]); combineSel('subtract'); const sb = [...sel][0], S = [(sb.dataset.path.match(/M/g) || []).length, sb.querySelector('svg.shape path.f').style.fillRule];
+      breakApart(); const B = [...sel].length;
+      return [ms, U, I, S, B]; })()""")
+    pg.locator("#ed-frame").screenshot(path=str(HERE / "combine-shapes.png"))
+    pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
+    check(f"Arrange → Combine shapes as Keynote ({cb[0]} ms to unite): Unite joins two rectangles into one outline, Intersect keeps the overlap, Subtract punches a hole (even-odd), Break apart splits it",
+          cb[1] == [[100, 100, 600, 400], 1, 1] and cb[2][0] == 300 and cb[2][1] == 700 and cb[2][2] == 200 and cb[3] == [2, "evenodd"] and cb[4] == 2, str(cb))
     ob = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1);
       const a = makeBox({x: 100, y: 100, w: 300, h: 150, html: 'Back text'}), b = makeBox({x: 300, y: 200, w: 300, h: 200, shape: 'ellipse'}), c = makeBox({x: 500, y: 300, w: 400, h: 0, shape: 'line'});
       s.append(a, b, c); sel.clear(); render(); return [a.id, b.id, c.id]; })()""")

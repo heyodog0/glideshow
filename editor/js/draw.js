@@ -149,7 +149,7 @@ function pathString({ nodes, closed }) {
   return d + (closed ? ' Z' : '');
 }
 const isPath = b => b?.dataset.shape === 'path';
-function enterPointEdit(b) { if (!isPath(b) || isLocked(b)) return; stopEdit(); pointEdit = b; ptPick = -1; sel = new Set([b]); drawOverlay(); updateToolbar(); }
+function enterPointEdit(b) { if (!isPath(b) || isLocked(b)) return; if ((b.dataset.path.match(/M/g) || []).length > 1) return setStatus('Break apart first to edit its points'); stopEdit(); pointEdit = b; ptPick = -1; sel = new Set([b]); drawOverlay(); updateToolbar(); }
 function endPointEdit() { if (!pointEdit) return; pointEdit = null; ptPick = -1; drawOverlay(); }
 const toLocal = (b, ev) => {   // a pointer in the box's own frame (rotation and flips undone), in px
   const g = geo(b), t = rot(b) * Math.PI / 180, [fx, fy] = flipXY(b), p = toCanvas(ev), dx = p.x - (g.x + g.w / 2), dy = p.y - (g.y + g.h / 2);
