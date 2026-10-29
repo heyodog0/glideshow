@@ -10,6 +10,7 @@ function objectMenu() {
     ...(text ? [{ label: 'Edit text', icon: 'format_shapes', run: () => startEdit(one) }] : []),
     { label: 'Alt text', icon: 'accessibility_new', run: openAltText, off: () => sel.size !== 1 },
     ...(codeOf(one) ? [{ label: 'Code language', icon: 'code', items: () => codeLangItems(setCodeLang, v => codeOf(one).classList.contains('language-' + v)) }] : []),
+    ...(one?.dataset.shape && !isPath(one) && !isLine(one) && !/^(wordart|icon)$/.test(one.dataset.shape) ? [{ label: 'Make editable', icon: 'polyline', run: () => makeEditable(one) }] : []),
     ...(isPath(one) ? [{ label: pointEdit === one ? 'Done editing points' : 'Edit points', icon: 'polyline', run: () => pointEdit === one ? endPointEdit() : enterPointEdit(one) },
       { label: /z\s*$/i.test(one.dataset.path || '') ? 'Open path' : 'Close path', icon: 'pentagon', run: () => setPathClosed(one, !/z\s*$/i.test(one.dataset.path || '')) }] : []),
     ...(/^(elbow|curve)$/.test(one?.dataset.shape) && one.dataset.bend ? [{ label: 'Reroute connector', icon: 'route', run: () => { delete one.dataset.bend; renderShape(one); drawOverlay(); commit(); } }] : []),

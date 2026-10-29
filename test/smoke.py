@@ -822,6 +822,18 @@ def checks(pg, deck: Path, errors):
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
     check("Edit points, as Keynote: double-click a path shows its anchors, drag one (the box refits), double-click makes it smooth (curve handles), ⌫ removes it, Esc ends; Close path fills it",
           n_pt == 3 and moved[0] == "500px" and smooth == [2, True] and after_del == 2 and out == [None, 0] and closed == [True, True, False], f"{n_pt} {moved} {smooth} {after_del} {out} {closed}")
+    me = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1);
+      const out = ['star', 'roundrect', 'ellipse'].map((sh, i) => { const b = makeBox({x: 100 + i * 500, y: 200, w: 400, h: 300, shape: sh}); s.append(b); renderShape(b); return b; });
+      render(); const t0 = performance.now(); out.forEach(b => makeEditable(b)); const ms = Math.round(performance.now() - t0); endPointEdit();
+      return [ms, ...out.map(b => [b.dataset.shape, /Z$/.test(b.dataset.path), parsePath(b.dataset.path).nodes.length, (b.dataset.path.match(/C/g) || []).length, !!b.querySelector('svg.shape path.f')])]; })()""")
+    pg.evaluate("armShape('polyline')"); fr = pg.locator("#ed-frame").bounding_box(); sc = pg.evaluate("scale")
+    P = lambda x, y: (fr["x"] + x * sc, fr["y"] + y * sc)
+    pg.mouse.click(*P(300, 700)); pg.mouse.move(*P(700, 900)); pg.mouse.down(); pg.mouse.move(*P(800, 900), steps=4); pg.mouse.up(); pg.mouse.click(*P(1100, 700)); pg.mouse.click(*P(301, 701))
+    pg.evaluate("(() => { sel.clear(); drawOverlay(); })()"); pg.locator("#ed-frame").screenshot(path=str(HERE / "make-editable.png"))
+    pen = pg.evaluate("(() => { const b = boxes().at(-1); return [b.dataset.shape, /Z$/.test(b.dataset.path), /C/.test(b.dataset.path), parsePath(b.dataset.path).nodes.length, !!drawing]; })()")
+    pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
+    check(f"Make editable ({me[0]} ms for three): star, rounded rectangle and ellipse become closed paths with their outline (curves keep handles); the Pen drags out handles and a click on its first point closes the shape",
+          [x[:2] + [x[4]] for x in me[1:]] == [["path", True, True]] * 3 and me[1][2] == 10 and me[3][2] == 4 and me[3][3] >= 4 and pen == ["path", True, True, 3, False], f"{me} {pen}")
     ob = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1);
       const a = makeBox({x: 100, y: 100, w: 300, h: 150, html: 'Back text'}), b = makeBox({x: 300, y: 200, w: 300, h: 200, shape: 'ellipse'}), c = makeBox({x: 500, y: 300, w: 400, h: 0, shape: 'line'});
       s.append(a, b, c); sel.clear(); render(); return [a.id, b.id, c.id]; })()""")

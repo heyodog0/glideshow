@@ -35,9 +35,13 @@ function disarmShape() { drawing = null; document.body.classList.remove('drawing
 stage.addEventListener('pointerdown', e => {
   if (!drawing || e.button !== 0) return;
   e.preventDefault(); e.stopImmediatePropagation();
-  if (drawing.pts) {   // Curve / Polyline: each click adds a point, a double-click ends
-    const p = toCanvas(e), q = drawing.pts.at(-1);
-    if (!q || Math.hypot(p.x - q.x, p.y - q.y) * scale >= 6) drawing.pts.push(p);   // the second click of a double-click adds nothing
+  if (drawing.pts) {   // Curve / Polyline: each click adds a point, a double-click ends; as Keynote's Pen, dragging pulls out
+    const p = toCanvas(e), q = drawing.pts.at(-1), first = drawing.pts[0];   // that point's curve handles, and a click on the first point closes the shape
+    if (first && drawing.pts.length >= 3 && Math.hypot(p.x - first.x, p.y - first.y) * scale < 8) { drawing.closed = true; finishPoints(); return; }
+    if (!q || Math.hypot(p.x - q.x, p.y - q.y) * scale >= 6) {   // the second click of a double-click adds nothing
+      const pt = { x: p.x, y: p.y }; drawing.pts.push(pt);
+      drag(e, ev => { const c = toCanvas(ev); if (Math.hypot(c.x - pt.x, c.y - pt.y) * scale < 4) return; pt.out = c; pt.in = { x: 2 * pt.x - c.x, y: 2 * pt.y - c.y }; drawPreview(drawing.pts); }, () => {});
+    }
     drawPreview(drawing.pts); return;
   }
   const { shape, extra } = drawing, p0 = toCanvas(e); disarmShape();
@@ -98,12 +102,23 @@ function finishPath(pts, smooth) {
 function drawPreview(pts, smooth) {   // the path being drawn, in canvas units
   let svg = guides.querySelector('.draw-preview');
   if (!svg) { svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'draw-preview'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); guides.append(svg); }
-  svg.innerHTML = pts.length ? `<polyline points="${pts.map(p => p.x + ',' + p.y).join(' ')}" />` : '';
+  svg.innerHTML = !pts.length ? '' : pts.some(p => p.in || p.out) ? `<path d="${pathString({ nodes: pts, closed: false })}" />` : `<polyline points="${pts.map(p => p.x + ',' + p.y).join(' ')}" />`;
 }
 function finishPoints() {
   const d = drawing; if (!d?.pts) return;
   guides.querySelector('.draw-preview')?.remove(); disarmShape();
-  finishPath(d.pts, d.shape === 'smooth');
+  if (d.closed || d.pts.some(p => p.in || p.out)) finishNodes(d.pts, !!d.closed);
+  else finishPath(d.pts, d.shape === 'smooth');
+}
+/* A Pen path with handles (or closed): its points and handles as drawn, in 0..1 units of their bounds. */
+function finishNodes(pts, closed) {
+  if (pts.length < 2) return;
+  const all = pts.flatMap(n => [n, n.in, n.out].filter(Boolean)), g = bbox(all.map(p => ({ x: p.x, y: p.y, w: 0, h: 0 }))); g.w = Math.max(g.w, 1); g.h = Math.max(g.h, 1);
+  const u = q => q && { x: (q.x - g.x) / g.w, y: (q.y - g.y) / g.h };
+  const nodes = pts.map(n => Object.assign({ ...u(n) }, n.in ? { in: u(n.in) } : {}, n.out ? { out: u(n.out) } : {}));
+  if (nodes[0].in && !closed) delete nodes[0].in;
+  const b = addShape('path', g); b.dataset.path = pathString({ nodes, closed }); if (closed) b.style.setProperty('--fill', '#4a86e8');
+  renderShape(b); drawOverlay(); updateToolbar(); commit();
 }
 
 /* Point editing (Keynote's Edit Points): double-click a drawn path, or right-click → Edit points. Its anchors (squares)
@@ -123,12 +138,14 @@ function parsePath(d) {
       nodes.push(v[i + 2] !== n.x || v[i + 3] !== n.y ? { ...n, in: { x: v[i + 2], y: v[i + 3] } } : n);
     }
   }
+  if (closed && nodes.length > 2 && nodes.at(-1).x === nodes[0].x && nodes.at(-1).y === nodes[0].y) { const z = nodes.pop(); if (z.in) nodes[0].in = z.in; }   // the curved closing side's end is the first point
   return { nodes, closed };
 }
 function pathString({ nodes, closed }) {
   const r = v => Math.round(v * 1000) / 1000, p = q => `${r(q.x)},${r(q.y)}`;
   let d = 'M' + p(nodes[0]);
   for (let i = 1; i < nodes.length; i++) { const a = nodes[i - 1], n = nodes[i]; d += a.out || n.in ? ` C${p(a.out || a)} ${p(n.in || n)} ${p(n)}` : ` L${p(n)}`; }
+  if (closed) { const a = nodes.at(-1), n = nodes[0]; if (a.out || n.in) d += ` C${p(a.out || a)} ${p(n.in || n)} ${p(n)}`; }   // a curved closing side
   return d + (closed ? ' Z' : '');
 }
 const isPath = b => b?.dataset.shape === 'path';
@@ -190,3 +207,52 @@ function deletePoint() {
   P.nodes.splice(ptPick, 1); ptPick = -1; b.dataset.path = pathString(P); renderShape(b); refitPath(b); drawOverlay(); commit();
 }
 function setPathClosed(b, on) { const P = parsePath(b.dataset.path); P.closed = on; b.dataset.path = pathString(P); if (on && !b.style.getPropertyValue('--fill')) b.style.setProperty('--fill', '#4a86e8'); renderShape(b); drawOverlay(); updateToolbar(); commit(); }
+
+/* An SVG arc (rx ry rotation large sweep x y, from p0) as cubic Béziers of at most 90° each: [[c1, c2, end], …]. */
+function arcCubics(p0, [rx, ry, rotDeg, large, sweep, x, y]) {
+  if (!rx || !ry) return [[p0, { x, y }, { x, y }]];
+  const phi = rotDeg * Math.PI / 180, cos = Math.cos(phi), sin = Math.sin(phi), dx = (p0.x - x) / 2, dy = (p0.y - y) / 2;
+  const x1 = cos * dx + sin * dy, y1 = -sin * dx + cos * dy, l = x1 * x1 / (rx * rx) + y1 * y1 / (ry * ry);
+  if (l > 1) { rx *= Math.sqrt(l); ry *= Math.sqrt(l); }
+  const s = (large === sweep ? -1 : 1) * Math.sqrt(Math.max(0, (rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1) / (rx * rx * y1 * y1 + ry * ry * x1 * x1)));
+  const cx1 = s * rx * y1 / ry, cy1 = -s * ry * x1 / rx, cx = cos * cx1 - sin * cy1 + (p0.x + x) / 2, cy = sin * cx1 + cos * cy1 + (p0.y + y) / 2;
+  const ang = (ux, uy, vx, vy) => Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+  const t1 = ang(1, 0, (x1 - cx1) / rx, (y1 - cy1) / ry); let dt = ang((x1 - cx1) / rx, (y1 - cy1) / ry, (-x1 - cx1) / rx, (-y1 - cy1) / ry);
+  if (!sweep && dt > 0) dt -= 2 * Math.PI; else if (sweep && dt < 0) dt += 2 * Math.PI;
+  const n = Math.ceil(Math.abs(dt) / (Math.PI / 2) - 1e-9), h = dt / n, k = 4 / 3 * Math.tan(h / 4), out = [];
+  const pt = (a, r = 1) => ({ x: cx + rx * r * Math.cos(a) * cos - ry * r * Math.sin(a) * sin, y: cy + rx * r * Math.cos(a) * sin + ry * r * Math.sin(a) * cos });
+  const d = a => ({ x: -rx * Math.sin(a) * cos - ry * Math.cos(a) * sin, y: -rx * Math.sin(a) * sin + ry * Math.cos(a) * cos });   // the tangent
+  for (let i = 0; i < n; i++) { const a = t1 + i * h, b = a + h, A = pt(a), B = pt(b), da = d(a), db = d(b);
+    out.push([{ x: A.x + k * da.x, y: A.y + k * da.y }, { x: B.x - k * db.x, y: B.y - k * db.y }, i === n - 1 ? { x, y } : B]); }
+  return out;
+}
+/* Make editable (Keynote's Format → Shapes and Lines → Make Editable): a preset shape becomes a closed path with the
+   same outline (its first outline; arcs and curves become Bézier handles), then Edit points. */
+function makeEditable(b) {
+  const svg = b.querySelector(':scope > svg.shape'), f = svg && [...svg.querySelectorAll('.f')].find(e => /** @type {SVGElement} */ (e).style.fill !== 'none'); if (!f) return;
+  const w = parseFloat(b.style.width) || 1, h = parseFloat(b.style.height) || 1; /** @type {any[]} */ const nodes = [];
+  if (f.tagName === 'rect') nodes.push({ x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: h }, { x: 0, y: h });
+  else if (f.tagName === 'polygon') f.getAttribute('points').trim().split(/\s+/).forEach(s => { const [x, y] = s.split(',').map(Number); nodes.push({ x, y }); });
+  else if (f.tagName === 'ellipse') { const cx = +f.getAttribute('cx'), cy = +f.getAttribute('cy'), rx = +f.getAttribute('rx'), ry = +f.getAttribute('ry'), k = 0.5523;
+    nodes.push({ x: cx, y: cy - ry, in: { x: cx - rx * k, y: cy - ry }, out: { x: cx + rx * k, y: cy - ry } }, { x: cx + rx, y: cy, in: { x: cx + rx, y: cy - ry * k }, out: { x: cx + rx, y: cy + ry * k } },
+      { x: cx, y: cy + ry, in: { x: cx + rx * k, y: cy + ry }, out: { x: cx - rx * k, y: cy + ry } }, { x: cx - rx, y: cy, in: { x: cx - rx, y: cy + ry * k }, out: { x: cx - rx, y: cy - ry * k } }); }
+  else {
+    const d = f.getAttribute('d') || '';
+    let started = false;
+    for (const [, cmd, args] of d.matchAll(/([MLQCAZ])([^MLQCAZ]*)/g)) {
+      const v = args.trim().split(/[\s,]+/).filter(Boolean).map(Number), last = /** @type {any} */ (nodes.at(-1));
+      if (cmd === 'M') { if (started) break; started = true; nodes.push({ x: v[0], y: v[1] }); }
+      else if (cmd === 'L') nodes.push({ x: v[0], y: v[1] });
+      else if (cmd === 'C') { last.out = { x: v[0], y: v[1] }; nodes.push({ x: v[4], y: v[5], in: { x: v[2], y: v[3] } }); }
+      else if (cmd === 'Q') { last.out = { x: last.x + 2 / 3 * (v[0] - last.x), y: last.y + 2 / 3 * (v[1] - last.y) }; nodes.push({ x: v[2], y: v[3], in: { x: v[2] + 2 / 3 * (v[0] - v[2]), y: v[3] + 2 / 3 * (v[1] - v[3]) } }); }
+      else if (cmd === 'A') for (const [c1, c2, e] of arcCubics(last, v)) { nodes.at(-1).out = c1; nodes.push({ ...e, in: c2 }); }
+    }
+    if (nodes.length > 1 && Math.hypot(nodes.at(-1).x - nodes[0].x, nodes.at(-1).y - nodes[0].y) < 0.5) { const z = nodes.pop(); if (z.in) nodes[0].in = z.in; }   // the closing point repeats the first
+  }
+  if (nodes.length < 2) return;
+  const un = q => q && { x: Math.round(q.x / w * 1000) / 1000, y: Math.round(q.y / h * 1000) / 1000 };
+  const P = { nodes: nodes.map(n => Object.assign(un(n), n.in ? { in: un(n.in) } : {}, n.out ? { out: un(n.out) } : {})), closed: true };
+  for (const k of Object.keys(b.dataset)) if (/^adj/.test(k)) delete b.dataset[k];
+  if (!b.style.getPropertyValue('--fill')) b.style.setProperty('--fill', getComputedStyle(f).fill);
+  b.dataset.shape = 'path'; b.dataset.path = pathString(P); renderShape(b); commit(); enterPointEdit(b);
+}
