@@ -108,8 +108,51 @@
 /* "Slide from left" (data-transition="sl-left"): reveal's slide transition, entering from the other side. */
 .reveal .slides > section[data-transition="sl-left"].past { transform: translate(150%, 0); }
 .reveal .slides > section[data-transition="sl-left"].future { transform: translate(-150%, 0); }
+/* Keynote's Push up / down ("Slide from bottom / top"), Wipe (wipe-r = from the left …) and Move In (the new slide moves
+   over the old one, which holds still): sections are opaque, so the slide before stays shown under a Wipe or Move In. */
+.reveal .slides > section[data-transition="sl-up"].past, .reveal .slides > section.past:has(+ section.present[data-transition="sl-up"]) { transform: translate(0, -150%); }
+.reveal .slides > section[data-transition="sl-up"].future { transform: translate(0, 150%); }
+.reveal .slides > section[data-transition="sl-down"].past, .reveal .slides > section.past:has(+ section.present[data-transition="sl-down"]) { transform: translate(0, 150%); }
+.reveal .slides > section[data-transition="sl-down"].future { transform: translate(0, -150%); }
+.reveal .slides > section:is([data-transition^="wipe-"], [data-transition^="move-in-"]) { transition-property: transform, visibility, opacity, clip-path; }
+.reveal .slides > section.past:has(+ section.present:is([data-transition^="wipe-"], [data-transition^="move-in-"])) { opacity: 1; visibility: visible; transform: none; transition: none; }
+.reveal .slides > section:is([data-transition^="wipe-"], [data-transition^="move-in-"]):is(.future, .past) { opacity: 1; }
+.reveal .slides > section[data-transition="wipe-r"]:is(.future, .past) { clip-path: inset(0 100% 0 0); }
+.reveal .slides > section[data-transition="wipe-l"]:is(.future, .past) { clip-path: inset(0 0 0 100%); }
+.reveal .slides > section[data-transition="wipe-d"]:is(.future, .past) { clip-path: inset(0 0 100% 0); }
+.reveal .slides > section[data-transition="wipe-u"]:is(.future, .past) { clip-path: inset(100% 0 0 0); }
+.reveal .slides > section[data-transition^="wipe-"].present { clip-path: inset(0); }
+.reveal .slides > section[data-transition="move-in-r"]:is(.future, .past) { transform: translate(-100%, 0); }
+.reveal .slides > section[data-transition="move-in-l"]:is(.future, .past) { transform: translate(100%, 0); }
+.reveal .slides > section[data-transition="move-in-d"]:is(.future, .past) { transform: translate(0, -100%); }
+.reveal .slides > section[data-transition="move-in-u"]:is(.future, .past) { transform: translate(0, 100%); }
 /* Object animation "Appear" (class fragment appear): reveal fragment without the fade. */
 .reveal .slides section .fragment.appear { transition: none; }
+/* Keynote's builds: Wipe (wipe-r = from the left …) and Move In (from off the slide, no fade) use clip-path and translate,
+   Scale and Pop scale (none of them fade), so a box's own rotate transform stays. Actions on something already shown:
+   Rotate turns it by data-angle (--gs-angle, set by present.js) and stays; Pulse and Pop swell and settle. */
+.reveal .slides section .fragment:is([class*="wipe-"], [class*="move-in-"], .scale-in, .pop-in, .spin, .pulse, .pop) { opacity: 1; transition-property: clip-path, translate, scale, rotate, visibility; transition-duration: .5s; }
+.reveal .slides section .fragment:is(.spin, .pulse, .pop) { visibility: inherit; }
+.reveal .slides section .fragment.wipe-r { clip-path: inset(0 100% 0 0); }
+.reveal .slides section .fragment.wipe-l { clip-path: inset(0 0 0 100%); }
+.reveal .slides section .fragment.wipe-d { clip-path: inset(0 0 100% 0); }
+.reveal .slides section .fragment.wipe-u { clip-path: inset(100% 0 0 0); }
+.reveal .slides section .fragment[class*="wipe-"].visible { clip-path: inset(0); }
+.reveal .slides section .fragment.move-in-r { translate: calc(-1 * var(--slide-w, 1920px)) 0; }
+.reveal .slides section .fragment.move-in-l { translate: var(--slide-w, 1920px) 0; }
+.reveal .slides section .fragment.move-in-d { translate: 0 calc(-1 * var(--slide-h, 1080px)); }
+.reveal .slides section .fragment.move-in-u { translate: 0 var(--slide-h, 1080px); }
+.reveal .slides section .fragment[class*="move-in-"].visible { translate: none; }
+.reveal .slides section .fragment.scale-in { scale: 0; }
+.reveal .slides section .fragment.scale-in.visible { scale: none; }
+.reveal .slides section .fragment.pop-in { scale: 0; }
+.reveal .slides section .fragment.pop-in.visible { scale: none; animation: gs-pop-in .5s both; }
+.reveal .slides section .fragment.spin.visible { rotate: var(--gs-angle, 360deg); }
+.reveal .slides section .fragment.pulse.visible { animation: gs-pulse .5s ease-in-out; }
+.reveal .slides section .fragment.pop.visible { animation: gs-pop .5s; }
+@keyframes gs-pop-in { from { scale: 0; } 60% { scale: 1.12; } 80% { scale: .96; } to { scale: 1; } }
+@keyframes gs-pulse { 50% { scale: 1.15; } }
+@keyframes gs-pop { 30% { scale: 1.25; } 60% { scale: .95; } to { scale: 1; } }
 .box[data-placeholder]:has(> .content:empty) { display: none; }   /* an unfilled layout placeholder: the editor shows "Click to add …", decks show nothing */
 
 /* Notes for the AI (AGENTS.md): sticky notes on a slide that only the editor shows */

@@ -1891,6 +1891,19 @@ def reveal_checks(b, errors, deck_file: Path):
     check("Motion panel → Delivery: text All at once / By paragraph / By highlighted paragraph / By word / By character; a table By row / column / cell",
           dl[0] == ["All at once", "By paragraph", "By highlighted paragraph", "By word", "By character"] and dl[1] == ["All at once", "By row", "By column", "By cell"]
           and dl[2] == ["Fade in by word", "Fade in by highlighted paragraph", "Fade in by column"], str(dl))
+    # Keynote's effects: Wipe / Move In (transitions and builds), Push up and down, Scale, Pop; Rotate (with its angle), Pulse, Pop
+    kn = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1); slides[cur].dataset.transition = 'wipe-r';
+      const mk = (x, eff) => { const b = makeBox({ x, y: 100, w: 200, h: 200, html: eff }); slides[cur].append(b); render(); sel = new Set([b]); addAnim(); setEffect(b, eff); return b; };
+      const bs = ['wipe-r', 'move-in-l', 'scale-in', 'pop-in', 'spin', 'pulse'].map((e, i) => mk(100 + i * 280, e));
+      bs[4].dataset.angle = '90'; commit(); render(); setTransPanel(true); sel = new Set([bs[4]]); const t0 = performance.now(); renderAnims(); const ms = performance.now() - t0;
+      const row = document.querySelector('.anim-row.open'), ang = row.querySelector('.ang');
+      const out = [!ang.hidden, ang.querySelector('input').value, row.querySelector('.eff').textContent.split('  ')[0], Math.round(ms)];
+      sel = new Set([bs[0]]); renderAnims(); out.push(document.querySelector('.anim-row.open .ang').hidden, $('#ed-t-name').textContent);
+      setTransPanel(false); return [out, TRANSITIONS.map(t => t[0]), EFFECTS.map(e => e[1])]; }""")
+    check(f"Keynote's effects in the Motion panel: Wipe / Move in from each side, Scale, Pop, Rotate (an angle field for it only), Pulse, Pop (emphasis); transitions Wipe, Move in, Slide from bottom / top ({kn[0][3]} ms to redraw)",
+          kn[0][:3] == [True, "90", "Rotate"] and kn[0][4] is True and kn[0][5] == "Wipe from left" and kn[0][3] < 100
+          and {"wipe-r", "wipe-l", "wipe-d", "wipe-u", "move-in-r", "move-in-l", "move-in-d", "move-in-u", "sl-up", "sl-down"} <= set(kn[1])
+          and {"Wipe from left", "Move in from bottom", "Scale", "Pop", "Rotate", "Pulse", "Pop (emphasis)"} <= set(kn[2]), str(kn[0]))
     pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
       const t = makeBox({ x: 100, y: 100, w: 900, h: 500, html: '<ul><li>One</li><li>Two</li><li>Three</li></ul>' }), after = makeBox({ x: 1100, y: 100, w: 500, h: 200, html: 'After' });
       slides[cur].append(t, after); render(); sel = new Set([t]); addAnim(); sel = new Set([after]); addAnim();
@@ -1921,6 +1934,23 @@ def reveal_checks(b, errors, deck_file: Path):
     v.evaluate("Reveal.slide(0)")
     check("…in the slideshow: by word, the words arrive one after another in one step; by highlighted paragraph each bullet is a step; a table by column builds column by column",
           dv[:2] == [3, True] and dv[2] == ["3", "4", "5", "3", "4", "5"] and dv[3] == [True, True] and mid[0] > .05 and mid[2] == 0 and all(end), f"{dv} {mid} {end}")
+    kh = v.evaluate("Reveal.getIndices(Reveal.getSlides().find(x => x.dataset.transition === 'wipe-r')).h")
+    v.evaluate(f"Reveal.slide({kh - 1}, 0, -1)"); v.wait_for_timeout(1000); v.evaluate(f"Reveal.slide({kh}, 0, -1)"); v.wait_for_timeout(250)
+    tmid = v.evaluate("(() => { const s = Reveal.getCurrentSlide(); return [getComputedStyle(s).clipPath, +getComputedStyle(s.previousElementSibling).opacity]; })()")
+    v.wait_for_timeout(900); tend = v.evaluate("getComputedStyle(Reveal.getCurrentSlide()).clipPath")
+    check("…in the slideshow Wipe from left uncovers the slide left to right over the one before, which holds still", tmid[0].startswith("inset(0px ") and tmid[0] != tend
+          and tmid[1] == 1 and tend in ("inset(0px)", "none"), f"{tmid} {tend}")
+    kb = v.evaluate("""async () => { const bs = [...Reveal.getCurrentSlide().querySelectorAll('.box.fragment')], cs = b => getComputedStyle(b), wait = ms => new Promise(r => setTimeout(r, ms));
+      const before = bs.map(b => [cs(b).clipPath, cs(b).translate, cs(b).scale, cs(b).visibility]), after = [];
+      for (const b of bs) { Reveal.nextFragment(); await wait(120); const mid = cs(b).scale; await wait(650); after.push([cs(b).clipPath, cs(b).translate, cs(b).scale, cs(b).rotate, cs(b).visibility, mid]); }
+      return [bs.map(b => b.textContent), before, after]; }""")
+    v.evaluate("Reveal.slide(0)")
+    b0, b1 = kb[1], kb[2]
+    check("…its builds: Wipe uncovers, Move in arrives from off the slide, Scale and Pop grow from nothing, Rotate turns 90° and stays, Pulse swells and settles",
+          kb[0] == ["wipe-r", "move-in-l", "scale-in", "pop-in", "spin", "pulse"]
+          and b0[0][0] == "inset(0px 100% 0px 0px)" and b0[0][3] == "hidden" and b0[1][1].startswith("1920px") and b0[2][2] == "0" and b0[3][2] == "0" and b0[4][3] == "visible"
+          and b1[0][0] in ("inset(0px)", "none") and b1[1][1] == "none" and b1[2][2] in ("none", "1") and b1[3][2] in ("none", "1") and b1[4][3] == "90deg"
+          and b1[5][2] in ("none", "1") and float(b1[5][5]) > 1, f"{kb}")
 
     # live box: its own page in assets/, sandboxed in the slide and served with a sandbox policy; double-click edits it
     pg.evaluate("go(slides.length - 1)"); pg.evaluate("addLive()"); pg.wait_for_function("boxes(slides[cur]).some(b => b.classList.contains('live'))"); settle()

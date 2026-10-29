@@ -632,7 +632,8 @@ body.theme-mode #ed-notes, body.theme-mode #ed-splitter { display: none !importa
 .live-dialog textarea { width: 100%; height: 50vh; font: 13px/1.5 ui-monospace, Menlo, monospace; color: var(--ink); background: var(--surface); border: 1px solid var(--divider); border-radius: var(--radius); padding: 10px 12px; resize: vertical; tab-size: 2; }
 .anim-body .timing { display: flex; gap: 12px; } .anim-body .timing label { flex: 1; }
 .anim-body .timing input { width: 100%; height: 36px; box-sizing: border-box; }
-.anim-body select[hidden] { display: none; }
+.anim-body select[hidden], .anim-body .ang[hidden] { display: none; }
+.anim-body .ang { display: flex; flex-direction: column; } .anim-body .ang input { height: 36px; box-sizing: border-box; }   /* Rotate's angle */
 a#ed-app-icon { text-decoration: none; cursor: pointer; }   /* the mascot goes home */
 #ed-history select { margin: 8px 16px; height: 40px; border: 1px solid var(--divider); }
 #ed-hist-list { flex: 1; overflow-y: auto; padding: 0 8px; }

@@ -13,7 +13,7 @@
      text arriving a word or letter at a time over the build's duration. */
   /* By word / by character: each word (or letter, kept within its word so lines break as before) in a span that arrives
      with the box's effect, one after another over the build's duration. Out and emphasis effects stay whole. */
-  const FROM = { appear: 'none', 'fade-in': 'none', 'fade-right': 'translateX(-1em)', 'fade-left': 'translateX(1em)', 'fade-up': 'translateY(.8em)', 'fade-down': 'translateY(-.8em)', 'zoom-in': 'scale(.1)' };
+  const FROM = { appear: 'none', 'fade-in': 'none', 'fade-right': 'translateX(-1em)', 'fade-left': 'translateX(1em)', 'fade-up': 'translateY(.8em)', 'fade-down': 'translateY(-.8em)', 'zoom-in': 'scale(.1)', 'scale-in': 'scale(0)', 'pop-in': 'scale(0)' };
   const wordByWord = (box, mode, cls) => {
     const eff = cls.find(c => c in FROM); if (!eff || cls.length > 1) return;
     const texts = [], tw = document.createTreeWalker(box.querySelector(':scope > .content') || box, NodeFilter.SHOW_TEXT);
@@ -43,7 +43,7 @@
     all.forEach(sl => {
       const frags = [...sl.querySelectorAll('.box.fragment[data-build]')].sort((a, b) => (+a.dataset.fragmentIndex || 0) - (+b.dataset.fragmentIndex || 0));
       frags.reverse().forEach(box => {   // from the last, so each one's room doesn't move the ones before it
-        const mode = box.dataset.build, cls = [...box.classList].filter(c => /^(appear|fade-[\w-]+|zoom-in|grow|shrink|strike|semi-fade-out|current-visible|highlight-[\w-]+)$/.test(c));   // its effect
+        const mode = box.dataset.build, cls = [...box.classList].filter(c => /^(appear|fade-[\w-]+|zoom-in|wipe-[rldu]|move-in-[rldu]|scale-in|pop-in|spin|pulse|pop|grow|shrink|strike|semi-fade-out|current-visible|highlight-[\w-]+)$/.test(c));   // its effect
         if (mode === 'word' || mode === 'character') { wordByWord(box, mode, cls); return; }
         const table = box.querySelector(':scope > .content table'), cells = table ? [...table.querySelectorAll('td, th')] : [];
         const groups = mode === 'row' ? [...(table?.rows || [])].map(r => [r]) : mode === 'cell' ? cells.map(c => [c])
@@ -54,7 +54,7 @@
         sl.querySelectorAll('.fragment').forEach(f => { if (f !== box && +f.dataset.fragmentIndex > at) f.dataset.fragmentIndex = String(+f.dataset.fragmentIndex + groups.length - 1); });
         box.classList.remove('fragment', ...cls); delete box.dataset.fragmentIndex;
         groups.forEach((g, i) => g.forEach(el => { el.classList.add('fragment', ...cls); if (mode === 'highlight') el.classList.add('gs-hl'); el.dataset.fragmentIndex = String(at + i);
-          for (const k of i ? ['duration', 'ease'] : ['duration', 'ease', 'delay', 'start']) if (box.dataset[k]) el.dataset[k] = box.dataset[k]; }));   // the box's timing; its start and delay on the first part
+          for (const k of i ? ['duration', 'ease', 'angle'] : ['duration', 'ease', 'angle', 'delay', 'start']) if (box.dataset[k]) el.dataset[k] = box.dataset[k]; }));   // the box's timing; its start and delay on the first part
         changed = true;
       });
     });
@@ -66,8 +66,9 @@
     }));
     // build timing (Motion panel): duration, acceleration, and a delay for builds that start on a click or with the previous
     document.querySelectorAll('.reveal .slides .fragment').forEach(f => {
-      const d = f.dataset; if (d.duration) f.style.transitionDuration = d.duration + 's'; if (d.ease) f.style.transitionTimingFunction = d.ease;
-      if (d.delay && !/^(after|transition)$/.test(d.start || '')) f.style.transitionDelay = d.delay + 's';
+      const d = f.dataset, st = f.style; if (d.duration) st.transitionDuration = st.animationDuration = d.duration + 's'; if (d.ease) st.transitionTimingFunction = st.animationTimingFunction = d.ease;
+      if (d.delay && !/^(after|transition)$/.test(d.start || '')) st.transitionDelay = st.animationDelay = d.delay + 's';
+      if (d.angle) st.setProperty('--gs-angle', d.angle + 'deg');   // the Rotate action's turn
     });
     if (changed) Reveal.sync();
     if (new URLSearchParams(location.search).get('view') === 'scroll') Reveal.configure({ view: 'scroll' });   // read as a page (reveal's scroll view)
@@ -240,7 +241,7 @@
     .sl-instant .reveal .slides section, .sl-instant .reveal .slides .fragment { transition: none !important; }
     .reveal .box[data-link], .reveal .box.audio { cursor: pointer; }
     .reveal .box.audio[data-hide-icon] { opacity: 0; }
-    .reveal .slides .box.fragment.gs-seq { opacity: 1 !important; visibility: inherit !important; transform: none !important; }
+    .reveal .slides .box.fragment.gs-seq { opacity: 1 !important; visibility: inherit !important; transform: none !important; scale: none !important; animation: none !important; }
     .reveal .gs-seq .gs-w { display: inline-block; opacity: 0; transform: var(--gs-from); transition: opacity var(--gs-d) var(--gs-ease), transform var(--gs-d) var(--gs-ease); transition-delay: calc(var(--i) * var(--gs-step)); }
     .reveal .gs-seq.visible .gs-w { opacity: 1; transform: none; }
     .reveal .gs-word { white-space: nowrap; }

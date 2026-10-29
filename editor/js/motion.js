@@ -3,7 +3,10 @@
 /* Slides' transitions mapped onto reveal.js, stored per slide as data-transition / data-transition-speed.
    Dissolve and Fade both fade (written differently so the choice round-trips); Slide from left is ours. */
 const TRANSITIONS = [['none', 'None'], ['fade', 'Dissolve'], ['fade-in fade-out', 'Fade'], ['slide', 'Slide from right'],
-  ['sl-left', 'Slide from left'], ['convex', 'Flip'], ['concave', 'Cube'], ['zoom', 'Gallery'], ['morph', 'Morph']];
+  ['sl-left', 'Slide from left'], ['sl-up', 'Slide from bottom'], ['sl-down', 'Slide from top'], ['convex', 'Flip'], ['concave', 'Cube'], ['zoom', 'Gallery'],
+  // Keynote's Wipe and Move In (base.css)
+  ['wipe-r', 'Wipe from left'], ['wipe-l', 'Wipe from right'], ['wipe-d', 'Wipe from top'], ['wipe-u', 'Wipe from bottom'],
+  ['move-in-r', 'Move in from left'], ['move-in-l', 'Move in from right'], ['move-in-d', 'Move in from top'], ['move-in-u', 'Move in from bottom'], ['morph', 'Morph']];
 const SPEEDS = ['slow', '', 'fast'];
 /* Morph is reveal's Auto-Animate (Keynote's Magic Move): data-auto-animate on the slide, its speed as
    data-auto-animate-duration. Boxes pair with the previous slide's by data-morph (Duplicate slide sets it), else by id. */
@@ -35,9 +38,15 @@ $('#ed-transition').onclick = () => setTransPanel(trans.hidden);
 /* Object animations, as reveal fragments in the order of data-fragment-index (Motion panel). */
 const EFFECTS = [['appear', 'Appear'], ['fade-in', 'Fade in'], ['fade-right', 'Fly in from left'], ['fade-left', 'Fly in from right'],
   ['fade-up', 'Fly in from bottom'], ['fade-down', 'Fly in from top'], ['zoom-in', 'Zoom in'],
+  // Keynote's builds (base.css): Wipe and Move In from each side, Scale, Pop
+  ['wipe-r', 'Wipe from left'], ['wipe-l', 'Wipe from right'], ['wipe-d', 'Wipe from top'], ['wipe-u', 'Wipe from bottom'],
+  ['move-in-r', 'Move in from left'], ['move-in-l', 'Move in from right'], ['move-in-d', 'Move in from top'], ['move-in-u', 'Move in from bottom'],
+  ['scale-in', 'Scale'], ['pop-in', 'Pop'],
   // reveal's other fragment styles: out, dimmed, shown for one step only, and emphasis on something already there
   ['fade-out', 'Fade out'], ['semi-fade-out', 'Dim'], ['fade-in-then-out', 'Fade in, then out'], ['fade-in-then-semi-out', 'Fade in, then dim'],
-  ['highlight-current-blue', 'Highlight while current'], ['grow', 'Grow'], ['shrink', 'Shrink'], ['strike', 'Strike through']];
+  ['highlight-current-blue', 'Highlight while current'], ['grow', 'Grow'], ['shrink', 'Shrink'], ['strike', 'Strike through'],
+  // Keynote's actions: Rotate by data-angle (degrees, negative counterclockwise; 360 by default), Pulse, Pop
+  ['spin', 'Rotate'], ['pulse', 'Pulse'], ['pop', 'Pop (emphasis)']];
 const effectOf = b => EFFECTS.find(([c]) => b.classList.contains(c))?.[0] || 'fade-in';
 const animBoxes = () => boxes().filter(b => b.classList.contains('fragment'))
   .map((b, i) => [b, +(b.dataset.fragmentIndex ?? i), 'withPrevious' in b.dataset ? 1 : 0])
@@ -49,7 +58,7 @@ const openAnims = new Set();
    build only), data-duration / data-delay in seconds, data-ease the acceleration. present.js plays them. */
 const START_LABEL = { click: 'On click', with: 'With previous', after: 'After previous', transition: 'After transition' };
 const EASES = [['', 'Acceleration: default'], ['linear', 'None'], ['ease-in', 'Ease in'], ['ease-out', 'Ease out'], ['ease-in-out', 'Ease in and out']];
-const TIMING = ['start', 'duration', 'delay', 'ease'];
+const TIMING = ['start', 'duration', 'delay', 'ease', 'angle'];   // and Rotate's angle, copied and removed with them
 /* Delivery (data-build), as Keynote: a text box by paragraph, by highlighted paragraph (the earlier ones dim), by word
    or by character; a table by row, column or cell. present.js plays them. */
 const DELIVERY_TEXT = [['', 'All at once'], ['paragraph', 'By paragraph'], ['highlight', 'By highlighted paragraph'], ['word', 'By word'], ['character', 'By character']];
@@ -110,6 +119,7 @@ function renderAnims() {
       <select class="t">${Object.entries(START_LABEL).filter(([v]) => v !== 'transition' || !i).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <div class="timing"><label>Duration (s)<input class="dur" type="number" min="0.1" max="20" step="0.1" placeholder="0.5"></label>
       <label>Delay (s)<input class="del" type="number" min="0" max="60" step="0.1" placeholder="0"></label></div>
+      <label class="ang">Angle (°)<input type="number" min="-3600" max="3600" step="15" placeholder="360"></label>
       <select class="ease">${EASES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <select class="dl"></select></div>`;
     const when = start === 'with' ? `With build ${step}` : start === 'after' && i ? `After build ${step - 1}` : START_LABEL[start] || 'On click';   // Keynote names the build it follows
@@ -122,6 +132,9 @@ function renderAnims() {
     const num = (cls, key) => { const f = /** @type {HTMLInputElement} */ (r.querySelector(cls)); f.value = b.dataset[key] ?? '';
       f.onchange = () => { const v = parseFloat(f.value); each(x => { if (v >= 0 && isFinite(v)) x.dataset[key] = String(Math.round(v * 100) / 100); else delete x.dataset[key]; }); commit(); renderAnims(); }; };
     num('.dur', 'duration'); num('.del', 'delay');
+    const ang = /** @type {HTMLElement} */ (r.querySelector('.ang')), af = /** @type {HTMLInputElement} */ (ang.firstElementChild);
+    ang.hidden = effectOf(b) !== 'spin'; af.value = b.dataset.angle ?? '';
+    af.onchange = () => { const v = parseFloat(af.value); each(x => { if (isFinite(v)) x.dataset.angle = String(Math.round(v)); else delete x.dataset.angle; }); commit(); renderAnims(); };
     const ez = /** @type {HTMLSelectElement} */ (r.querySelector('select.ease')); ez.value = b.dataset.ease || '';
     ez.onchange = () => { each(x => { if (ez.value) x.dataset.ease = ez.value; else delete x.dataset.ease; }); commit(); renderAnims(); };
     const ds = /** @type {HTMLSelectElement} */ (r.querySelector('select.dl'));
@@ -149,7 +162,14 @@ async function playAnims() {
     'zoom-in': [{ opacity: 0, scale: .1 }, { opacity: 1, scale: 1 }], 'fade-out': [{ opacity: 1 }, { opacity: 0 }], 'semi-fade-out': [{ opacity: 1 }, { opacity: .5 }],
     'fade-in-then-out': [{ opacity: 0 }, { opacity: 1, offset: .3 }, { opacity: 1, offset: .7 }, { opacity: 0 }], 'fade-in-then-semi-out': [{ opacity: 0 }, { opacity: 1, offset: .4 }, { opacity: .5 }],
     'highlight-current-blue': [{ color: 'inherit' }, { color: '#1b6ac9' }, { color: 'inherit' }], grow: [{ scale: 1 }, { scale: 1.3 }, { scale: 1 }],
-    shrink: [{ scale: 1 }, { scale: .7 }, { scale: 1 }], strike: [{ textDecoration: 'none' }, { textDecoration: 'line-through' }] };
+    shrink: [{ scale: 1 }, { scale: .7 }, { scale: 1 }], strike: [{ textDecoration: 'none' }, { textDecoration: 'line-through' }],
+    'wipe-r': [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0)' }], 'wipe-l': [{ clipPath: 'inset(0 0 0 100%)' }, { clipPath: 'inset(0)' }],
+    'wipe-d': [{ clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0)' }], 'wipe-u': [{ clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0)' }],
+    'move-in-r': [{ translate: `-${W}px 0` }, { translate: '0 0' }], 'move-in-l': [{ translate: `${W}px 0` }, { translate: '0 0' }],
+    'move-in-d': [{ translate: `0 -${H}px` }, { translate: '0 0' }], 'move-in-u': [{ translate: `0 ${H}px` }, { translate: '0 0' }],
+    'scale-in': [{ scale: 0 }, { scale: 1 }], 'pop-in': [{ scale: 0 }, { scale: 1.12, offset: .6 }, { scale: .96, offset: .8 }, { scale: 1 }],
+    pulse: [{ scale: 1 }, { scale: 1.15 }, { scale: 1 }], pop: [{ scale: 1 }, { scale: 1.25, offset: .3 }, { scale: .95, offset: .6 }, { scale: 1 }] };
+  const spin = b => [{ rotate: '0deg' }, { rotate: (b.dataset.angle ?? 360) + 'deg' }];
   const list = animBoxes(), wait = ms => new Promise(r => setTimeout(r, ms));
   list.forEach(b => { b.style.visibility = 'hidden'; });
   const steps = []; list.forEach(b => { if (startOf(b) === 'with' && steps.length) steps.at(-1).push(b); else steps.push([b]); });   // one step per click or After previous
@@ -157,7 +177,7 @@ async function playAnims() {
     if (i && !['after', 'transition'].includes(startOf(step[0]))) await wait(250);   // a click, in the preview
     if (['after', 'transition'].includes(startOf(step[0]))) await wait((+step[0].dataset.delay || 0) * 1000);
     await Promise.all(step.map(b => { b.style.visibility = '';
-      return b.animate(kf[effectOf(b)], { duration: (+b.dataset.duration || 0.5) * 1000, delay: startOf(b) === 'with' || startOf(b) === 'click' ? (+b.dataset.delay || 0) * 1000 : 0, easing: b.dataset.ease || 'ease', fill: 'backwards' }).finished; }));
+      return b.animate(effectOf(b) === 'spin' ? spin(b) : kf[effectOf(b)], { duration: (+b.dataset.duration || 0.5) * 1000, delay: startOf(b) === 'with' || startOf(b) === 'click' ? (+b.dataset.delay || 0) * 1000 : 0, easing: b.dataset.ease || 'ease', fill: 'backwards' }).finished; }));
   }
 }
 $('#ed-anim-add').onclick = addAnim;
@@ -170,7 +190,12 @@ function playTransition() {
   const frames = { fade: [{ opacity: 0 }, { opacity: 1 }], 'fade-in fade-out': [{ opacity: 0 }, { opacity: 1 }],
     slide: [{ transform: 'translateX(100%)' }, { transform: 'none' }], 'sl-left': [{ transform: 'translateX(-100%)' }, { transform: 'none' }],
     convex: [{ transform: 'perspective(2000px) rotateY(90deg)' }, { transform: 'none' }], concave: [{ transform: 'perspective(2000px) rotateY(-90deg)' }, { transform: 'none' }],
-    zoom: [{ transform: 'scale(.2)', opacity: 0 }, { transform: 'none', opacity: 1 }] }[k];
+    zoom: [{ transform: 'scale(.2)', opacity: 0 }, { transform: 'none', opacity: 1 }],
+    'sl-up': [{ transform: 'translateY(100%)' }, { transform: 'none' }], 'sl-down': [{ transform: 'translateY(-100%)' }, { transform: 'none' }],
+    'wipe-r': [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0)' }], 'wipe-l': [{ clipPath: 'inset(0 0 0 100%)' }, { clipPath: 'inset(0)' }],
+    'wipe-d': [{ clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0)' }], 'wipe-u': [{ clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0)' }],
+    'move-in-r': [{ transform: 'translateX(-100%)' }, { transform: 'none' }], 'move-in-l': [{ transform: 'translateX(100%)' }, { transform: 'none' }],
+    'move-in-d': [{ transform: 'translateY(-100%)' }, { transform: 'none' }], 'move-in-u': [{ transform: 'translateY(100%)' }, { transform: 'none' }] }[k];
   if (frames) s.animate(frames, { duration: ms, easing: 'cubic-bezier(.26,.86,.44,.985)' });
 }
 
