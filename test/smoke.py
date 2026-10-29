@@ -259,7 +259,18 @@ def checks(pg, deck: Path, errors):
     pg.evaluate("clearCellSel()"); pg.locator("#ed-canvas .box.table").screenshot(path=str(HERE / "cell-borders.png"))
     bd = pg.evaluate("""(() => { const c = [...document.querySelectorAll('#ed-canvas td')], s = (i, side, p) => c[i].style.getPropertyValue(`border-${side}-${p}`);
       return [s(0, 'top', 'width'), s(0, 'left', 'width'), s(0, 'right', 'width'), s(0, 'right', 'color'), s(4, 'bottom', 'width'), s(4, 'top', 'color'), s(2, 'left', 'width'), [...document.querySelectorAll('#ed-canvas td')].length]; })()""")
-    pg.keyboard.press("Escape"); pg.evaluate("(() => { sel.forEach(b => b.remove()); sel.clear(); render(); commit(); })()")
+    pg.keyboard.press("Escape"); pg.evaluate("setPanel(true)"); pg.evaluate("$('#ed-f-tstyle').closest('details').open = true")
+    tvis = pg.evaluate("!!$('#ed-f-tstyle').offsetParent")
+    pg.select_option("#ed-f-tstyle", "blue"); pg.fill("#ed-f-hrows", "1"); pg.dispatch_event("#ed-f-hrows", "change"); pg.fill("#ed-f-hcols", "1"); pg.dispatch_event("#ed-f-hcols", "change")
+    pg.fill("#ed-f-frows", "1"); pg.dispatch_event("#ed-f-frows", "change"); pg.check("#ed-f-altrows")
+    pg.locator("#ed-fmt").screenshot(path=str(HERE / "table-format.png")); pg.locator("#ed-canvas .box.table").screenshot(path=str(HERE / "table-styled.png"))
+    ts = pg.evaluate("""(() => { const b = [...sel][0], t = b.querySelector('table'), cs = x => getComputedStyle(x);
+      return [b.dataset.tableStyle, [...t.rows].map(r => [...r.cells].map(c => c.tagName === 'TH' ? 'h' : 'd').join('')).join(' '), cs(t.rows[0].cells[1]).color, cs(t.rows[2].cells[1]).fontWeight,
+        b.hasAttribute('data-alt-rows'), cs(t.rows[1].cells[1]).backgroundColor]; })()""")
+    pg.evaluate("setPanel(false)")
+    check("Format options → Table, as Keynote: a style (Blue header), header row and column as <th>, a bold footer row, alternating row colour",
+          tvis and ts[:4] == ["blue", "hhh hdd hdd", "rgb(255, 255, 255)", "700"] and ts[4] and ts[5] != "rgba(0, 0, 0, 0)", str(ts))
+    pg.evaluate("(() => { sel.forEach(b => b.remove()); sel.clear(); render(); commit(); })()")
     check("cell borders as Slides: Select borders (All … Bottom), Outer at 8px rings the block, Inner in red colours only the inside rules",
           vis and opts[:5] == ["All borders", "Inner borders", "Horizontal borders", "Vertical borders", "Outer borders"] and len(opts) == 9
           and bd[:3] == ["8px", "8px", ""] and bd[3] == "rgb(255, 0, 0)" and bd[4] == "8px" and bd[5] == "rgb(255, 0, 0)" and bd[6] == "", str(bd))

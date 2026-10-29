@@ -76,6 +76,7 @@ Rules:
   the table fills the box with 1pt black rules (base.css). Insert → Table picks the size; while editing, Tab / ⇧Tab move between
   cells (Tab in the last cell adds a row) and right-click inserts or deletes rows and columns. Merged cells are plain `colspan` /
   `rowspan`; a cell's fill is an inline `background-color` on the `<td>`, its borders inline `border-<side>-color / -width / -style`.
+  On the table box (Format options → Table): `data-table-style` = `light | blue | dark | minimal`, `data-header-rows` / `data-header-cols` (those cells are `<th>`), `data-footer-rows` (1–3, bold with a heavier rule above), `data-alt-rows` with `--alt-row: #rrggbb` (every second row's fill).
 - Web embeds: `<div class="box embed" …><div class="content"><iframe src="https://…" allowfullscreen></iframe></div></div>` shows a live page
   (or a YouTube / Vimeo player: Insert → Video → By URL converts the page address). The editor shows it but doesn't pass clicks
   to it; the slideshow does.

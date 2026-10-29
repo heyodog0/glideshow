@@ -132,6 +132,7 @@ function tableOp(op, td = cellAt()) {
   if (op === 'del-table') { const b = editing; stopEdit(); b.remove(); sel.clear(); drawOverlay(); commit(); return; }
   if (op === 'dist-rows') rows.forEach(r => r.style.removeProperty('height'));
   if (op === 'dist-cols') rows.forEach(r => [...r.cells].forEach(c => c.style.removeProperty('width')));
+  setTableHeads(editing);   // new rows and columns take the header cells' kind
   const keep = t.rows[Math.min(ri, t.rows.length - 1)]?.cells[Math.min(ci, t.rows[0].cells.length - 1)];
   if (keep) focusCell(keep);
   fitHeight(editing);

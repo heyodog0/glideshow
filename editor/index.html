@@ -233,6 +233,12 @@
       <label>Distance<span class="unit slider"><input type="range" id="ed-f-sh-distance" min="0" max="100" step="1"><input type="number" id="ed-f-sh-distance-n" min="0" max="100" class="short"> px</span></label>
       <label>Blur radius<span class="unit slider"><input type="range" id="ed-f-sh-blur" min="0" max="100" step="1"><input type="number" id="ed-f-sh-blur-n" min="0" max="100" class="short"> px</span></label>
     </details>
+    <details class="table-f"><summary>Table</summary>
+      <label>Style<select id="ed-f-tstyle"><option value="">Default</option><option value="light">Light</option><option value="blue">Blue header</option><option value="dark">Dark header</option><option value="minimal">Minimal</option></select></label>
+      <div class="row"><label>Header rows<input type="number" id="ed-f-hrows" min="0" max="5" step="1"></label><label>Header columns<input type="number" id="ed-f-hcols" min="0" max="5" step="1"></label></div>
+      <div class="row"><label>Footer rows<input type="number" id="ed-f-frows" min="0" max="3" step="1"></label></div>
+      <div class="row between"><label class="chk"><input type="checkbox" id="ed-f-altrows"> Alternating row color</label><input type="color" id="ed-f-altcolor" class="color-chip"></div>
+    </details>
     <details class="video-only"><summary>Video playback</summary>
       <label class="chk"><input type="checkbox" id="ed-f-v-auto"> Play automatically when the slide appears</label>
       <label class="chk"><input type="checkbox" id="ed-f-v-mute"> Mute audio</label>

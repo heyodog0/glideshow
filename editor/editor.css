@@ -480,6 +480,7 @@ body.drawing #ed-stage, body.drawing #ed-stage * { cursor: crosshair !important;
 #ed-canvas .box[data-shape="wordart"] > .content[contenteditable] { opacity: 1; }   /* while editing, show the real text */
 #ed-canvas .box[data-shape="wordart"]:has(> .content[contenteditable]) > svg.shape { visibility: hidden; }
 #ed-fmt:not(.is-video) .video-only { display: none; }
+#ed-fmt:not(.is-table) .table-f { display: none; }
 #ed-fmt.is-video .text-only { display: none; }
 /* In the editor a video is its poster with a play badge, as Slides; it plays when presenting. */
 #ed-canvas .box.video video, .thumb-canvas .box.video video { pointer-events: none; }

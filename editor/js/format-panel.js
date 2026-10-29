@@ -23,6 +23,9 @@ function updatePanel() {
   for (const [k, def] of Object.entries(SHADOW_UI)) { const v = b.dataset['shadow' + k[0].toUpperCase() + k.slice(1)] ?? def; F('sh-' + k).value = k === 'opacity' ? Math.round(v * 100) : v; if (F('sh-' + k + '-n')) F('sh-' + k + '-n').value = F('sh-' + k).value; }
   const img = b.querySelector('.content > img'); fmt.classList.toggle('is-image', !!img);
   const vid = b.querySelector('.content > video'); fmt.classList.toggle('is-video', !!vid);
+  const tbl = b.querySelector('.content table'); fmt.classList.toggle('is-table', !!tbl);
+  if (tbl) { F('tstyle').value = b.dataset.tableStyle || ''; F('hrows').value = b.dataset.headerRows || '0'; F('hcols').value = b.dataset.headerCols || '0'; F('frows').value = b.dataset.footerRows || '0';
+    F('altrows').checked = b.hasAttribute('data-alt-rows'); F('altcolor').value = toHex(b.style.getPropertyValue('--alt-row'), '#f3f3f3'); }
   if (vid) { const [, st, en] = trimOf(vid); F('v-start').value = st ? clock(st) : ''; F('v-end').value = en ? clock(en) : '';
     F('v-auto').checked = vid.hasAttribute('data-autoplay'); F('v-mute').checked = vid.hasAttribute('muted'); F('v-loop').checked = vid.hasAttribute('loop'); }
   if (img) { F('opacity').value = Math.round((img.style.opacity === '' ? 1 : +img.style.opacity) * 100); F('opacity-n').value = F('opacity').value;
@@ -64,6 +67,24 @@ F('fit').onchange = one(b => {
   fitHeight(b);
 }); });
 F('shadow').onclick = e => e.stopPropagation();
+/* Format options → Table, as Keynote's Table tab: a style, header rows and columns (real <th> cells), footer rows, and an
+   alternating row colour (data-table-style, data-header-rows / -cols, data-footer-rows, data-alt-rows with --alt-row). */
+function setTableHeads(b) {
+  const t = b.querySelector('.content table'); if (!t) return;
+  const hr = +b.dataset.headerRows || 0, hc = +b.dataset.headerCols || 0, g = cellGrid(t);
+  [...t.rows].forEach((tr, r) => [...tr.cells].forEach(td => {
+    const c = slotsOf(g, td)[0]?.[1] ?? 0, tag = r < hr || c < hc ? 'TH' : 'TD';
+    if (td.tagName === tag) return;
+    const n = document.createElement(tag); for (const a of td.attributes) n.setAttribute(a.name, a.value); n.append(...td.childNodes); td.replaceWith(n);
+  }));
+}
+const tableNum = (k, max) => one(b => { const v = Math.max(0, Math.min(max, Math.round(+F(k === 'headerRows' ? 'hrows' : k === 'headerCols' ? 'hcols' : 'frows').value || 0)));
+  if (v) b.dataset[k] = String(v); else delete b.dataset[k]; setTableHeads(b); fitHeight(b); });
+F('hrows').onchange = tableNum('headerRows', 5); F('hcols').onchange = tableNum('headerCols', 5); F('frows').onchange = tableNum('footerRows', 3);
+F('tstyle').onchange = one(b => { if (F('tstyle').value) b.dataset.tableStyle = F('tstyle').value; else delete b.dataset.tableStyle; });
+F('altrows').onchange = one(b => { if (F('altrows').checked) { b.dataset.altRows = ''; b.style.setProperty('--alt-row', F('altcolor').value); } else { delete b.dataset.altRows; b.style.removeProperty('--alt-row'); } });
+F('altcolor').oninput = () => { const b = [...sel][0]; if (b && b.hasAttribute('data-alt-rows')) b.style.setProperty('--alt-row', F('altcolor').value); };
+F('altcolor').onchange = one(b => { if (!b.hasAttribute('data-alt-rows')) { b.dataset.altRows = ''; F('altrows').checked = true; } b.style.setProperty('--alt-row', F('altcolor').value); });
 F('alt').onchange = one(b => {   // alt text: the image's alt, or an aria-label on other boxes
   const v = F('alt').value.trim(), img = b.querySelector('.content > img');
   if (img) img.alt = v; else if (v) b.setAttribute('aria-label', v); else b.removeAttribute('aria-label');
