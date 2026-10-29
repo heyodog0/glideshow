@@ -89,6 +89,8 @@
 .box.image > .content, .box.video > .content, .box.embed > .content { padding: 0; height: 100%; }
 .box.embed iframe { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
 .box.live > .content { padding: 0; height: 100%; } .box.live iframe { display: block; width: 100%; height: 100%; border: 0; background: transparent; }
+.box.audio > .content { padding: 0; height: 100%; display: flex; align-items: center; justify-content: center; } .box.audio .audio-icon { width: 100%; height: 100%; fill: var(--fill, #5f6368); }
+.box.audio audio { display: none; } .box.audio.playing .audio-icon { fill: var(--stroke, #1a73e8); }
 .box.video video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
 .box[data-autofit="shrink"] > .content { zoom: var(--fit, 1); }   /* --fit set by shapes.js */
 .box[data-crop] > .content { position: relative; overflow: hidden; }

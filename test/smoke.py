@@ -921,6 +921,15 @@ def checks(pg, deck: Path, errors):
           adj == ["exposure:40 contrast:25 temperature:-30", True, 3, True] and reset == ["", False, "", "0"], f"{adj} {reset}")
     pg.evaluate("(() => { setPanel(false); slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
     check("fill transparency (palette slider, #rrggbbaa) and image opacity (Format options → Adjustments)", vis and res == ["#ff000099", "0.3", "#ff0000"], f"{vis} {res}")
+    WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="
+    au = pg.evaluate(f"""(() => {{ const s = blankSlide(); slides.push(s); go(slides.length - 1); const b = makeBox({{x: 900, y: 500, w: 96, h: 96, cls: 'audio', html: SPEAKER + '<audio src="{WAV}" preload="metadata"></audio>'}});
+      s.append(b); sel = new Set([b]); render(); updateToolbar(); setPanel(true); return [b.id, !!$('#ed-f-a-auto').offsetParent || !!$('#ed-f-a-auto').closest('details').offsetParent, isMedia(b)]; }})()""")
+    pg.evaluate("$('#ed-f-a-auto').closest('details').open = true"); pg.check("#ed-f-a-auto"); pg.check("#ed-f-a-across"); pg.check("#ed-f-a-hide")
+    aa = pg.evaluate(f"(() => {{ const b = document.getElementById('{au[0]}'), a = b.querySelector('audio'); return [a.hasAttribute('data-autoplay'), a.hasAttribute('data-ignore'), 'hideIcon' in b.dataset, !!b.querySelector('svg.audio-icon')]; }})()")
+    menu_audio = pg.evaluate("MENUS.Insert.some(i => i.label === 'Audio')")
+    pg.evaluate("(() => { setPanel(false); slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
+    check("Insert → Audio: a speaker icon box; Format options → Audio playback: Play automatically, Keep playing across slides, Hide the icon when presenting",
+          au[1:] == [True, True] and aa == [True, True, True, True] and menu_audio, f"{au} {aa} {menu_audio}")
     gid = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1); const r = makeBox({x: 100, y: 100, w: 400, h: 300, shape: 'rect'}), tx = makeBox({x: 700, y: 100, w: 400, h: 200, html: 'grad'});
       s.append(r, tx); sel = new Set([r]); render(); updateToolbar(); return [r.id, tx.id]; })()""")
     pg.click(".swatch[data-for=fill]"); pg.click(".palette-tabs button[data-t=gradient]"); pg.locator(".menu.palette").screenshot(path=str(HERE / "gradient-palette.png"))
@@ -1797,6 +1806,13 @@ def checks(pg, deck: Path, errors):
     s3 = show_with({"loop": ""}); s3.evaluate("Reveal.slide(Reveal.getTotalSlides())"); s3.wait_for_timeout(200); s3.keyboard.press("End"); s3.keyboard.press("ArrowRight"); s3.wait_for_timeout(300); looped = s3.evaluate("Reveal.getIndices().h"); s3.close()
     s4 = show_with({"slideNumbers": "on"}); sn = s4.evaluate("[...document.querySelectorAll('.reveal .slides section > .slide-num')].map(e => e.textContent)"); s4.close()
     check("the slideshow numbers the slides (shapes.js) when the deck says so", len(sn) >= 2 and sn[:2] == ["1", "2"], str(sn))
+    s5 = show_with({"soundtrack": "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=", "soundtrackLoop": ""})
+    trk = s5.evaluate("(() => { const t = document.getElementById('sl-soundtrack'); return [!!t, t?.loop]; })()")
+    s5.evaluate("""(() => { const s = Reveal.getCurrentSlide(), b = document.createElement('div'); b.className = 'box audio'; b.id = 'au-t'; b.style.cssText = 'position:absolute;left:0;top:0;width:96px;height:96px';
+      b.innerHTML = '<div class="content"><audio src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=" loop></audio></div>'; s.append(b);
+      b.querySelector('audio').addEventListener('play', () => { window.__played = true; }); })()""")
+    h0 = s5.evaluate("Reveal.getIndices().h"); s5.click("#au-t"); s5.wait_for_timeout(300); played = s5.evaluate("[!!window.__played, Reveal.getIndices().h]"); s5.close()
+    check("the slideshow: a soundtrack plays through the show (looping), and a click on an audio icon plays it without advancing", trk == [True, True] and played == [True, h0], f"{trk} {played}")
     check("Slideshow settings play in the deck: Self-playing moves on by itself, Links only ignores keys and clicks, Loop goes round", selfp == 0 and links == 0 and looped == 0, f"{selfp} {links} {looped}")
     check("decks carry present.js (Slides' presenting keys)", v.evaluate("!!document.getElementById('deck-present') && !Reveal.getConfig().keyboard[79] && Reveal.getConfig().keyboard[79] === null"))
     check("viewer loads the notes plugin (S = speaker view)", v.evaluate("!!(window.Reveal && Reveal.hasPlugin('notes'))"))

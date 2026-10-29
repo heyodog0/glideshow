@@ -228,7 +228,8 @@
   css.textContent = `
     html, body, .reveal { background: #000 !important; }
     .sl-instant .reveal .slides section, .sl-instant .reveal .slides .fragment { transition: none !important; }
-    .reveal .box[data-link] { cursor: pointer; }
+    .reveal .box[data-link], .reveal .box.audio { cursor: pointer; }
+    .reveal .box.audio[data-hide-icon] { opacity: 0; }
     .reveal .slides .box.fragment.gs-seq { opacity: 1 !important; visibility: inherit !important; transform: none !important; }
     .reveal .gs-seq .gs-w { display: inline-block; opacity: 0; transform: var(--gs-from); transition: opacity var(--gs-d) var(--gs-ease), transform var(--gs-d) var(--gs-ease); transition-delay: calc(var(--i) * var(--gs-step)); }
     .reveal .gs-seq.visible .gs-w { opacity: 1; transform: none; }
@@ -332,7 +333,7 @@
     if (pop && !e.target.closest?.('.sl-pop')) { closePop(); return; }
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || memo) return;
     if (screen) { screen.remove(); screen = null; return; }
-    if (e.target.closest?.('a, [data-link], button, input, textarea, select, video, audio, iframe, [contenteditable], .sl-bar, .sl-pop')) return;
+    if (e.target.closest?.('.box.audio, a, [data-link], button, input, textarea, select, video, audio, iframe, [contenteditable], .sl-bar, .sl-pop')) return;
     if (!e.target.closest?.('.reveal')) return;
     down = { x: e.clientX, y: e.clientY };
   });
@@ -348,6 +349,19 @@
     else if (/^https?:/i.test(href)) window.open(href, '_blank', 'noopener');
     else location.href = href;   // mailto:, tel:
   };
+  /* Audio boxes: a click plays or pauses; the icon shows it playing; data-hide-icon hides it but it still plays. A soundtrack
+     (data-soundtrack on .slides, Slideshow settings) plays from the start, looping with data-soundtrack-loop. */
+  addEventListener('click', e => {
+    const ab = e.target.closest?.('.reveal .box.audio'); if (!ab) return;
+    const a = ab.querySelector('audio'); if (a) { a.paused ? a.play().catch(() => {}) : a.pause(); }
+  }, true);
+  document.querySelectorAll('.reveal .box.audio audio').forEach(a => ['play', 'pause', 'ended'].forEach(ev => a.addEventListener(ev, () => a.closest('.box').classList.toggle('playing', !a.paused))));
+  const trackSrc = document.querySelector('.reveal .slides')?.getAttribute('data-soundtrack');
+  if (trackSrc && !/print-pdf/.test(location.search)) {
+    const track = Object.assign(new Audio(trackSrc), { loop: document.querySelector('.reveal .slides').hasAttribute('data-soundtrack-loop') }); track.id = 'sl-soundtrack'; document.body.append(track);
+    const go = () => track.play().then(() => ['keydown', 'pointerdown'].forEach(ev => removeEventListener(ev, go, true))).catch(() => {});
+    go(); ['keydown', 'pointerdown'].forEach(ev => addEventListener(ev, go, true));   // a browser lets sound start after the first key or click
+  }
   addEventListener('click', e => {
     if (linksOnly && !e.target.closest?.('a, [data-link]')) { down = null; return; }   // Links only: a click elsewhere doesn't advance
     const a = e.target.closest?.('.reveal a[href^="#"]:not([href^="#/"]), .reveal .box[data-link]');

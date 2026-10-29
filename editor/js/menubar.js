@@ -130,6 +130,7 @@ const MENUS = {
     { label: 'Note for AI', icon: 'sticky_note_2', run: () => { const b = addNote(cur, W - 620, 60, ''); sel = new Set([b]); startEdit(b); } },
     '-',
     { label: 'Video', icon: 'movie', items: [{ label: 'Upload from computer', icon: 'upload', run: () => $('#ed-video-file').click() }, { label: 'By URL (YouTube, Vimeo)', icon: 'link', run: () => askURL('Insert video by URL', addEmbed) }] },
+    { label: 'Audio', icon: 'volume_up', run: () => $('#ed-audio-file').click() },
     { label: 'Embed', icon: 'web', run: () => askURL('Embed a web page', addEmbed) },
     { label: 'Live box', icon: 'play_circle', run: () => addLive() },   // ours: a page with its own script, on the slide
     '-',

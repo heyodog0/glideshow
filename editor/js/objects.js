@@ -70,6 +70,15 @@ async function videoPoster(src) {
   const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.85)).then(b => b && shrinkPicture(b));   // a 4K video's frame is a big picture too
   return blob ? { poster: (await (await fetch('/api/upload?ext=jpg', { method: 'POST', body: blob })).json()).src, w: v.videoWidth, h: v.videoHeight } : null;
 }
+/* Insert → Audio (Keynote's audio object; Slides' Insert → Audio): a speaker icon on the slide whose <audio> plays when
+   it's clicked in the slideshow, or by itself (Format options → Audio playback). */
+const SPEAKER = '<svg class="audio-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+async function addAudio(file) {
+  setStatus('Uploading audio…');
+  const ext = (file.name.split('.').pop() || 'mp3').toLowerCase();
+  const { src } = await (await fetch('/api/upload?ext=' + ext, { method: 'POST', body: file })).json();
+  insert(makeBox({ x: W / 2 - 48, y: H / 2 - 48, w: 96, h: 96, cls: 'audio', html: SPEAKER + `<audio src="${src}" preload="metadata"></audio>` })); setStatus('');
+}
 async function addVideo(file, at) {
   const mb = file.size / 1e6;
   setStatus(mb > 50 ? `Uploading a large video (${Math.round(mb)} MB): the deck folder grows by that much…` : 'Uploading video…');

@@ -25,6 +25,8 @@ function updatePanel() {
   for (const [k, def] of Object.entries(SHADOW_UI)) { const v = b.dataset['shadow' + k[0].toUpperCase() + k.slice(1)] ?? def; F('sh-' + k).value = k === 'opacity' ? Math.round(v * 100) : v; if (F('sh-' + k + '-n')) F('sh-' + k + '-n').value = F('sh-' + k).value; }
   const img = b.querySelector('.content > img'); fmt.classList.toggle('is-image', !!img);
   const vid = b.querySelector('.content > video'); fmt.classList.toggle('is-video', !!vid);
+  const aud = b.querySelector('.content > audio'); fmt.classList.toggle('is-audio', !!aud);
+  if (aud) { F('a-auto').checked = aud.hasAttribute('data-autoplay'); F('a-loop').checked = aud.hasAttribute('loop'); F('a-across').checked = aud.hasAttribute('data-ignore'); F('a-hide').checked = 'hideIcon' in b.dataset; }
   const tbl = b.querySelector('.content table'); fmt.classList.toggle('is-table', !!tbl);
   if (tbl) { F('tstyle').value = b.dataset.tableStyle || ''; F('hrows').value = b.dataset.headerRows || '0'; F('hcols').value = b.dataset.headerCols || '0'; F('frows').value = b.dataset.footerRows || '0';
     F('altrows').checked = b.hasAttribute('data-alt-rows'); F('altcolor').value = toHex(b.style.getPropertyValue('--alt-row'), '#f3f3f3'); }
@@ -141,6 +143,10 @@ F('v-start').onchange = F('v-end').onchange = one(b => {
   const [base] = trimOf(v), st = secs(F('v-start').value), en = secs(F('v-end').value);
   v.setAttribute('src', base + (st || en ? `#t=${st}${en > st ? ',' + en : ''}` : ''));
 });
+/* Audio playback: reveal's data-autoplay, loop, and data-ignore (reveal leaves it playing when the slide changes); data-hide-icon on the box. */
+for (const [id, attr] of [['a-auto', 'data-autoplay'], ['a-loop', 'loop'], ['a-across', 'data-ignore']])
+  F(id).onchange = one(b => { const a = b.querySelector('.content > audio'); if (a) a.toggleAttribute(attr, F(id).checked); });
+F('a-hide').onchange = one(b => { if (F('a-hide').checked) b.dataset.hideIcon = ''; else delete b.dataset.hideIcon; });
 for (const [id, attr] of [['v-auto', 'data-autoplay'], ['v-mute', 'muted'], ['v-loop', 'loop']])
   F(id).onchange = one(b => { const v = b.querySelector('.content > video'); if (v) v.toggleAttribute(attr, F(id).checked); });
 F('shadow').onchange = one(b => { if (F('shadow').checked) b.dataset.shadow = ''; else delete b.dataset.shadow; shadeBox(b); });

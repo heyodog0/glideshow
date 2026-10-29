@@ -158,6 +158,7 @@ function showShowDialog(on) {
   const d = deckDoc.querySelector('.slides').dataset;
   SD('type').value = d.play || ''; SD('slide').value = d.playSlide || '5'; SD('build').value = d.playBuild || '2';
   SD('loop').checked = 'loop' in d; SD('idle-on').checked = !!d.idle; SD('idle').value = d.idle || '5';
+  syncTrack();
   syncShowDialog();
 }
 function syncShowDialog() { showDlg.querySelectorAll('[data-self]').forEach(r => { /** @type {HTMLElement} */ (r).hidden = SD('type').value !== 'self'; }); SD('idle').disabled = !SD('idle-on').checked; }
@@ -170,6 +171,16 @@ function saveShowSettings() {
   syncShowDialog(); scheduleSave();
 }
 for (const k of ['type', 'slide', 'build', 'loop', 'idle-on', 'idle']) SD(k).onchange = saveShowSettings;
+/* …and a soundtrack (Keynote's Document → Audio): data-soundtrack on .slides, played through the whole show (present.js). */
+function syncTrack() { const d = deckDoc.querySelector('.slides').dataset; $('#ed-show-track-name').textContent = d.soundtrack ? d.soundtrack.split('/').pop() : '';
+  $('#ed-show-track-off').hidden = !d.soundtrack; SD('track-loop').checked = 'soundtrackLoop' in d; SD('track-loop').disabled = !d.soundtrack; }
+$('#ed-show-track').onclick = () => SD('track-file').click();
+SD('track-file').onchange = async () => { const f = SD('track-file').files?.[0]; SD('track-file').value = ''; if (!f) return;
+  setStatus('Uploading audio…'); const ext = (f.name.split('.').pop() || 'mp3').toLowerCase();
+  const { src } = await (await fetch('/api/upload?ext=' + ext, { method: 'POST', body: f })).json(); setStatus('');
+  deckDoc.querySelector('.slides').dataset.soundtrack = src; syncTrack(); scheduleSave(); };
+$('#ed-show-track-off').onclick = () => { const d = deckDoc.querySelector('.slides').dataset; delete d.soundtrack; delete d.soundtrackLoop; syncTrack(); scheduleSave(); };
+SD('track-loop').onchange = () => { const d = deckDoc.querySelector('.slides').dataset; if (SD('track-loop').checked) d.soundtrackLoop = ''; else delete d.soundtrackLoop; scheduleSave(); };
 $('#ed-show-done').onclick = showDlg.querySelector('.sc-close').onclick = () => showShowDialog(false);
 showDlg.addEventListener('pointerdown', e => { if (e.target === showDlg) showShowDialog(false); });
 addEventListener('keydown', e => { if (!showDlg.hidden && (e.key === 'Escape' || e.key === 'Enter')) { e.preventDefault(); e.stopImmediatePropagation(); saveShowSettings(); showShowDialog(false); } }, true);
