@@ -181,6 +181,10 @@ lines short or the font smaller (`check` reports code that is cut off).
 (`data-adj` / `data-adj2`, 0..1 of the box, may be negative) points at the feature, or an `ellipse` with
 `--fill: transparent; --stroke: #d93025; --sw: 6px` around it.
 
+**Text styles.** To keep a deck's text consistent, put paragraphs in a style rather than sizing each: `<p class="ps-heading">`,
+`ps-title`, `ps-subtitle`, `ps-body`, `ps-caption` or `ps-quote`. Change a style's look for the whole deck in its rule in
+`<style id="deck-theme">` (the `/* text-styles */` block), not on each paragraph.
+
 **More than one build on a box.** A box's own build is its `fragment` class (with `data-fragment-index`); further builds on
 the same box go in one attribute, `data-builds`, a `;`-separated list of `effect key=value …`. Each is a step of its own
 after the box's own build (`start=with`: the same step; `start=after`: its own step that starts by itself). A Move goes

@@ -617,6 +617,20 @@ def checks(pg, deck: Path, errors):
     pg.select_option("#ed-f-from", "c"); pg.fill("#ed-f-x", "5"); pg.press("#ed-f-x", "Enter")
     fo = pg.evaluate("(() => { const b = [...document.querySelectorAll('#ed-canvas .box[data-shape]')].pop(); return [b.style.width, b.style.height, b.style.transform, b.dataset.flip, 'shadow' in b.dataset, parseFloat(b.style.left) + parseFloat(b.style.width) / 2, getComputedStyle(b).scale]; })()")
     check("Format options (inches, as Slides): size, lock aspect, rotate, flip, shadow, position from centre", fo == ["240px", "200px", "rotate(30deg)", "h", True, 960, "-1 1"], str(fo))
+    # paragraph styles (D11): Format options → Paragraph style; a CSS class per style in the deck; Update to match
+    ps = pg.evaluate("""(() => { const was = cur, had = [...sel], s = blankSlide(); slides.push(s); go(slides.length - 1);
+      const a = makeBox({ x: 100, y: 100, w: 900, h: 300, html: '<p>Big idea</p><p>Detail</p>' }), b = makeBox({ x: 100, y: 500, w: 900, h: 200, html: '<p>Another idea</p>' }); s.append(a, b);
+      sel = new Set([a]); render(); fmt.hidden = false; updatePanel();
+      const opts = [...document.querySelectorAll('#ed-f-pstyle option')].map(o => o.text);
+      const t0 = performance.now(); document.querySelector('#ed-f-pstyle').value = 'ps-heading'; document.querySelector('#ed-f-pstyle').onchange(); const ms = performance.now() - t0;
+      sel = new Set([b]); document.querySelector('#ed-f-pstyle').value = 'ps-heading'; document.querySelector('#ed-f-pstyle').onchange();
+      const css = deckDoc.querySelector('#deck-theme').textContent, h1 = getComputedStyle(content(a).querySelector('p')).fontWeight;
+      const p0 = content(a).querySelector('p'); p0.innerHTML = '<span style="font-size: 90px; color: rgb(217, 48, 37);">Big idea</span>'; sel = new Set([a]); updatePanel();
+      document.querySelector('#ed-f-pstyle-update').click();
+      const other = getComputedStyle(content(b).querySelector('p')), out = [opts.join('/'), content(a).querySelectorAll('p.ps-heading').length, /\/\* text-styles \*\//.test(css), h1, other.fontSize, other.color, document.querySelector('#ed-f-pstyle').value, Math.round(ms), p0.querySelector('span').getAttribute('style')];
+      slides.pop(); go(was); sel = new Set(had); render(); commit(); updatePanel(); return out; })()""")
+    check(f"Format options → Paragraph style (Keynote's styles, D11): Title / Subtitle / Heading / Body / Caption / Quote as a class on each paragraph with its rule in the deck's CSS ({ps[7]} ms); Update to match makes every paragraph in the style look like the selected text",
+          ps[0] == "None/Title/Subtitle/Heading/Body/Caption/Quote" and ps[1] == 2 and ps[2] and ps[3] == "700" and ps[4] == "90px" and ps[5] == "rgb(217, 48, 37)" and ps[6] == "ps-heading" and ps[7] < 100 and ps[8] is None, str(ps))
     pg.fill("#ed-f-rot", "90"); pg.press("#ed-f-rot", "Enter")
     # map the local shadow offset through the box's actual rendered matrix (flip · rotate) and expect "straight down"
     sh = pg.evaluate("""(() => { const b = [...document.querySelectorAll('#ed-canvas .box[data-shape]')].pop();

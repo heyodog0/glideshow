@@ -12,6 +12,7 @@ function updatePanel() {
   fmt.querySelectorAll('input, select, button:not(#ed-fmt-close)').forEach(e => { e.disabled = !b; });
   if (!b) return;
   const g = geo(b), c = content(b), cs = getComputedStyle(c), centre = F('from').value === 'c';
+  const pt = pstyleTargets()[0]; F('pstyle').value = pt ? PSTYLES.find(([k]) => pt.classList.contains(k))?.[0] || '' : '';
   F('w').value = toIn(g.w); F('h').value = toIn(g.h);
   F('lock').checked = b.dataset.lock === 'aspect' || isMedia(b);
   F('rot').value = rot(b);
@@ -154,3 +155,47 @@ F('shadow').onchange = one(b => { if (F('shadow').checked) b.dataset.shadow = ''
 $('#ed-fmt-close').onclick = () => setPanel(false);
 $('#ed-format-options').onclick = () => setPanel(fmt.hidden);
 $('#ed-animate').onclick = () => { setTransPanel(true); addAnim(); };
+
+/* Paragraph styles (Keynote's, D11): each style is a class on the paragraph (ps-title …) with its rule in a marked block
+   of the deck's own CSS (<style id="deck-theme">), sized from the theme until changed. Format options → Paragraph style
+   puts the paragraphs being edited (or every paragraph of the selected boxes) in a style; Update to match rewrites the
+   style's rule from the selected text's look, so every paragraph in it follows. */
+const PSTYLES = [['ps-title', 'Title', 'font-size: var(--th-title-size); font-weight: 700; line-height: 1.1;'], ['ps-subtitle', 'Subtitle', 'font-size: calc(var(--th-body-size) * 1.2); color: #5f6368;'],
+  ['ps-heading', 'Heading', 'font-size: calc(var(--th-body-size) * 1.1); font-weight: 700;'], ['ps-body', 'Body', 'font-size: var(--th-body-size);'],
+  ['ps-caption', 'Caption', 'font-size: calc(var(--th-body-size) * .6); color: #5f6368;'], ['ps-quote', 'Quote', 'font-size: calc(var(--th-body-size) * 1.1); font-style: italic;']];
+const PSTYLE_RE = /\/\* text-styles \*\/[\s\S]*?\/\* end text-styles \*\/\n?/;
+F('pstyle').innerHTML = '<option value="">None</option>' + PSTYLES.map(([c, l]) => `<option value="${c}">${l}</option>`).join('');
+/* The deck's style rules ({class: css}), the defaults for any it doesn't define. */
+function pstyleRules() {
+  const css = deckDoc?.querySelector('#deck-theme')?.textContent.match(PSTYLE_RE)?.[0] || '', rules = Object.fromEntries(PSTYLES.map(([c, , d]) => [c, d]));
+  for (const m of css.matchAll(/\.slides \.(ps-[\w-]+) \{([^}]*)\}/g)) rules[m[1]] = m[2].trim();
+  return rules;
+}
+function writePstyles(rules) {
+  const el = deckDoc.querySelector('#deck-theme') || deckDoc.head.appendChild(Object.assign(deckDoc.createElement('style'), { id: 'deck-theme' }));
+  const block = '/* text-styles */\n' + Object.entries(rules).map(([c, css]) => `.slides .${c} { ${css} }`).join('\n') + '\n/* end text-styles */\n';
+  el.textContent = PSTYLE_RE.test(el.textContent) ? el.textContent.replace(PSTYLE_RE, block) : el.textContent.replace(/(\/\* end slides-theme \*\/\n?)|$/, (m) => m + block);
+  $('#ed-deck-theme-live').textContent = el.textContent;
+}
+/* The paragraphs a style goes on: those the edit's selection touches, or every paragraph of the selected boxes (a box's
+   content itself when its text isn't in paragraphs). */
+function pstyleTargets() {
+  const leaves = c => { const ps = [...c.querySelectorAll('p, div, li, h1, h2, h3, h4, h5, h6, blockquote')].filter(e => !e.querySelector('p, div, li, h1, h2, h3, h4, h5, h6, blockquote')); return ps.length ? ps : [c]; };
+  if (editing && lastRange) { const c = content(editing), ps = leaves(c).filter(e => e === c || lastRange.intersectsNode(e)); return ps.length ? ps : leaves(c); }
+  return [...sel].filter(b => content(b)?.textContent.trim()).flatMap(b => leaves(content(b)));
+}
+F('pstyle').onchange = () => {
+  const v = F('pstyle').value, ps = pstyleTargets(); if (!ps.length) return;
+  if (v && !PSTYLE_RE.test(deckDoc.querySelector('#deck-theme')?.textContent || '')) writePstyles(pstyleRules());   // the deck gets its own rules on first use
+  ps.forEach(p => { p.classList.remove(...PSTYLES.map(x => x[0])); if (v) p.classList.add(v); if (!p.classList.length) p.removeAttribute('class'); });
+  render(); commit(); scheduleSave();
+};
+F('pstyle-update').onclick = () => {
+  const ps = pstyleTargets(), cls = ps.map(p => PSTYLES.find(([c]) => p.classList.contains(c))?.[0]).find(Boolean); if (!cls) return setStatus('Put the text in a style first', 'error');
+  const p = ps.find(x => x.classList.contains(cls)), run = [...p.querySelectorAll('*')].find(e => e.firstChild?.nodeType === 3 && e.textContent.trim()) || p, cs = getComputedStyle(run);
+  const rules = pstyleRules(); rules[cls] = `font-size: ${cs.fontSize}; font-weight: ${cs.fontWeight}; font-style: ${cs.fontStyle}; color: ${cs.color}; font-family: ${cs.fontFamily};`;
+  writePstyles(rules);
+  slides.forEach(sl => sl.querySelectorAll('.' + cls).forEach(x => x.querySelectorAll('[style]').forEach(e =>   // its look is the style's now
+    { for (const k of ['font-size', 'font-weight', 'font-style', 'color', 'font-family']) e.style.removeProperty(k); if (!e.getAttribute('style')) e.removeAttribute('style'); })));
+  render(); commit(); scheduleSave(); setStatus(`${PSTYLES.find(x => x[0] === cls)[1]} updated to match`);
+};
