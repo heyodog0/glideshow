@@ -143,6 +143,7 @@ function renderAnims() {
       <div class="timing"><label>Duration (s)<input class="dur" type="number" min="0.1" max="20" step="0.1" placeholder="0.5"></label>
       <label>Delay (s)<input class="del" type="number" min="0" max="60" step="0.1" placeholder="0"></label></div>
       <div class="timing pos"><label>Position X (in)<input class="mx" type="number" step="0.01"></label><label>Y (in)<input class="my" type="number" step="0.01"></label></div>
+      <label class="chk aln"><input type="checkbox"> Align to path</label>
       <label class="ang">Angle (°)<input type="number" min="-3600" max="3600" step="15" placeholder="360"></label>
       <select class="ease">${EASES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <select class="dl"></select></div>`;
@@ -160,6 +161,9 @@ function renderAnims() {
     ang.hidden = effectOf(b) !== 'spin'; af.value = b.dataset.angle ?? '';
     const pos = /** @type {HTMLElement} */ (r.querySelector('.pos')), [mx, my] = /** @type {HTMLInputElement[]} */ ([...pos.querySelectorAll('input')]), [tx, ty] = moveTo(b);
     pos.hidden = effectOf(b) !== 'move-to'; mx.value = String(toIn(tx)); my.value = String(toIn(ty));
+    const aln = /** @type {HTMLElement} */ (r.querySelector('.aln')), ac = /** @type {HTMLInputElement} */ (aln.firstElementChild);
+    aln.hidden = effectOf(b) !== 'move-to'; ac.checked = b.dataset.align === 'path';
+    ac.onchange = () => { each(x => { if (ac.checked) x.dataset.align = 'path'; else delete x.dataset.align; }); commit(); drawOverlay(); renderAnims(); };
     mx.onchange = my.onchange = () => { const x = parseFloat(mx.value), y = parseFloat(my.value); if (!isFinite(x) || !isFinite(y)) return;
       b.dataset.to = `${Math.round(fromIn(x))},${Math.round(fromIn(y))}`; commit(); drawOverlay(); renderAnims(); };
     af.onchange = () => { const v = parseFloat(af.value); each(x => { if (isFinite(v)) x.dataset.angle = String(Math.round(v)); else delete x.dataset.angle; }); commit(); renderAnims(); };
@@ -183,29 +187,49 @@ function renderAnims() {
   }));
 }
 /* Keynote's Move action (class move-to): the box moves to data-to="x,y" (its top-left at the end, in slide px) and stays
-   there. With the Motion panel open, the selected box shows a ghost at the end joined centre to centre by a red line;
-   dragging the ghost sets the end (with a readout), and moving the box keeps it. present.js plays it as a translate. */
+   there. With the Motion panel open, the selected box shows a ghost at the end joined centre to centre by a red path;
+   dragging the ghost sets the end (with a readout), and moving the box keeps it. The hollow handle halfway along bends
+   the path: data-via="x,y" is the top-left halfway, on the curve (a quadratic Bézier through it). Align to path
+   (data-align="path") turns the box with the path, from no turn at the start. present.js plays it (offset-path). */
 function defaultTo(b) {   // beside the box, as Keynote (to its right, or its left when there's no room)
   const g = geo(b), right = Math.min(g.x + g.w + 60, W - g.w);
   return `${Math.round(right > g.x + g.w / 2 ? right : Math.max(0, g.x - g.w - 60))},${Math.round(g.y)}`;
 }
 function moveTo(b) { const [x, y] = (b.dataset.to || '').split(',').map(Number); if (isFinite(x) && isFinite(y) && b.dataset.to) return [x, y]; const g = geo(b); return [g.x, g.y]; }
+function viaOf(b) { const [x, y] = (b.dataset.via || '').split(',').map(Number); return b.dataset.via && isFinite(x) && isFinite(y) ? [x, y] : null; }
+/* Where the Move's box is at t (0…1): its top-left, and its turn in degrees when aligned to the path. */
+function movePoint(b, t) {
+  const g = geo(b), [ex, ey] = moveTo(b), v = viaOf(b) || [(g.x + ex) / 2, (g.y + ey) / 2], cx = 2 * v[0] - (g.x + ex) / 2, cy = 2 * v[1] - (g.y + ey) / 2;
+  const at = t => [(1 - t) ** 2 * g.x + 2 * (1 - t) * t * cx + t * t * ex, (1 - t) ** 2 * g.y + 2 * (1 - t) * t * cy + t * t * ey];
+  const dir = t => Math.atan2(2 * (1 - t) * (cy - g.y) + 2 * t * (ey - cy), 2 * (1 - t) * (cx - g.x) + 2 * t * (ex - cx)) * 180 / Math.PI;
+  const [x, y] = at(t); return { x, y, a: b.dataset.align === 'path' ? dir(t) - dir(0) : 0 };
+}
 function drawMovePath() {
   if (trans.hidden || sel.size !== 1 || editing) return;
   const b = [...sel][0]; if (!b.classList.contains('move-to')) return;
   const g = geo(b), host = frameFor(b), k = 1 / scale; let [tx, ty] = moveTo(b);
   const gh = /** @type {HTMLElement} */ (b.cloneNode(true)); gh.removeAttribute('id'); gh.classList.remove('fragment'); gh.classList.add('move-ghost');
   gh.querySelectorAll('[id]').forEach(e => e.removeAttribute('id')); gh.title = 'Drag to set where the Move ends';
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  svg.classList.add('move-line'); svg.append(ln); ln.setAttribute('stroke-width', String(2 * k));
+  const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'), ln = document.createElementNS(NS, 'path'), mid = document.createElementNS(NS, 'circle');
+  svg.classList.add('move-line'); svg.append(ln, mid); ln.setAttribute('stroke-width', String(2 * k)); ln.setAttribute('fill', 'none');
+  mid.classList.add('move-mid'); mid.setAttribute('r', String(6 * k)); mid.setAttribute('stroke-width', String(1.5 * k));
   const at = () => { gh.style.left = tx + 'px'; gh.style.top = ty + 'px';
-    ln.setAttribute('x1', String(g.x + g.w / 2)); ln.setAttribute('y1', String(g.y + g.h / 2)); ln.setAttribute('x2', String(tx + g.w / 2)); ln.setAttribute('y2', String(ty + g.h / 2)); };
+    const pts = Array.from({ length: 33 }, (_, i) => movePoint(b, i / 32)), m = movePoint(b, .5);
+    ln.setAttribute('d', 'M' + pts.map(p => `${p.x + g.w / 2},${p.y + g.h / 2}`).join('L'));
+    mid.setAttribute('cx', String(m.x + g.w / 2)); mid.setAttribute('cy', String(m.y + g.h / 2)); gh.style.rotate = pts[32].a ? pts[32].a + 'deg' : ''; };
   at(); host.append(svg, gh);
+  mid.onmousedown = e => e.stopPropagation();
+  mid.onpointerdown = e => {   // bend the path: the handle stays under the pointer, on the curve
+    e.stopPropagation(); e.preventDefault(); mid.setPointerCapture(e.pointerId);
+    const sx = e.clientX, sy = e.clientY, m = movePoint(b, .5);
+    mid.onpointermove = mv => { b.dataset.via = `${Math.round(m.x + (mv.clientX - sx) / scale)},${Math.round(m.y + (mv.clientY - sy) / scale)}`; at(); };
+    mid.onpointerup = () => { mid.onpointermove = mid.onpointerup = null; commit(); drawOverlay(); renderAnims(); };
+  };
   gh.onmousedown = e => e.stopPropagation();
   gh.onpointerdown = e => {
     e.stopPropagation(); e.preventDefault(); gh.setPointerCapture(e.pointerId);
     const sx = e.clientX, sy = e.clientY, x0 = tx, y0 = ty, tip = div('move-tip'); tip.style.setProperty('--k', k + 'px'); host.append(tip);
-    gh.onpointermove = m => { tx = Math.round(x0 + (m.clientX - sx) / scale); ty = Math.round(y0 + (m.clientY - sy) / scale); at();
+    gh.onpointermove = m => { tx = Math.round(x0 + (m.clientX - sx) / scale); ty = Math.round(y0 + (m.clientY - sy) / scale); b.dataset.to = `${tx},${ty}`; at();
       tip.textContent = `x ${toIn(tx)} in  y ${toIn(ty)} in`; tip.style.left = tx + g.w / 2 + 'px'; tip.style.top = ty + g.h / 2 + 'px'; };
     gh.onpointerup = () => { gh.onpointermove = gh.onpointerup = null; tip.remove(); b.dataset.to = `${tx},${ty}`; commit(); drawOverlay(); renderAnims(); };
   };
@@ -230,7 +254,7 @@ async function playAnims() {
     'scale-big': [{ opacity: 0, scale: 3 }, { opacity: 1, scale: 1 }], disappear: [{ opacity: 1 }, { opacity: 1, offset: .99 }, { opacity: 0 }],
     'blur-out': [{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(24px)' }], 'scale-out': [{ scale: 1 }, { scale: 0 }], 'iris-out': [{ clipPath: 'circle(75% at 50% 50%)' }, { clipPath: 'circle(0% at 50% 50%)' }], pop: [{ scale: 1 }, { scale: 1.25, offset: .3 }, { scale: .95, offset: .6 }, { scale: 1 }] };
   const spin = b => [{ rotate: '0deg' }, { rotate: (b.dataset.angle ?? 360) + 'deg' }];
-  const move = b => { const g = geo(b), [x, y] = moveTo(b); return [{ translate: '0 0' }, { translate: `${x - g.x}px ${y - g.y}px` }]; };
+  const move = b => { const g = geo(b); return Array.from({ length: 25 }, (_, i) => { const p = movePoint(b, i / 24); return { translate: `${p.x - g.x}px ${p.y - g.y}px`, rotate: p.a + 'deg' }; }); };
   const list = animBoxes(), wait = ms => new Promise(r => setTimeout(r, ms));
   list.forEach(b => { b.style.visibility = 'hidden'; });
   const steps = []; list.forEach(b => { if (startOf(b) === 'with' && steps.length) steps.at(-1).push(b); else steps.push([b]); });   // one step per click or After previous

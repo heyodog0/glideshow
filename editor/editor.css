@@ -633,10 +633,11 @@ body.theme-mode #ed-notes, body.theme-mode #ed-splitter { display: none !importa
 .live-dialog textarea { width: 100%; height: 50vh; font: 13px/1.5 ui-monospace, Menlo, monospace; color: var(--ink); background: var(--surface); border: 1px solid var(--divider); border-radius: var(--radius); padding: 10px 12px; resize: vertical; tab-size: 2; }
 .anim-body .timing { display: flex; gap: 12px; } .anim-body .timing label { flex: 1; }
 .anim-body .timing input { width: 100%; height: 36px; box-sizing: border-box; }
-.anim-body select[hidden], .anim-body .ang[hidden], .anim-body .pos[hidden] { display: none; }
+.anim-body select[hidden], .anim-body .ang[hidden], .anim-body .pos[hidden], .anim-body .aln[hidden] { display: none; }
 /* Keynote's Move action: a translucent ghost where the box ends, a red path to it, the position while dragging */
 .move-ghost { opacity: .45; pointer-events: auto; cursor: move; }
-.move-line { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; } .move-line line { stroke: #ea4335; }
+.move-line { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; } .move-line path { stroke: #ea4335; }
+.move-line .move-mid { fill: #fff; stroke: #ea4335; pointer-events: auto; cursor: move; }   /* drag to bend the path */
 .move-tip { position: absolute; transform: translate(-50%, calc(-100% - 12 * var(--k, 1px))); scale: calc(var(--k, 1px) / 1px); transform-origin: 50% 100%; padding: 4px 8px; border-radius: 4px; background: #202124; color: #fff; font: 12px Roboto, sans-serif; white-space: nowrap; pointer-events: none; }
 .anim-body .ang { display: flex; flex-direction: column; } .anim-body .ang input { height: 36px; box-sizing: border-box; }   /* Rotate's angle */
 a#ed-app-icon { text-decoration: none; cursor: pointer; }   /* the mascot goes home */

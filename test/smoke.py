@@ -1955,7 +1955,7 @@ def reveal_checks(b, errors, deck_file: Path):
     mv = pg.evaluate("""() => { const m = makeBox({ x: 1300, y: 200, w: 200, h: 150, html: 'mv' }); m.style.setProperty('--fill', '#4285f4'); slides[cur].append(m); render();
       sel = new Set([m]); addAnim(); setEffect(m, 'move-to'); commit(); setTransPanel(true); sel = new Set([m]); drawOverlay(); renderAnims();
       const gh = document.querySelector('#ed-ui .move-ghost'), r = gh?.getBoundingClientRect(), row = document.querySelector('.anim-row.open');
-      return [m.dataset.to, !!document.querySelector('#ed-ui .move-line line'), r ? [r.x + r.width / 2, r.y + r.height / 2] : null, scale, !row.querySelector('.pos').hidden, row.querySelector('.mx').value]; }""")
+      return [m.dataset.to, !!document.querySelector('#ed-ui .move-line path'), r ? [r.x + r.width / 2, r.y + r.height / 2] : null, scale, !row.querySelector('.pos').hidden, row.querySelector('.mx').value]; }""")
     pg.mouse.move(*mv[2]); pg.mouse.down(); pg.mouse.move(mv[2][0] - 100, mv[2][1] + 50, steps=5)
     tip = pg.evaluate("document.querySelector('#ed-ui .move-tip')?.textContent || ''"); pg.screenshot(path=str(HERE / "move-action.png")); pg.mouse.up()
     mv2 = pg.evaluate("""() => { const m = [...sel][0], to = m.dataset.to; place(m, { ...geo(m), x: 100 }); commit(); drawOverlay();
@@ -1965,6 +1965,18 @@ def reveal_checks(b, errors, deck_file: Path):
     check("Move action: a ghost at the end joined by a red path, beside the box at first (as k07); dragging the ghost sets the end with an x / y readout; moving the box keeps it; Position X / Y in the row",
           mv[0] == "1560,200" and mv[1] and mv[4] and mv[5] == "8.13" and abs(got[0] - want[0]) <= 2 and abs(got[1] - want[1]) <= 2 and tip.startswith("x ")
           and mv2[1] == mv2[0] and mv2[2] is False, f"{mv} {tip} {mv2} {want}")
+    # curved Move (r07): the hollow handle halfway along bends the path; Align to path turns the ghost with it
+    cv = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
+      const m = makeBox({ x: 200, y: 600, w: 200, h: 150, html: 'cv' }); m.style.setProperty('--fill', '#34a853'); slides[cur].append(m); render();
+      sel = new Set([m]); addAnim(); setEffect(m, 'move-to'); m.dataset.to = '1200,600'; commit(); setTransPanel(true); sel = new Set([m]); drawOverlay(); renderAnims();
+      const r = document.querySelector('#ed-ui .move-mid').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2, scale]; }""")
+    t0 = time.perf_counter(); pg.mouse.move(cv[0], cv[1]); pg.mouse.down(); pg.mouse.move(cv[0], cv[1] - 300 * cv[2], steps=6); pg.mouse.up()
+    pg.evaluate("document.querySelector('.anim-row.open .aln input').click()"); bend_ms = (time.perf_counter() - t0) * 1000
+    cv2 = pg.evaluate("""() => { const m = [...sel][0], r = document.querySelector('#ed-ui .move-mid').getBoundingClientRect(), gh = document.querySelector('#ed-ui .move-ghost');
+      return [m.dataset.via, m.dataset.align, Math.round(r.y + r.height / 2), parseFloat(gh.style.rotate) || 0, !document.querySelector('.anim-row.open .aln').hidden, movePoint(m, .5).y]; }""")
+    pg.screenshot(path=str(HERE / "move-curve.png")); pg.evaluate("setTransPanel(false)")
+    check(f"curved Move: dragging the halfway handle bends the path through it (data-via); Align to path turns the ghost with the path ({bend_ms:.0f} ms incl. the drag)",
+          cv2[0] == "700,300" and cv2[1] == "path" and abs(cv2[2] - (cv[1] - 300 * cv[2])) <= 3 and cv2[3] > 45 and cv2[4] and abs(cv2[5] - 300) < 1, f"{cv} {cv2}")
     pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
       const t = makeBox({ x: 100, y: 100, w: 900, h: 500, html: '<ul><li>One</li><li>Two</li><li>Three</li></ul>' }), after = makeBox({ x: 1100, y: 100, w: 500, h: 200, html: 'After' });
       slides[cur].append(t, after); render(); sel = new Set([t]); addAnim(); sel = new Set([after]); addAnim();
@@ -2069,6 +2081,13 @@ def reveal_checks(b, errors, deck_file: Path):
     check("…Layout turns parts off (kept in this browser); R resets the timer; ? lists the keys; Esc closes the list, then ends the show and the window",
           p3 == ["none", 0] and reset == "00:00:00" and keys >= 10 and not still and pw.is_closed(), f"{p3} {reset} {keys} {still} {pw.is_closed()}")
     check("…in the slideshow the Move action ends the box at its data-to and it stays there", mvv[2] and [abs(mvv[0] - int(mvv[2].split(",")[0])), abs(mvv[1] - int(mvv[2].split(",")[1]))] <= [2, 2], str(mvv))
+    cvv = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => x.querySelector('.box.move-to[data-via]')), b = s.querySelector('.box.move-to'), wait = ms => new Promise(r => setTimeout(r, ms));
+      Reveal.slide(Reveal.getIndices(s).h, 0, -1); await wait(600); const sc = s.getBoundingClientRect().width / s.offsetWidth;
+      const c = () => { const r = b.getBoundingClientRect(), o = s.getBoundingClientRect(); return [Math.round((r.x + r.width / 2 - o.x) / sc), Math.round((r.y + r.height / 2 - o.y) / sc)]; };
+      const rest = [c(), getComputedStyle(b).offsetRotate]; b.style.transitionDuration = '2s'; b.style.transitionTimingFunction = 'linear'; Reveal.nextFragment(); await wait(1000);
+      const mid = c(); await wait(1300); const end = c(); Reveal.slide(0); return [rest, mid, end, b.classList.contains('gs-path')]; }""")
+    check("…a curved Move travels along its curve (above the straight line halfway) and ends at data-to; at rest the box hasn't moved or turned",
+          cvv[3] and cvv[0][0] == [300, 675] and cvv[1][1] < 500 and abs(cvv[2][0] - 1300) <= 3 and abs(cvv[2][1] - 675) <= 3, str(cvv))
 
     # live box: its own page in assets/, sandboxed in the slide and served with a sandbox policy; double-click edits it
     pg.evaluate("go(slides.length - 1)"); pg.evaluate("addLive()"); pg.wait_for_function("boxes(slides[cur]).some(b => b.classList.contains('live'))"); settle()

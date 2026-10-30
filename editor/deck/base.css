@@ -143,6 +143,8 @@
 .reveal.ready .slides section .fragment:is([class*="wipe-"], [class*="move-in-"], .scale-in, .pop-in, .spin, .pulse, .pop, .move-to) { opacity: 1; transition-property: clip-path, translate, scale, rotate, visibility; transition-duration: .5s; }
 .reveal.ready .slides section .fragment:is(.spin, .pulse, .pop, .move-to) { visibility: inherit; }
 .reveal.ready .slides section .fragment.move-to.visible { translate: var(--gs-mx, 0) var(--gs-my, 0); }   /* Move: to data-to (present.js) */
+.reveal.ready .slides section .fragment.move-to.gs-path { offset-path: var(--gs-path); offset-rotate: var(--gs-orot, 0deg); offset-distance: 0%; transition-property: offset-distance, visibility; }   /* curved or aligned: along its path */
+.reveal.ready .slides section .fragment.move-to.gs-path.visible { translate: none; offset-distance: 100%; }
 .reveal.ready .slides section .fragment.wipe-r { clip-path: inset(0 100% 0 0); }
 .reveal.ready .slides section .fragment.wipe-l { clip-path: inset(0 0 0 100%); }
 .reveal.ready .slides section .fragment.wipe-d { clip-path: inset(0 0 100% 0); }

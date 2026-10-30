@@ -130,7 +130,8 @@ Rules:
   More effects: in `blur-in`, `drop-in` (falls in and bounces), `spin-in`, `iris-in`, `scale-big` (from three times its size);
   out `disappear`, `blur-out`, `scale-out`, `iris-out`.
   `move-to` (Move): the box moves to `data-to="x,y"` (its top-left there, in slide px; moving the box keeps the end) and
-  stays; a straight path.
+  stays; a straight path, or a curve with `data-via="x,y"` (the box's top-left halfway: the path is the quadratic Bézier
+  through it). `data-align="path"` (Align to path) turns the box with the path's direction, from no turn at the start.
   On a line or an open drawing: `line-draw` (drawn along its stroke, arrowheads at the end) and `line-erase` (undrawn); a
   dashed line just appears.
   `data-build="paragraph"` on an animated text box makes each paragraph or bullet its own step with the box's effect; `"highlight"` the same, dimming the ones already shown; `"word"` / `"character"` keep one step, the text arriving a word or letter at a time over `data-duration` (default 1 s; in-effects only). On a table box `"row"`, `"column"` or `"cell"` makes each its own step.

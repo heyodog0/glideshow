@@ -108,6 +108,13 @@
       if (d.angle) st.setProperty('--gs-angle', d.angle + 'deg');   // the Rotate action's turn
       const to = (d.to || '').split(',').map(Number);   // the Move action's end: data-to = its top-left there
       if (f.classList.contains('move-to') && to.length === 2 && to.every(isFinite)) { st.setProperty('--gs-mx', to[0] - (parseFloat(st.left) || 0) + 'px'); st.setProperty('--gs-my', to[1] - (parseFloat(st.top) || 0) + 'px'); }
+      const via = (d.via || '').split(',').map(Number);   // a curved Move (data-via: the top-left halfway) or one aligned to its path: along an offset-path
+      if (f.classList.contains('move-to') && to.length === 2 && to.every(isFinite) && (d.via && via.length === 2 && via.every(isFinite) || d.align === 'path')) {
+        const x = parseFloat(st.left) || 0, y = parseFloat(st.top) || 0, w2 = (parseFloat(st.width) || 0) / 2, h2 = (parseFloat(st.height) || 0) / 2;
+        const ex = to[0] - x, ey = to[1] - y, [vx, vy] = d.via ? [via[0] - x, via[1] - y] : [ex / 2, ey / 2], cx = 2 * vx - ex / 2, cy = 2 * vy - ey / 2;   // the Bézier through the halfway point
+        f.classList.add('gs-path'); st.setProperty('--gs-path', `path('M${w2},${h2} Q${cx + w2},${cy + h2} ${ex + w2},${ey + h2}')`);
+        st.setProperty('--gs-orot', d.align === 'path' ? `auto ${-Math.atan2(cy, cx) * 180 / Math.PI}deg` : '0deg');   // turned with the path, from no turn
+      }
     });
     if (changed) Reveal.sync();
     if (new URLSearchParams(location.search).get('view') === 'scroll') Reveal.configure({ view: 'scroll' });   // read as a page (reveal's scroll view)
