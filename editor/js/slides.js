@@ -146,3 +146,38 @@ $('#ed-dup-slide').onclick = dupSlides;
 $('#ed-del-slide').onclick = deleteSlides;
 $('#ed-up-slide').onclick = () => moveSlides('up');
 $('#ed-down-slide').onclick = () => moveSlides('down');
+
+/* Outline view (Keynote's View → Outline, D9): the filmstrip becomes each slide's title and bullets, typed into in place
+   (the title placeholder's text, the body placeholder's paragraphs or bullets). Return in a title starts a new slide
+   after it; a click on an entry goes to its slide. */
+let outlineOn = false, olT = 0;
+const outlineEl = Object.assign(document.createElement('div'), { id: 'ed-outline' }); thumbs.after(outlineEl);
+function setOutline(on) { outlineOn = on; document.body.classList.toggle('outline-mode', on); if (on) { if (gridOn) setGrid(false); renderOutline(); } else renderThumbs(); }
+const olSave = () => { clearTimeout(olT); olT = setTimeout(() => { render(); commit(); }, 400); };
+function renderOutline() {
+  if (!outlineOn || outlineEl.contains(document.activeElement)) return;   // not under the caret
+  outlineEl.replaceChildren(...slides.map((s, i) => {
+    const e = div('ol-slide' + (i === cur ? ' active' : '') + (s.dataset.visibility === 'hidden' ? ' skipped' : '')), n = div('ol-num'), t = div('ol-title');
+    e.style.setProperty('--g', String(groupLevel(slides[isSub(i) ? i - 1 : i]) + (isSub(i) ? 1 : 0))); n.textContent = String(i + 1);
+    const tb = boxes(s).find(b => b.dataset.role === 'title'), bb = boxes(s).find(b => b.dataset.role === 'body');
+    const other = tb ? '' : (boxes(s).map(b => content(b)?.textContent.trim()).find(Boolean) || '').slice(0, 80);   // no title placeholder: its first words, muted
+    t.contentEditable = tb ? 'true' : 'false'; t.textContent = tb ? content(tb).textContent : other; t.dataset.ph = tb ? 'Title' : ''; if (!tb) t.classList.add('ol-other');
+    t.oninput = () => { if (tb) { content(tb).textContent = t.textContent; olSave(); } };
+    t.onkeydown = ev => { if (ev.key !== 'Enter' || ev.isComposing) return; ev.preventDefault(); clearTimeout(olT); render(); commit();   // a new slide after this one
+      let j = i; while (slides[j + 1] && isSub(j + 1)) j++; slides.splice(j + 1, 0, blankSlide('title-body')); if (groupLevel(s)) slides[j + 1].dataset.group = s.dataset.group;
+      t.blur(); go(j + 1); commit(); render(); renderOutline(); /** @type {HTMLElement} */ (outlineEl.querySelectorAll('.ol-title')[j + 1])?.focus(); };
+    e.append(n, t);
+    if (bb) {
+      const c = content(bb), list = !!c.querySelector('ul, ol'), items = [...c.querySelectorAll('li, p, div')].filter(x => !x.querySelector('li, p, div')).map(x => x.textContent);
+      const u = document.createElement('ul'); u.className = 'ol-body'; u.contentEditable = 'true';
+      (items.length ? items : c.textContent.trim() ? [c.textContent] : ['']).forEach(x => { const li = document.createElement('li'); li.textContent = x; u.append(li); });
+      const esc = x => x.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      u.oninput = () => { const ls = [...u.querySelectorAll('li')].map(li => li.textContent).filter((x, k, a) => x || a.length > 1);
+        c.innerHTML = list || ls.length > 1 ? `<ul>${ls.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : esc(ls[0] || ''); olSave(); };
+      e.append(u);
+    }
+    e.onclick = ev => { if (!/** @type {Element} */ (ev.target).closest('[contenteditable=true]') && i !== cur) go(i); };
+    e.addEventListener('focusin', () => { if (i !== cur) { cur = i; picked = new Set([s]); render(); outlineEl.querySelectorAll('.ol-slide').forEach((x, k) => x.classList.toggle('active', k === i)); } });
+    return e;
+  }));
+}

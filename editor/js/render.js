@@ -209,6 +209,7 @@ function renderThumbs() {
   [...thumbs.children].forEach(c => { if (!keep.has(c)) c.remove(); });
   els.forEach((t, i) => { if (thumbs.children[i] !== t) thumbs.insertBefore(t, thumbs.children[i] || null); });
   thumbs.children[cur]?.scrollIntoView({ block: 'nearest' });
+  if (outlineOn) renderOutline();   // Outline view (slides.js)
   drawPeople();   // who else is here, on which slide (people.js)
 }
 

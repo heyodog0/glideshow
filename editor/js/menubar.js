@@ -95,6 +95,7 @@ const MENUS = {
     { label: 'Object list', icon: 'layers', on: () => !$('#ed-objects').hidden, run: () => setObjectsPanel($('#ed-objects').hidden) },
     '-',
     { label: 'Grid view', key: '⌥⌘1', on: () => gridOn, run: () => setGrid(!gridOn) },
+    { label: 'Outline view', on: () => outlineOn, run: () => setOutline(!outlineOn) },   // Keynote's (slides.js)
     { label: 'Show ruler', on: rulersShown, run: () => setRulersShown(!rulersShown()) },
     '-',
     { label: 'Guides', icon: 'grid_4x4', items: () => [

@@ -617,31 +617,7 @@ def checks(pg, deck: Path, errors):
     pg.select_option("#ed-f-from", "c"); pg.fill("#ed-f-x", "5"); pg.press("#ed-f-x", "Enter")
     fo = pg.evaluate("(() => { const b = [...document.querySelectorAll('#ed-canvas .box[data-shape]')].pop(); return [b.style.width, b.style.height, b.style.transform, b.dataset.flip, 'shadow' in b.dataset, parseFloat(b.style.left) + parseFloat(b.style.width) / 2, getComputedStyle(b).scale]; })()")
     check("Format options (inches, as Slides): size, lock aspect, rotate, flip, shadow, position from centre", fo == ["240px", "200px", "rotate(30deg)", "h", True, 960, "-1 1"], str(fo))
-    # paragraph styles (D11): Format options → Paragraph style; a CSS class per style in the deck; Update to match
-    ps = pg.evaluate("""(() => { const was = cur, had = [...sel], s = blankSlide(); slides.push(s); go(slides.length - 1);
-      const a = makeBox({ x: 100, y: 100, w: 900, h: 300, html: '<p>Big idea</p><p>Detail</p>' }), b = makeBox({ x: 100, y: 500, w: 900, h: 200, html: '<p>Another idea</p>' }); s.append(a, b);
-      sel = new Set([a]); render(); fmt.hidden = false; updatePanel();
-      const opts = [...document.querySelectorAll('#ed-f-pstyle option')].map(o => o.text);
-      const t0 = performance.now(); document.querySelector('#ed-f-pstyle').value = 'ps-heading'; document.querySelector('#ed-f-pstyle').onchange(); const ms = performance.now() - t0;
-      sel = new Set([b]); document.querySelector('#ed-f-pstyle').value = 'ps-heading'; document.querySelector('#ed-f-pstyle').onchange();
-      const css = deckDoc.querySelector('#deck-theme').textContent, h1 = getComputedStyle(content(a).querySelector('p')).fontWeight;
-      const p0 = content(a).querySelector('p'); p0.innerHTML = '<span style="font-size: 90px; color: rgb(217, 48, 37);">Big idea</span>'; sel = new Set([a]); updatePanel();
-      document.querySelector('#ed-f-pstyle-update').click();
-      const other = getComputedStyle(content(b).querySelector('p')), out = [opts.join('/'), content(a).querySelectorAll('p.ps-heading').length, css.includes('text-styles'), h1, other.fontSize, other.color, document.querySelector('#ed-f-pstyle').value, Math.round(ms), p0.querySelector('span').getAttribute('style')];
-      slides.pop(); go(was); sel = new Set(had); render(); commit(); updatePanel(); return out; })()""")
-    check(f"Format options → Paragraph style (Keynote's styles, D11): Title / Subtitle / Heading / Body / Caption / Quote as a class on each paragraph with its rule in the deck's CSS ({ps[7]} ms); Update to match makes every paragraph in the style look like the selected text",
-          ps[0] == "None/Title/Subtitle/Heading/Body/Caption/Quote" and ps[1] == 2 and ps[2] and ps[3] == "700" and ps[4] == "90px" and ps[5] == "rgb(217, 48, 37)" and ps[6] == "ps-heading" and ps[7] < 100 and ps[8] is None, str(ps))
-    # slide groups (D6): Tab / ⇧Tab in the filmstrip indent (data-group); fold; a folded group skips and moves whole
-    sg = pg.evaluate("""(() => { const was = cur, had = [...sel], n0 = slides.length; for (let k = 0; k < 4; k++) slides.push(blankSlide()); render(); go(n0 + 1); picked = new Set([slides[n0 + 1], slides[n0 + 2]]); renderThumbs();
-      thumbs.focus(); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true })); const lv = slides.slice(n0, n0 + 4).map(s => s.dataset.group || '0');
-      const pad = getComputedStyle(thumbs.children[n0 + 1]).paddingLeft, btn = !!thumbs.children[n0].querySelector('.gfold');
-      thumbs.children[n0].querySelector('.gfold').click(); const hid = [...thumbs.children].slice(n0, n0 + 4).map(t => getComputedStyle(t).display === 'none');
-      go(n0); picked = new Set([slides[n0]]); skipSlides(); const sk = slides.slice(n0, n0 + 4).map(s => s.dataset.visibility === 'hidden');
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true })); const after = slides.slice(n0, n0 + 4).map(s => s.dataset.group || '0');
-      go(n0 + 1); const opened = !('groupFolded' in slides[n0].dataset);
-      slides.splice(n0, 4); go(was); sel = new Set(had); render(); commit(); drawOverlay(); updateToolbar(); return [lv.join(''), pad, btn, hid, sk, after.join(''), opened]; })()""")
-    check("slide groups (Keynote's indent, D6): Tab in the filmstrip indents slides under the one above (data-group), shown indented with a fold button; folding hides them, skipping the folded group skips it all; ⇧Tab can't outdent a top-level slide; going to a hidden slide unfolds it",
-          sg[0] == "0110" and sg[1] == "18px" and sg[2] and sg[3] == [False, True, True, False] and sg[4] == [True, True, True, False] and sg[5] == "0110" and sg[6], str(sg))
+    design_answer_checks(pg)
     pg.fill("#ed-f-rot", "90"); pg.press("#ed-f-rot", "Enter")
     # map the local shadow offset through the box's actual rendered matrix (flip · rotate) and expect "straight down"
     sh = pg.evaluate("""(() => { const b = [...document.querySelectorAll('#ed-canvas .box[data-shape]')].pop();
@@ -1925,6 +1901,46 @@ def checks(pg, deck: Path, errors):
     pg.click("#ed-menubar [data-menu=View]"); pg.click(".menu-item:has(.menu-label:text-is('Show insert bar'))"); pg.wait_for_timeout(100); pg.evaluate("closeMenu()")
     check("View → Show insert bar hides the bar and remembers it; again shows it", hid == [True, "0"] and pg.evaluate("!document.querySelector('#ed-dock').hidden"), str(hid))
     pg.evaluate("stopEdit(); sel = new Set(boxes().filter(b => !window.__before.has(b))); if (sel.size) deleteSelection(); sel = new Set()"); pg.wait_for_timeout(100)   # what the bar added, gone again
+
+def design_answer_checks(pg):
+    """The user's design answers of 2026-10-29: paragraph styles (D11), slide groups (D6), the outline view (D9)."""
+    # paragraph styles (D11): Format options → Paragraph style; a CSS class per style in the deck; Update to match
+    ps = pg.evaluate("""(() => { const was = cur, had = [...sel], s = blankSlide(); slides.push(s); go(slides.length - 1);
+      const a = makeBox({ x: 100, y: 100, w: 900, h: 300, html: '<p>Big idea</p><p>Detail</p>' }), b = makeBox({ x: 100, y: 500, w: 900, h: 200, html: '<p>Another idea</p>' }); s.append(a, b);
+      sel = new Set([a]); render(); fmt.hidden = false; updatePanel();
+      const opts = [...document.querySelectorAll('#ed-f-pstyle option')].map(o => o.text);
+      const t0 = performance.now(); document.querySelector('#ed-f-pstyle').value = 'ps-heading'; document.querySelector('#ed-f-pstyle').onchange(); const ms = performance.now() - t0;
+      sel = new Set([b]); document.querySelector('#ed-f-pstyle').value = 'ps-heading'; document.querySelector('#ed-f-pstyle').onchange();
+      const css = deckDoc.querySelector('#deck-theme').textContent, h1 = getComputedStyle(content(a).querySelector('p')).fontWeight;
+      const p0 = content(a).querySelector('p'); p0.innerHTML = '<span style="font-size: 90px; color: rgb(217, 48, 37);">Big idea</span>'; sel = new Set([a]); updatePanel();
+      document.querySelector('#ed-f-pstyle-update').click();
+      const other = getComputedStyle(content(b).querySelector('p')), out = [opts.join('/'), content(a).querySelectorAll('p.ps-heading').length, css.includes('text-styles'), h1, other.fontSize, other.color, document.querySelector('#ed-f-pstyle').value, Math.round(ms), p0.querySelector('span').getAttribute('style')];
+      slides.pop(); go(was); sel = new Set(had); render(); commit(); updatePanel(); return out; })()""")
+    check(f"Format options → Paragraph style (Keynote's styles, D11): Title / Subtitle / Heading / Body / Caption / Quote as a class on each paragraph with its rule in the deck's CSS ({ps[7]} ms); Update to match makes every paragraph in the style look like the selected text",
+          ps[0] == "None/Title/Subtitle/Heading/Body/Caption/Quote" and ps[1] == 2 and ps[2] and ps[3] == "700" and ps[4] == "90px" and ps[5] == "rgb(217, 48, 37)" and ps[6] == "ps-heading" and ps[7] < 100 and ps[8] is None, str(ps))
+    # slide groups (D6): Tab / ⇧Tab in the filmstrip indent (data-group); fold; a folded group skips and moves whole
+    sg = pg.evaluate("""(() => { const was = cur, had = [...sel], n0 = slides.length; for (let k = 0; k < 4; k++) slides.push(blankSlide()); render(); go(n0 + 1); picked = new Set([slides[n0 + 1], slides[n0 + 2]]); renderThumbs();
+      thumbs.focus(); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true })); const lv = slides.slice(n0, n0 + 4).map(s => s.dataset.group || '0');
+      const pad = getComputedStyle(thumbs.children[n0 + 1]).paddingLeft, btn = !!thumbs.children[n0].querySelector('.gfold');
+      thumbs.children[n0].querySelector('.gfold').click(); const hid = [...thumbs.children].slice(n0, n0 + 4).map(t => getComputedStyle(t).display === 'none');
+      go(n0); picked = new Set([slides[n0]]); skipSlides(); const sk = slides.slice(n0, n0 + 4).map(s => s.dataset.visibility === 'hidden');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true })); const after = slides.slice(n0, n0 + 4).map(s => s.dataset.group || '0');
+      go(n0 + 1); const opened = !('groupFolded' in slides[n0].dataset);
+      slides.splice(n0, 4); go(was); sel = new Set(had); render(); commit(); drawOverlay(); updateToolbar(); return [lv.join(''), pad, btn, hid, sk, after.join(''), opened]; })()""")
+    check("slide groups (Keynote's indent, D6): Tab in the filmstrip indents slides under the one above (data-group), shown indented with a fold button; folding hides them, skipping the folded group skips it all; ⇧Tab can't outdent a top-level slide; going to a hidden slide unfolds it",
+          sg[0] == "0110" and sg[1] == "18px" and sg[2] and sg[3] == [False, True, True, False] and sg[4] == [True, True, True, False] and sg[5] == "0110" and sg[6], str(sg))
+    # outline view (D9): View → Outline view; titles and bullets typed in place; Return in a title adds a slide
+    olw = pg.evaluate("(() => { window.__olWas = [cur, [...sel]]; const s = blankSlide('title-body'); slides.push(s); render(); go(slides.length - 1); commit(); return [cur, slides.length]; })()")
+    pg.click("#ed-menubar [data-menu=View]"); pg.click(".menu-item:has(.menu-label:text-is('Outline view'))")
+    pg.click(f"#ed-outline .ol-slide >> nth={olw[0]} >> .ol-title"); pg.keyboard.type("Why it matters")
+    pg.click(f"#ed-outline .ol-slide >> nth={olw[0]} >> .ol-body li"); pg.keyboard.type("First point"); pg.keyboard.press("Enter"); pg.keyboard.type("Second point")
+    pg.click(f"#ed-outline .ol-slide >> nth={olw[0]} >> .ol-title"); pg.keyboard.press("End"); pg.keyboard.press("Enter"); pg.keyboard.type("Next idea"); pg.wait_for_timeout(600)
+    ol = pg.evaluate(f"""(() => {{ const a = slides[{olw[0]}], b = slides[{olw[0]} + 1], t = x => content(boxes(x).find(y => y.dataset.role === 'title'))?.textContent;
+      return [document.body.classList.contains('outline-mode'), getComputedStyle(thumbs).display, t(a), [...content(boxes(a).find(y => y.dataset.role === 'body')).querySelectorAll('li')].map(l => l.textContent), slides.length, t(b), cur]; }})()""")
+    pg.click("#ed-menubar [data-menu=View]"); pg.click(".menu-item:has(.menu-label:text-is('Outline view'))")
+    pg.evaluate(f"(() => {{ slides.splice({olw[0]}, 2); go(window.__olWas[0]); sel = new Set(window.__olWas[1]); render(); commit(); drawOverlay(); updateToolbar(); }})()")
+    check("View → Outline view (Keynote's, D9): the filmstrip becomes titles and bullets; typing there writes the slide's title and bullets; Return in a title starts the next slide",
+          ol[:2] == [True, "none"] and ol[2] == "Why it matters" and ol[3] == ["First point", "Second point"] and ol[4] == olw[1] + 1 and ol[5] == "Next idea" and ol[6] == olw[0] + 1, str(ol))
 
 def export_checks(pg):
     """Keynote's Export (k13) as Slides places it: images of the slides, a movie / GIF, the print preview's PDF options."""
