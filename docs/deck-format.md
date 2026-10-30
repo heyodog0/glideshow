@@ -69,6 +69,7 @@ Rules:
   - *Open for review:* one level (layouts, as Keynote) rather than Slides' master + layouts; placeholders keeping their own
     geometry on each slide; the template's name and place.
 - Slide ids: the editor gives each `<section>` a `data-sid` (how edits made in two places merge, slide by slide). Keep it when you change a slide; a slide you add may leave it out (it gets one), but never copy one slide's `data-sid` onto another.
+- Slide groups (Keynote's indented slides, editor-only): `data-group="1"`…`"5"` on a main `<section>` is its indent; its group is the slides after it indented further. `data-group-folded` on a group's top folds it in the filmstrip. The slideshow ignores both; skipping, moving or deleting a folded group in the editor takes all of it (skipped slides get their own `data-visibility="hidden"`). Separate from vertical stacks.
 - Vertical stacks (reveal.js sub-slides): wrap slides in an outer `<section>`: `<section><section>main</section><section>below</section></section>`.
   The first is the main slide, the rest sit below it (presenting: ↓ / ↑). Numbering follows reveal: main slide 3, its sub-slides 3.1, 3.2
   (filmstrip, the slideshow pill and its slide picker). The filmstrip draws a stack as a tree (sub-slides smaller, under a rail; ▾ / ▸ on the

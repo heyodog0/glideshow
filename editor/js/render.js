@@ -155,6 +155,10 @@ function renderThumbs() {
   thumbs.style.setProperty('--cols', cols);
   let hh = -1, vv = 0;
   const live = new Set(slides), taken = new Set();
+  let under = Infinity;   // slide groups: hide the slides under a folded one
+  const gHidden = slides.map((s, i) => { if (isSub(i)) return null; const L = groupLevel(s); if (L <= under) under = Infinity; const hide = L > under; if (!hide && 'groupFolded' in s.dataset && groupMembers(i).length) under = L; return hide; });
+  for (let i = 0; i < slides.length; i++) if (gHidden[i] === null) gHidden[i] = gHidden[i - 1] ?? false;
+  if (gHidden[cur]) { let t = cur; while (t > 0 && (gHidden[t] || isSub(t))) t--; if ('groupFolded' in slides[t].dataset) { delete slides[t].dataset.groupFolded; return renderThumbs(); } }   // never hide the slide being edited
   // a slide that is new to the strip (an undo's restored copy, a reload) takes over the entry of a slide that left at its
   // place, so the old picture stays up until the new one is ready (swapView)
   const reuse = i => { const o = thumbs.children[i]; return o && !live.has(thumbSlide.get(o)) && !taken.has(o) ? o : null; };
@@ -163,10 +167,16 @@ function renderThumbs() {
     const t = thumbEls.get(s) || reuse(i) || div('thumb'); thumbEls.set(s, t); thumbSlide.set(t, s); taken.add(t);
     const n = vv ? 0 : subsOf(i), folded = fold.has(hh);
     t.className = 'thumb' + (i === cur ? ' active' : '') + (picked.has(s) ? ' picked' : '') + (vv ? ' sub' : '')
-      + (vv && !(slides[i + 1] && isSub(i + 1)) ? ' stack-last' : '') + (vv && folded ? ' folded' : '');
+      + (vv && !(slides[i + 1] && isSub(i + 1)) ? ' stack-last' : '') + (vv && folded ? ' folded' : '') + (groupLevel(s) ? ' grp' : '') + (gHidden[i] ? ' gfolded' : '');
+    t.style.setProperty('--g', String(groupLevel(slides[vv ? i - vv : i])));
     t.style.gridColumn = gridOn ? (hh % cols) + 1 : ''; t.style.gridRow = gridOn ? Math.floor(hh / cols) + 1 : '';
     t.style.setProperty('--v', vv);
     const num = div('num'); num.textContent = s.dataset.edTheme ? '' : vv ? `${hh + 1}.${vv}` : String(hh + 1);   // reveal's convention: main slide 3, its sub-slides 3.1, 3.2; theme slides unnumbered
+    const gm = vv ? 0 : groupMembers(i).filter(j => !isSub(j)).length;
+    if (gm) {   // a slide group's top: fold / unfold the slides indented under it
+      const gf = document.createElement('button'), shut = 'groupFolded' in s.dataset; gf.className = 'gfold icon'; gf.textContent = shut ? 'arrow_right' : 'arrow_drop_down';
+      gf.dataset.tip = shut ? `Show ${gm} indented slide${gm > 1 ? 's' : ''}` : 'Hide indented slides'; num.append(gf);
+    }
     if (n) {
       const f = document.createElement('button'); f.className = 'fold icon'; f.textContent = folded ? 'arrow_right' : 'arrow_drop_down';
       f.dataset.tip = folded ? `Show ${n} sub-slide${n > 1 ? 's' : ''}` : 'Hide sub-slides'; num.append(f);
@@ -182,9 +192,10 @@ function renderThumbs() {
     if (t.firstChild?.outerHTML !== num.outerHTML) (t.firstChild ? t.firstChild.replaceWith(num) : t.append(num));
     if (t.children[1] !== view) (t.children[1] ? swapView(t, view) : t.append(view));
     t.ondblclick = () => { if (gridOn) { setGrid(false); go(i); } };   // grid view: double-click opens the slide
-    t.onpointerdown = e => { if (e.target.closest('.fold')) return; if (e.button === 0 && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); startThumbDrag(e, i); } };   // no text selection while dragging
+    t.onpointerdown = e => { if (e.target.closest('.fold, .gfold')) return; if (e.button === 0 && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); startThumbDrag(e, i); } };   // no text selection while dragging
     t.onclick = e => {   // ⇧-click extends the slide selection, ⌘-click toggles; the filmstrip then has keyboard focus
       if (e.target.closest('.fold')) { const h = hv(i)[0]; setFolded(h, !foldedH().has(h)); renderThumbs(); return; }
+      if (e.target.closest('.gfold')) { toggleGroupFold(i); return; }
 
       if (thumbDragged) { thumbDragged = false; return; }
 

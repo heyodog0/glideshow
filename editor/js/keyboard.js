@@ -211,6 +211,7 @@ addEventListener('keydown', e => {
       return;
     }
     if (!mod && (e.key === 'Backspace' || e.key === 'Delete')) { e.preventDefault(); deleteSlides(); return; }
+    if (!mod && e.key === 'Tab') { e.preventDefault(); indentSlides(e.shiftKey ? -1 : 1); return; }   // Keynote: indent / outdent into slide groups
     if (mod && k === 'a') { e.preventDefault(); picked = new Set(slides); slideAnchor = 0; renderThumbs(); return; }
     if (!mod && e.key === 'Enter') { e.preventDefault(); thumbs.blur(); return; }
   }

@@ -627,10 +627,21 @@ def checks(pg, deck: Path, errors):
       const css = deckDoc.querySelector('#deck-theme').textContent, h1 = getComputedStyle(content(a).querySelector('p')).fontWeight;
       const p0 = content(a).querySelector('p'); p0.innerHTML = '<span style="font-size: 90px; color: rgb(217, 48, 37);">Big idea</span>'; sel = new Set([a]); updatePanel();
       document.querySelector('#ed-f-pstyle-update').click();
-      const other = getComputedStyle(content(b).querySelector('p')), out = [opts.join('/'), content(a).querySelectorAll('p.ps-heading').length, /\/\* text-styles \*\//.test(css), h1, other.fontSize, other.color, document.querySelector('#ed-f-pstyle').value, Math.round(ms), p0.querySelector('span').getAttribute('style')];
+      const other = getComputedStyle(content(b).querySelector('p')), out = [opts.join('/'), content(a).querySelectorAll('p.ps-heading').length, css.includes('text-styles'), h1, other.fontSize, other.color, document.querySelector('#ed-f-pstyle').value, Math.round(ms), p0.querySelector('span').getAttribute('style')];
       slides.pop(); go(was); sel = new Set(had); render(); commit(); updatePanel(); return out; })()""")
     check(f"Format options → Paragraph style (Keynote's styles, D11): Title / Subtitle / Heading / Body / Caption / Quote as a class on each paragraph with its rule in the deck's CSS ({ps[7]} ms); Update to match makes every paragraph in the style look like the selected text",
           ps[0] == "None/Title/Subtitle/Heading/Body/Caption/Quote" and ps[1] == 2 and ps[2] and ps[3] == "700" and ps[4] == "90px" and ps[5] == "rgb(217, 48, 37)" and ps[6] == "ps-heading" and ps[7] < 100 and ps[8] is None, str(ps))
+    # slide groups (D6): Tab / ⇧Tab in the filmstrip indent (data-group); fold; a folded group skips and moves whole
+    sg = pg.evaluate("""(() => { const was = cur, had = [...sel], n0 = slides.length; for (let k = 0; k < 4; k++) slides.push(blankSlide()); render(); go(n0 + 1); picked = new Set([slides[n0 + 1], slides[n0 + 2]]); renderThumbs();
+      thumbs.focus(); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true })); const lv = slides.slice(n0, n0 + 4).map(s => s.dataset.group || '0');
+      const pad = getComputedStyle(thumbs.children[n0 + 1]).paddingLeft, btn = !!thumbs.children[n0].querySelector('.gfold');
+      thumbs.children[n0].querySelector('.gfold').click(); const hid = [...thumbs.children].slice(n0, n0 + 4).map(t => getComputedStyle(t).display === 'none');
+      go(n0); picked = new Set([slides[n0]]); skipSlides(); const sk = slides.slice(n0, n0 + 4).map(s => s.dataset.visibility === 'hidden');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true })); const after = slides.slice(n0, n0 + 4).map(s => s.dataset.group || '0');
+      go(n0 + 1); const opened = !('groupFolded' in slides[n0].dataset);
+      slides.splice(n0, 4); go(was); sel = new Set(had); render(); commit(); drawOverlay(); updateToolbar(); return [lv.join(''), pad, btn, hid, sk, after.join(''), opened]; })()""")
+    check("slide groups (Keynote's indent, D6): Tab in the filmstrip indents slides under the one above (data-group), shown indented with a fold button; folding hides them, skipping the folded group skips it all; ⇧Tab can't outdent a top-level slide; going to a hidden slide unfolds it",
+          sg[0] == "0110" and sg[1] == "18px" and sg[2] and sg[3] == [False, True, True, False] and sg[4] == [True, True, True, False] and sg[5] == "0110" and sg[6], str(sg))
     pg.fill("#ed-f-rot", "90"); pg.press("#ed-f-rot", "Enter")
     # map the local shadow offset through the box's actual rendered matrix (flip · rotate) and expect "straight down"
     sh = pg.evaluate("""(() => { const b = [...document.querySelectorAll('#ed-canvas .box[data-shape]')].pop();
@@ -775,7 +786,7 @@ def checks(pg, deck: Path, errors):
           and {"New slide", "Duplicate slide", "Skip slide", "Change background"} <= set(on_thumb), f"{on_box} | {on_slide} | {on_thumb}")
     ids = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1);
       const bs = [100, 500, 900].map(x => makeBox({x, y: 300, w: 200, h: 100, shape: 'rect'})); s.append(...bs); sel = new Set([bs[0]]); render(); return bs.map(b => b.id); })()""")
-    pg.locator("#ed-stage").focus(); order = []
+    pg.evaluate("thumbs.blur()"); pg.locator("#ed-stage").focus(); order = []   # (Tab in the filmstrip indents slides now: D6)
     for key in ["Tab", "Tab", "Tab", "Shift+Tab"]:
         pg.keyboard.press(key); order.append(ids.index(pg.evaluate("[...sel][0].id")))
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")

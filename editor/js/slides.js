@@ -86,6 +86,7 @@ function dupSlides() {
   });
 }
 function deleteSlides() {
+  picked = new Set(pickedWithGroups().map(i => slides[i]));   // a folded group goes whole
   slideOp(() => {
     const idx = pickedIdx(); if (idx.length >= slides.length) idx.shift();   // always keep one slide
     if (!idx.length) return;
@@ -94,7 +95,34 @@ function deleteSlides() {
   });
 }
 /* Move the picked slides as a block: 'up' / 'down' by one, or to the 'start' / 'end'. */
+/* Slide groups (Keynote's indented slides, D6): data-group="1"…"5" is a main slide's indent; its group is the slides
+   indented under it, folded in the filmstrip with data-group-folded. Tab / ⇧Tab in the filmstrip, or Slide → Indent /
+   Outdent slide; the slides indented under one move with it. Separate from stacks: the slideshow ignores groups, except
+   that skipping, moving or deleting a folded group takes all of it. */
+const groupLevel = s => +(s?.dataset.group || 0);
+function groupMembers(i) {   // the slides indented under slide i (with their sub-slides)
+  const L = groupLevel(slides[i]), out = [];
+  for (let j = i + 1; j < slides.length; j++) { if (isSub(j)) { out.push(j); continue; } if (groupLevel(slides[j]) <= L) break; out.push(j); }
+  return out;
+}
+/* The picked slides, with the slides inside any picked folded group. */
+const pickedWithGroups = () => [...new Set(pickedIdx().flatMap(i => [i, ...('groupFolded' in slides[i].dataset ? groupMembers(i) : [])]))].sort((a, b) => a - b);
+function indentSlides(d) {
+  slideOp(() => {
+    const top = pickedIdx().filter(i => !isSub(i)), moved = new Set();
+    for (const i of top) {
+      let p = i - 1; while (p >= 0 && isSub(p)) p--;
+      const s = slides[i], L = Math.max(0, Math.min(5, p >= 0 ? groupLevel(slides[p]) + 1 : 0, groupLevel(s) + d)), by = L - groupLevel(s); if (!by) continue;
+      for (const j of [i, ...groupMembers(i)]) { if (moved.has(j) || isSub(j)) continue; moved.add(j); const v = Math.max(0, Math.min(5, groupLevel(slides[j]) + by)); if (v) slides[j].dataset.group = String(v); else delete slides[j].dataset.group; }
+    }
+  });
+}
+function toggleGroupFold(i) {   // folding over the slide on show moves to the group's top, as Keynote
+  const s = slides[i]; if ('groupFolded' in s.dataset) delete s.dataset.groupFolded; else { s.dataset.groupFolded = ''; if (groupMembers(i).includes(cur)) go(i); }
+  commit(); renderThumbs();
+}
 function moveSlides(to) {
+  picked = new Set(pickedWithGroups().map(i => slides[i]));   // a folded group moves whole
   slideOp(() => {
     const idx = pickedIdx(), block = idx.map(i => slides[i]), rest = slides.filter(s => !picked.has(s)), first = idx[0];
     const at = { up: first - 1, down: first + 1, start: 0, end: rest.length }[to];

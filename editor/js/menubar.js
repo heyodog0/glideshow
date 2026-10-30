@@ -153,6 +153,8 @@ const MENUS = {
     { label: 'Slide style (CSS)', icon: 'css', run: () => editSlideCSS() },   // ours: styles for this slide only
     { label: 'Delete slide', icon: 'delete', run: () => $('#ed-del-slide').click() },
     { label: 'Skip slide', icon: 'visibility_off', on: () => slides[cur]?.dataset.visibility === 'hidden', run: skipSlides },
+    { label: 'Indent slide', icon: 'format_indent_increase', key: 'Tab', run: () => indentSlides(1), off: () => isSub(cur) },
+    { label: 'Outdent slide', icon: 'format_indent_decrease', key: '⇧Tab', run: () => indentSlides(-1), off: () => !groupLevel(slides[cur]) },
     { label: 'Move slide', icon: 'swap_vert', items: [
       { label: 'Move slide up', icon: 'arrow_upward', key: '⌘↑', run: () => $('#ed-up-slide').click() },
       { label: 'Move slide down', icon: 'arrow_downward', key: '⌘↓', run: () => $('#ed-down-slide').click() },

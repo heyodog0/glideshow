@@ -42,6 +42,8 @@ const thumbMenu = () => [
   { label: 'Duplicate slide', icon: 'control_point_duplicate', run: () => $('#ed-dup-slide').click() },
   { label: 'Delete', icon: 'delete', run: () => $('#ed-del-slide').click() },
   { label: 'Skip slide', icon: 'visibility_off', on: () => slides[cur]?.dataset.visibility === 'hidden', run: skipSlides },
+  { label: 'Indent slide', icon: 'format_indent_increase', run: () => indentSlides(1), off: () => isSub(cur) },
+  { label: 'Outdent slide', icon: 'format_indent_decrease', run: () => indentSlides(-1), off: () => !groupLevel(slides[cur]) },
   { label: 'Move slide', icon: 'swap_vert', items: () => [
     { label: 'Move slide to beginning', icon: 'vertical_align_top', key: '⇧⌘↑', run: () => moveSlides('start') },
     { label: 'Move slide to end', icon: 'vertical_align_bottom', key: '⇧⌘↓', run: () => moveSlides('end') },

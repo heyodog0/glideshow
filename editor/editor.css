@@ -174,6 +174,9 @@ main { flex: 1; display: flex; min-height: 0; }
 .thumb .skipped { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgb(255 255 255 / .6); }
 .thumb .skipped .icon { font-size: 28px; color: var(--ink); }
 .thumb .has-trans { font-size: 16px; color: var(--muted); }
+body:not(.grid-mode) .thumb.grp { padding-left: calc(var(--g) * 18px); }   /* a slide indented into a group (Keynote) */
+.thumb.gfolded { display: none; }
+.thumb .gfold { border: 0; background: none; padding: 0; color: var(--muted); font-size: 20px; line-height: 16px; cursor: pointer; }
 .thumb-view { position: relative; width: 158px; aspect-ratio: var(--slide-ar, 16 / 9); overflow: hidden; border-radius: 8px; box-shadow: 0 0 0 1px var(--divider);
   content-visibility: auto; }   /* drawn (and its pictures decoded) only near the screen: a deck of big photos stays light */
 .thumb:hover .thumb-view { box-shadow: 0 0 0 1px var(--muted); }

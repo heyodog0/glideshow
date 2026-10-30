@@ -124,7 +124,7 @@ function breakApart() {
 /* Slide → Skip slide: reveal.js leaves data-visibility="hidden" slides out of the slideshow. */
 function skipSlides() {
   const on = !pickedIdx().every(i => slides[i].dataset.visibility === 'hidden');
-  pickedIdx().forEach(i => { if (on) slides[i].dataset.visibility = 'hidden'; else delete slides[i].dataset.visibility; });
+  pickedWithGroups().forEach(i => { if (on) slides[i].dataset.visibility = 'hidden'; else delete slides[i].dataset.visibility; });   // a folded group: all of it (slides.js)
   commit();
 }
 /* Arrange → Group (⌥⌘G): the selection moves into one `.box.group` sized to its bounds, members keep
