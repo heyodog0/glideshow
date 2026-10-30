@@ -1,7 +1,7 @@
 // What the editor's classic scripts share at runtime but the type checker can't see (`npm run`-free: `tsc -p editor`):
 // functions deck/shapes.js and the data files put on window, and libraries loaded from a CDN.
 declare var polygonClipping: { union(...g: any[]): any[]; intersection(...g: any[]): any[]; difference(...g: any[]): any[]; xor(...g: any[]): any[] };
-declare var attachConnectors: (root: ParentNode) => void, renderShape: (box: Element) => void, shadeBox: (box: Element) => void, cropBox: (box: Element) => void, adjustImage: (box: HTMLElement) => void, gradBox: (box: HTMLElement) => void, fitTabs: (box: Element) => void, numberSlides: (list: HTMLElement[], deck?: string) => void, bgCss: (s: HTMLElement) => Partial<CSSStyleDeclaration>, ADJUST: string[], fitText: (box: Element) => void, rideLineEnds: (box: HTMLElement, ms: number) => void;
+declare var attachConnectors: (root: ParentNode) => void, renderShape: (box: Element) => void, shadeBox: (box: Element) => void, cropBox: (box: Element) => void, adjustImage: (box: HTMLElement) => void, gradBox: (box: HTMLElement) => void, fitTabs: (box: Element) => void, numberSlides: (list: HTMLElement[], deck?: string) => void, bgCss: (s: HTMLElement) => Partial<CSSStyleDeclaration>, ADJUST: string[], fitText: (box: Element) => void, rideLineEnds: (box: HTMLElement, ms: number) => void, applyLayouts: (secs?: HTMLElement[], tpl?: HTMLTemplateElement | null) => void;
 declare var shapeAdjust: (...args: any[]) => any, renderMath: (root?: any) => void, unrenderMath: (root?: any) => void, highlightCode: (root?: any) => void;
 declare var LATEX_SYMBOLS: Record<string, string>, CHAR_CATEGORIES: any[];
 declare var Reveal: any, RevealNotes: any, EyeDropper: any;

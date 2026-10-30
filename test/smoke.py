@@ -619,6 +619,7 @@ def checks(pg, deck: Path, errors):
     check("Format options (inches, as Slides): size, lock aspect, rotate, flip, shadow, position from centre", fo == ["240px", "200px", "rotate(30deg)", "h", True, 960, "-1 1"], str(fo))
     design_answer_checks(pg)
     figure_checks(pg, deck.parent)
+    layout_checks(pg, deck)
     pg.fill("#ed-f-rot", "90"); pg.press("#ed-f-rot", "Enter")
     # map the local shadow offset through the box's actual rendered matrix (flip · rotate) and expect "straight down"
     sh = pg.evaluate("""(() => { const b = [...document.querySelectorAll('#ed-canvas .box[data-shape]')].pop();
@@ -1910,6 +1911,38 @@ raw = b"".join(b"\\x00" + bytes(COLOR) * w for _ in range(h))
 chunk = lambda k, d: struct.pack(">I", len(d)) + k + d + struct.pack(">I", zlib.crc32(k + d) & 0xffffffff)
 open(sys.argv[1], "wb").write(b"\\x89PNG\\r\\n\\x1a\\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
 """
+
+
+def layout_checks(pg, deck_file: Path):
+    """Real master slides (D5): objects and a background on a layout, Add to all layouts, the deck's own layouts; copies
+    on the slides with ids of their own (lines re-pointed), no builds or links; saved as <template id="deck-layouts">."""
+    lay = pg.evaluate("""(async () => { window.__layWas = [cur, [...sel].map(b => b.id), deckDoc.querySelector('#deck-theme').textContent];
+      const a = blankSlide('title-body'), b = blankSlide('title-body'), c = blankSlide('section'); slides.push(a, b, c); render(); commit(); await flushSave();
+      enterThemeEdit(); go(slides.findIndex(s => s.dataset.edTheme === 'title-body'));
+      const logo = makeBox({ x: 1700, y: 40, w: 160, h: 80, shape: 'rect' }); logo.style.setProperty('--fill', '#e8710a'); logo.classList.add('fragment', 'fade-in'); logo.dataset.link = 'https://example.org'; slides[cur].append(logo);
+      const line = makeBox({ x: 100, y: 1000, w: 1600, h: 0, shape: 'line' }); line.dataset.to = logo.id + ':l'; slides[cur].append(line);
+      slides[cur].dataset.backgroundColor = '#fef7e0'; render(); sel = new Set([logo]); document.querySelector('#ed-lay-all').click();
+      const others = slides.filter(s => s.dataset.edTheme && s.dataset.edTheme !== 'master' && s.dataset.edTheme !== 'title-body').every(s => boxes(s).some(x => x.dataset.shape === 'rect' && !x.dataset.role));
+      document.querySelector('#ed-lay-new').click(); slides[cur].dataset.edName = 'Quote page'; const own = slides[cur].dataset.edTheme;
+      exitThemeEdit(); await flushSave();
+      const tpl = deckDoc.getElementById('deck-layouts'), L = tpl?.content.querySelector('.layout[data-layout="title-body"]');
+      const sa = slides[slides.length - 3], sb = slides[slides.length - 2], ca = [...sa.querySelectorAll(':scope > [data-from-layout]')], cb = [...sb.querySelectorAll(':scope > [data-from-layout]')];
+      const lineA = ca.find(x => x.dataset.shape === 'line'), logoA = ca.find(x => x.dataset.shape === 'rect');
+      const out = [!!L, L?.dataset.backgroundColor, ca.length, cb.length, logoA?.id !== cb.find(x => x.dataset.shape === 'rect')?.id, lineA?.dataset.to === logoA?.id + ':l',
+        logoA?.classList.contains('fragment'), 'link' in (logoA?.dataset || {}), boxes(sa).some(x => x.hasAttribute('data-from-layout')), sa.dataset.backgroundColor, others,
+        layoutItems().some(i => i.label === 'Quote page'), getComputedStyle(logoA).pointerEvents === 'none' || !logoA.isConnected];
+      applyLayout(slides[slides.length - 1], own); out.push(slides[slides.length - 1].dataset.layout === own); render(); commit(); await flushSave();
+      return out; })()""")
+    saved = deck_file.read_text()
+    v = pg.context.new_page(); v.goto(URL + "deck/deck.html"); v.wait_for_function("window.Reveal?.isReady?.()", timeout=20000)
+    shown = v.evaluate("""(() => { const cs = [...document.querySelectorAll('.reveal .slides [data-from-layout]')], ids = cs.map(c => c.id);
+      return [cs.length >= 4, new Set(ids).size === ids.length, cs.every(c => !c.classList.contains('fragment') && !c.dataset.link), cs.filter(c => c.dataset.shape === 'line').every(l => document.getElementById(l.dataset.to.split(':')[0])?.closest('section') === l.closest('section'))]; })()""")
+    v.close()
+    pg.evaluate("""(async () => { slides.splice(slides.length - 3, 3); const w = window.__layWas; deckDoc.getElementById('deck-layouts')?.remove();
+      deckDoc.querySelector('#deck-theme').textContent = w[2]; $('#ed-deck-theme-live').textContent = w[2]; editorLayouts(); go(w[0]); sel = new Set(w[1].map(id => document.getElementById(id)).filter(Boolean)); render(); commit(); await flushSave(); drawOverlay(); updateToolbar(); })()""")
+    check("master slides (D5): a layout's own objects and background (Edit theme), Add to all layouts, a new layout of the deck's own; slides show copies with ids of their own (lines re-pointed), no builds or links, not selectable; saved as <template id=\"deck-layouts\"> and played by the deck",
+          lay == [True, "#fef7e0", 2, 2, True, True, False, False, False, "#fef7e0", True, True, True, True] and '<template id="deck-layouts">' in saved and "data-from-layout" not in saved.split('<template id="deck-layouts">')[0]
+          and all(shown), f"{lay} {shown}")
 
 
 def figure_checks(pg, folder: Path):

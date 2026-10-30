@@ -61,9 +61,11 @@ function enterThemeEdit() {
     b.dataset.role = String(role); b.dataset.valign = 'top'; content(b).style.fontSize = Math.round((role === 'title' ? t.titleSize : t.bodySize) * PT * 100) / 100 + 'px';
     if (role === 'title') content(b).style.color = t.title; master.append(b);
   }
-  const lays = LAYOUTS.filter(l => l[0] !== 'blank').map(l => {
-    const s = blankSlide(l[0]); s.dataset.edTheme = String(l[0]);
+  const lays = allLayouts().filter(l => l[0] !== 'blank' || tplLayouts().some(x => x.dataset.layout === 'blank')).map(l => {
+    const s = bareLayout(blankSlide(l[0])); s.dataset.edTheme = String(l[0]); s.dataset.edName = String(l[1]);
     boxes(s).forEach(b => { content(b).textContent = SAMPLE[b.dataset.role] || SAMPLE.body; delete b.dataset.placeholder; });
+    const L = tplLayouts().find(x => x.dataset.layout === l[0]);   // its own objects and background (the template's)
+    if (L) { for (const o of [...L.children].filter(o => o.classList.contains('box') && !(/** @type {HTMLElement} */ (o)).dataset.placeholder)) s.append(o.cloneNode(true)); if (L.dataset.backgroundColor) s.dataset.backgroundColor = L.dataset.backgroundColor; }
     return s;
   });
   slides = [master, ...lays]; cur = Math.max(0, slides.findIndex(s => s.dataset.edTheme === keep));
@@ -85,7 +87,8 @@ function exitThemeEdit() {
       return [b.dataset.role, Math.round(g.x), Math.round(g.y), Math.round(g.w), Math.round(g.h), r1(rel), b.dataset.valign || 'middle', c.style.textAlign || 'left']; });
   }
   canvas.querySelectorAll(':scope > section.measure').forEach(c => c.remove());
-  slides = themeStash.slides; cur = themeStash.cur; themeStash = null;
+  writeLayouts(slides.filter(s => s.dataset.edTheme && s.dataset.edTheme !== 'master'), t);
+  slides = themeStash.slides; cur = themeStash.cur; themeStash = null; editorLayouts();
 
   document.body.classList.remove('theme-mode'); $('#ed-theme-bar').hidden = true;
   next.layouts = layouts; next.name = t.name === 'Custom' || t.implicit ? 'Custom' : t.name;
@@ -98,7 +101,9 @@ function updateThemeBar() {
   if (!themeStash) return;
   const s = slides[cur], name = s?.dataset.edTheme, lay = LAYOUTS.find(l => l[0] === name), used = themeStash.slides.filter(x => x.dataset.layout === name).length;
   $('#ed-theme-what').innerHTML = `Editing: <b></b> <span class="muted"></span>`;
-  $('#ed-theme-what b').textContent = `${theme().name} - ${name === 'master' ? 'Theme' : lay?.[1] || ''}`;
+  $('#ed-theme-what b').textContent = `${theme().name} - ${name === 'master' ? 'Theme' : s?.dataset.edName || lay?.[1] || ''}`;
+  const own = !!name && name !== 'master' && !LAYOUTS.some(l => l[0] === name);   // the deck's own layouts: renamed and deleted here
+  $('#ed-lay-all').hidden = name === 'master'; $('#ed-lay-dup').hidden = name === 'master'; $('#ed-lay-ren').hidden = $('#ed-lay-del').hidden = !own;
   $('#ed-theme-what span').textContent = name === 'master' ? '' : `(Used by ${used} slide${used === 1 ? '' : 's'})`;
   $('#ed-theme-reapply').hidden = name === 'master';
 }
@@ -121,8 +126,22 @@ const LAYOUTS = [
   ['big-number', 'Big number', [['title', 65, 232, 1790, 413, 120, 'bottom', 'center'], ['body', 65, 662, 1790, 273, 18, 'top', 'center']]],
   ['blank', 'Blank', []],
 ];
+/* Layouts with their own objects and background (D5): <template id="deck-layouts"> in the deck (shapes.js applyLayouts
+   draws them); the deck's own layouts beyond Slides' eleven live there too. The editor puts the objects on its slides
+   (not selectable, dropped when saving) and edits them in Slide → Edit theme. */
+const layoutTpl = () => /** @type {HTMLTemplateElement | null} */ (deckDoc?.getElementById('deck-layouts'));
+const tplLayouts = () => /** @type {HTMLElement[]} */ ([...(layoutTpl()?.content.children || [])].filter(l => l.classList.contains('layout')));
+/** @returns {any[]} */
+const allLayouts = () => [...LAYOUTS, ...tplLayouts().filter(l => !LAYOUTS.some(x => x[0] === l.dataset.layout)).map(l => [l.dataset.layout, l.dataset.name || l.dataset.layout, []])];
+const layoutName = name => allLayouts().find(l => l[0] === name)?.[1] || name;
+function editorLayouts(list = slides) {
+  const tpl = layoutTpl(), bg = (theme().bg || '').toLowerCase(), withBg = new Set(tplLayouts().filter(l => l.dataset.backgroundColor || l.dataset.backgroundImage).map(l => l.dataset.layout));
+  for (const s of list) if (withBg.has(s.dataset.layout) && !('bgFromLayout' in s.dataset) && (s.dataset.backgroundColor || '').toLowerCase() === bg && !s.dataset.backgroundImage) delete s.dataset.backgroundColor;   // only the theme's: the layout's shows
+  window.applyLayouts?.(list.filter(s => !s.dataset.edTheme), tpl);
+}
+const bareLayout = s => { window.applyLayouts?.([s], null); return s; };   // a layout editor slide: none of the layouts' copies on it
 function applyLayout(s, name) {
-  const lay = LAYOUTS.find(l => l[0] === name); if (!lay) return;
+  const lay = allLayouts().find(l => l[0] === name); if (!lay) return;
   const boxesOf = theme().layouts?.[name] || lay[2];   // edited in Slide → Edit theme, else Simple Light's
   const old = boxes(s).filter(b => b.dataset.placeholder), kept = { title: [], sub: [], body: [] };
   old.forEach(b => { const r = b.dataset.role || 'body'; if (content(b).textContent.trim()) kept[r].push(content(b).innerHTML); b.remove(); });
@@ -132,9 +151,10 @@ function applyLayout(s, name) {
     // sizes follow the theme: Title and body's title / body sizes are 28 / 18 pt, other layouts scale from them
     const [v, base] = role === 'title' ? ['--th-title-size', 28] : ['--th-body-size', 18];
     Object.assign(content(b).style, { fontSize: `calc(var(${v}, ${Math.round(base * PT * 100) / 100}px) * ${Math.round(pt / base * 1000) / 1000})`, textAlign: ta });
-    s.insertBefore(b, s.querySelector(':scope > .box:not([data-placeholder])'));
+    s.insertBefore(b, s.querySelector(':scope > .box:not([data-placeholder]):not([data-from-layout])'));
   }
   s.dataset.layout = name;
+  editorLayouts([s]);
 }
 /* In Thermal a layout's picture is a wireframe rather than Slides' outlines and prompts: its title a canopy-blue bar
    (a large one for a big number), a subtitle a shorter grey bar, body text a few soft lines, aligned as the layout
@@ -160,7 +180,7 @@ const layoutPic = lay => document.documentElement.dataset.look === 'thermal' ? l
   (lay[0] === 'section-description' ? '<rect x="960" width="960" height="1080" fill="#eee"/>' : '') +
   lay[2].map(([role, x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#9aa0a6" stroke-width="8"/>`
     + `<text x="${x + 30}" y="${y + Math.min(h / 2 + 30, 110)}" font-size="${role === 'title' ? 90 : 60}" fill="#5f6368" font-family="Arial">${role === 'title' ? 'Click to add title' : ''}</text>`).join('') + '</svg>';
-const layoutItems = () => LAYOUTS.map(lay => ({ label: lay[1], tile: true, svg: layoutPic(lay), on: () => slides[cur]?.dataset.layout === lay[0],
+const layoutItems = () => allLayouts().map(lay => ({ label: lay[1], tile: true, svg: layoutPic(lay), on: () => slides[cur]?.dataset.layout === lay[0],
   run: () => slideOp(() => applyLayout(slides[cur], lay[0])) }));
 
 function addText(text = 'Text', at) {
@@ -171,3 +191,31 @@ function addText(text = 'Text', at) {
   insert(b);
   return b;
 }
+
+/* The layout editor's own: on leaving, each layout's objects and background (and a deck layout's placeholders) are written
+   to <template id="deck-layouts">; Slides' layouts with nothing of their own are left out of it. */
+function writeLayouts(laySlides, t) {
+  const out = [];
+  for (const s of laySlides) {
+    const name = s.dataset.edTheme || '', builtin = LAYOUTS.some(l => l[0] === name), objs = boxes(s).filter(b => !b.dataset.role);
+    const bg = s.dataset.backgroundColor && s.dataset.backgroundColor.toLowerCase() !== (t.bg || '').toLowerCase() ? s.dataset.backgroundColor : '';
+    if (builtin && !objs.length && !bg) continue;
+    const L = deckDoc.createElement('div'); L.className = 'layout'; L.dataset.layout = name; L.dataset.name = s.dataset.edName || layoutName(name);
+    if (bg) L.dataset.backgroundColor = bg;
+    for (const b of boxes(s)) { const c = cleanBox(b); if (b.dataset.role) { c.dataset.placeholder = PH[b.dataset.role] || PH.body; const cc = c.querySelector(':scope > .content'); if (cc) cc.textContent = ''; } L.append(deckDoc.importNode(c, true)); }
+    out.push(L);
+  }
+  let tpl = layoutTpl();
+  if (!out.length) { tpl?.remove(); return; }
+  if (!tpl) { tpl = deckDoc.createElement('template'); tpl.id = 'deck-layouts'; (deckDoc.querySelector('.reveal') || deckDoc.body.firstElementChild)?.after(tpl); }
+  tpl.content.replaceChildren(...out.map(L => tpl.content.ownerDocument.importNode(L, true)));
+}
+$('#ed-lay-all').onclick = () => {   // the selected objects onto every layout, where this one has them
+  const objs = [...sel].filter(b => !b.dataset.role); if (!objs.length) return setStatus('Select the objects to add to every layout', 'error');
+  slides.filter(s => s.dataset.edTheme && s.dataset.edTheme !== 'master' && s !== slides[cur]).forEach(s => objs.forEach(b => { const c = /** @type {HTMLElement} */ (b.cloneNode(true)); c.id = uid(); c.querySelectorAll('[id]').forEach(e => { e.id = uid(); }); s.append(c); }));
+  render(); setStatus(`Added to ${slides.filter(s => s.dataset.edTheme && s.dataset.edTheme !== 'master').length - 1} other layouts`);
+};
+$('#ed-lay-new').onclick = () => { const s = bareLayout(blankSlide('title-only')); s.dataset.edTheme = 'own-' + Date.now().toString(36); s.dataset.edName = 'New layout'; boxes(s).forEach(b => { content(b).textContent = SAMPLE[b.dataset.role] || SAMPLE.body; delete b.dataset.placeholder; }); slides.push(s); go(slides.length - 1); };
+$('#ed-lay-dup').onclick = () => { const o = slides[cur], s = /** @type {HTMLElement} */ (o.cloneNode(true)); s.dataset.edTheme = 'own-' + Date.now().toString(36); s.dataset.edName = (o.dataset.edName || layoutName(o.dataset.edTheme)) + ' copy'; s.querySelectorAll('[id]').forEach(e => { e.id = uid(); }); slides.splice(cur + 1, 0, s); go(cur + 1); };
+$('#ed-lay-ren').onclick = () => { const s = slides[cur]; askURL('Rename layout', v => { s.dataset.edName = v; updateThemeBar(); }, s.dataset.edName || ''); $('#ed-url-in').type = 'text'; };
+$('#ed-lay-del').onclick = () => { if (LAYOUTS.some(l => l[0] === slides[cur].dataset.edTheme)) return; slides.splice(cur, 1); go(Math.min(cur, slides.length - 1)); };

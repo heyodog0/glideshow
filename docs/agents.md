@@ -183,6 +183,10 @@ lines short or the font smaller (`check` reports code that is cut off).
 (`data-adj` / `data-adj2`, 0..1 of the box, may be negative) points at the feature, or an `ellipse` with
 `--fill: transparent; --stroke: #d93025; --sw: 6px` around it.
 
+**A logo or footer on every slide.** Put it on the layout, not on each slide: in `<template id="deck-layouts">` (after
+`.reveal`, create it if missing) add `<div class="layout" data-layout="title-body">` with the box inside; every slide with
+that `data-layout` shows it. See the deck format's "Layouts with their own objects".
+
 **Text styles.** To keep a deck's text consistent, put paragraphs in a style rather than sizing each: `<p class="ps-heading">`,
 `ps-title`, `ps-subtitle`, `ps-body`, `ps-caption` or `ps-quote`. Change a style's look for the whole deck in its rule in
 `<style id="deck-theme">` (the `/* text-styles */` block), not on each paragraph.

@@ -483,10 +483,46 @@
       Object.assign(b.style, { left: r(P.x) + 'px', top: r(Math.min(P.y, Q.y)) + 'px', width: r(Q.x - P.x) + 'px', height: r(Math.abs(Q.y - P.y)) + 'px' });
     }
   }
+  /* Layouts with their own objects (D5, Keynote's master slides): <template id="deck-layouts"> holds one
+     <div class="layout" data-layout="name" data-name="…"> per layout, with its boxes (placeholder boxes, data-placeholder,
+     give a placeholder's place; the rest are its objects) and data-background-*. A slide with that data-layout shows
+     copies of the layout's objects behind its own (data-from-layout="its id"; ids made unique per slide, so lines,
+     links and builds never reach another slide's copy; no builds or links of their own), and the layout's background
+     when the slide has none (data-bg-from-layout marks one it got so). data-layout-objects="off" leaves them off a slide.
+     Run again, it first takes the old copies away. The editor runs it on its slides and drops the copies when saving. */
+  /** @param {HTMLElement[]} [secs] @param {HTMLTemplateElement | null} [tpl] */
+  function applyLayouts(secs = /** @type {HTMLElement[]} */ ([...document.querySelectorAll('.reveal .slides section')].filter(s => !s.querySelector(':scope > section'))), tpl = /** @type {HTMLTemplateElement | null} */ (/** @type {unknown} */ (document.getElementById("deck-layouts")))) {
+    const lays = Object.fromEntries([...(tpl?.content?.children || [])].filter(l => l.classList.contains('layout')).map(l => [/** @type {HTMLElement} */ (l).dataset.layout, /** @type {HTMLElement} */ (l)]));
+    secs.forEach((s, n) => {
+      s.querySelectorAll(':scope > [data-from-layout]').forEach(e => e.remove());
+      if ('bgFromLayout' in s.dataset) { for (const k of ['bgFromLayout', 'backgroundColor', 'backgroundImage', 'backgroundSize']) delete s.dataset[k]; }
+      const L = lays[s.dataset.layout || '']; if (!L) return;
+      if (!s.dataset.backgroundColor && !s.dataset.backgroundImage && (L.dataset.backgroundColor || L.dataset.backgroundImage)) {
+        for (const k of ['backgroundColor', 'backgroundImage', 'backgroundSize']) if (L.dataset[k]) s.dataset[k] = L.dataset[k];
+        s.dataset.bgFromLayout = '';
+      }
+      if (s.dataset.layoutObjects === 'off') return;
+      const tag = s.dataset.sid || 'n' + n, ids = new Set([...L.querySelectorAll('[id]')].map(e => e.id)), as = id => `${id}--${tag}`;
+      const copies = [...L.children].filter(b => b.classList.contains('box') && !(/** @type {HTMLElement} */ (b)).dataset.placeholder).map(b => {
+        const c = /** @type {HTMLElement} */ (b.cloneNode(true));
+        c.dataset.fromLayout = b.id || ''; [c, ...c.querySelectorAll('*')].forEach(e => {
+          if (e.id) e.id = as(e.id);
+          const d = /** @type {HTMLElement} */ (e).dataset; if (!d) return;
+          for (const k of ['from', 'to']) { const [id, side] = (d[k] || '').split(':'); if (id && ids.has(id) && side) d[k] = `${as(id)}:${side}`; }
+          e.classList.remove('fragment'); for (const k of ['fragmentIndex', 'builds', 'build', 'link', 'withPrevious']) delete d[k];
+        });
+        c.querySelectorAll('a[href]').forEach(a => a.replaceWith(...a.childNodes));
+        return c;
+      });
+      s.prepend(...copies);
+    });
+  }
+  window.applyLayouts = applyLayouts;
   window.attachConnectors = attachConnectors;
   window.shapeAdjust = shapeAdjust;
   window.shadeBox = shadeBox;
   window.fitText = fitText;
+  applyLayouts();   // a deck: its layouts' objects onto its slides, before they're drawn (the editor does its own)
   attachConnectors(document);   // a deck; the editor attaches each slide as it loads it
   document.querySelectorAll('.box[data-shape]').forEach(renderShape);
   document.querySelectorAll('.box[data-shadow]').forEach(shadeBox);

@@ -102,7 +102,7 @@ async function load(keep, outside = false) {
   slides = parseSlides(deckDoc);
   if (!slides.length) slides.push(blankSlide());
   slides.forEach(s => s.querySelectorAll('.box').forEach(b => { if (!b.id) b.id = uid(); }));
-  ensureSids(true);
+  ensureSids(true); editorLayouts();
   cur = keep ? Math.min(cur, slides.length - 1) : 0;
   sel = new Set(keep ? boxes().filter(b => ids.has(b.id)) : []);
   $('#ed-title').value = deckDoc.title || 'Untitled deck';
@@ -137,8 +137,9 @@ function cleanBox(b) {
 function sectionHTML(s, save) {
   const shell = s.cloneNode(false);
   if (save) shell.removeAttribute('data-ed-stack');
+  if ('bgFromLayout' in shell.dataset) for (const k of ['bgFromLayout', 'backgroundColor', 'backgroundImage', 'backgroundSize']) delete shell.dataset[k];   // its layout's, not its own
   const open = shell.outerHTML.slice(0, -'</section>'.length);
-  const inner = [...s.children].filter(e => !e.classList.contains('slide-num')).map(e => '  ' + (e.classList.contains('box') ? cleanBox(e) : e).outerHTML).join('\n');
+  const inner = [...s.children].filter(e => !e.classList.contains('slide-num') && !e.hasAttribute('data-from-layout')).map(e => '  ' + (e.classList.contains('box') ? cleanBox(e) : e).outerHTML).join('\n');
   return `${open}\n${inner}\n</section>`;
 }
 function deckHTML() {
@@ -244,6 +245,7 @@ function restore(s, at = s.cur) {
   const t = document.createElement('template'), same = new Map();   // slides the step didn't change stay the same elements,
   slides.forEach(x => { const h = sectionHTML(x); same.set(h, [...(same.get(h) || []), x]); });   // so their thumbnails aren't redrawn
   slides = s.html.map(h => { const kept = same.get(h)?.shift(); if (kept) return kept; t.innerHTML = h; return t.content.firstElementChild; });
+  editorLayouts();
   cur = Math.min(at, slides.length - 1);
   sel = new Set(boxes().filter(b => ids.has(b.id)));
   render(); scheduleSave();

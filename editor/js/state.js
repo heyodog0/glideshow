@@ -21,7 +21,7 @@ let hist = [], hptr = -1;
 let remoteBy = '';   // who made the change coming in from elsewhere, when the live link says (glideshow.org; boot.js remoteVersion)
 
 const uid = () => 'b' + Math.random().toString(36).slice(2, 8);
-const boxes = (s = slides[cur]) => [...s.children].filter(e => e.classList.contains('box'));
+const boxes = (s = slides[cur]) => [...s.children].filter(e => e.classList.contains('box') && !e.hasAttribute('data-from-layout'));   // (a layout's objects on the slide aren't the slide's: theme.js)
 const isGroup = b => b.classList.contains('group');
 /* A group has no text of its own: text commands on it write to a detached stand-in, i.e. do nothing. */
 const NO_CONTENT = document.createElement('div');

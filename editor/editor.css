@@ -183,6 +183,7 @@ body.outline-mode #ed-outline { display: block; flex: 1; overflow-y: auto; paddi
 .thumb .skipped { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgb(255 255 255 / .6); }
 .thumb .skipped .icon { font-size: 28px; color: var(--ink); }
 .thumb .has-trans { font-size: 16px; color: var(--muted); }
+#ed-canvas .box[data-from-layout] { pointer-events: none; }   /* a layout's objects: edited in the layout editor (Slide → Edit theme) */
 body:not(.grid-mode) .thumb.grp { padding-left: calc(var(--g) * 18px); }   /* a slide indented into a group (Keynote) */
 .thumb.gfolded { display: none; }
 .thumb .gfold { border: 0; background: none; padding: 0; color: var(--muted); font-size: 20px; line-height: 16px; cursor: pointer; }
