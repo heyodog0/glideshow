@@ -23,8 +23,10 @@ async function saveNow() {
 /* File → Download → PNG image: the current slide at 1920×1080, drawn by the browser itself (the slide's HTML and the
    deck's CSS inside an SVG foreignObject, pictures inlined as data URLs). Web fonts fall back to system fonts. */
 const toDataURL = async src => { try { const b = await (await fetch(src)).blob(); return await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); } catch { return src; } };
-async function slidePNG(s = slides[cur]) {
+async function slidePNG(s = slides[cur], stage = Infinity, type = 'image/png', quality = undefined) {
   const c = s.cloneNode(true);
+  if (stage !== Infinity) c.querySelectorAll('.fragment').forEach(f => { const shown = +(f.dataset.fragmentIndex ?? 0) < stage, out = OUT_EFFECTS.some(e => f.classList.contains(e));
+    if (out ? shown : !shown) f.remove(); });   // a build stage: the builds before it in, the outs before it gone
   c.querySelectorAll('[contenteditable]').forEach(e => e.removeAttribute('contenteditable'));
   c.querySelectorAll('aside.notes, .katex-mathml').forEach(e => e.remove());   // notes aren't drawn; KaTeX's MathML twin is only for screen readers
   c.querySelectorAll('iframe').forEach(f => f.replaceWith(Object.assign(div(''), { style: 'width:100%;height:100%;background:#f1f3f4' })));
@@ -42,12 +44,52 @@ async function slidePNG(s = slides[cur]) {
   const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   await img.decode();
   const cv = Object.assign(document.createElement('canvas'), { width: W, height: H }); cv.getContext('2d').drawImage(img, 0, 0);
-  return new Promise(r => cv.toBlob(r, 'image/png'));
+  return new Promise(r => cv.toBlob(r, type, quality));
 }
 async function downloadSlidePNG() {
   const blob = await slidePNG(), a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = `${($('#ed-title').value.trim() || 'slide').replace(/[^\w -]+/g, '')} - ${cur + 1}.png`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+/* File → Download → Images of the slides (Keynote's Export → Images): all slides or a range, optionally one image per
+   build stage, JPEG (higher quality / smaller file) or PNG, as one .zip. HEIC and TIFF, which browsers can't write, aren't offered. */
+const OUT_EFFECTS = ['fade-out', 'line-erase', 'disappear', 'blur-out', 'scale-out', 'iris-out'];
+const imgDlg = $('#ed-imgdlg');
+function showImgDlg() { closeMenu(); $('#ed-img-from').value = '1'; $('#ed-img-to').value = String(slides.length); imgDlg.hidden = false; $('#ed-img-ok').focus(); }
+$('#ed-img-cancel').onclick = imgDlg.querySelector('.sc-close').onclick = () => { imgDlg.hidden = true; };
+['ed-img-from', 'ed-img-to'].forEach(id => $('#' + id).addEventListener('focus', () => { imgDlg.querySelector('input[value=from]').checked = true; }));
+$('#ed-img-ok').onclick = async () => {
+  imgDlg.hidden = true;
+  const all = imgDlg.querySelector('input[value=all]').checked, a = Math.max(1, +$('#ed-img-from').value || 1), z = Math.min(slides.length, +$('#ed-img-to').value || slides.length);
+  const fmt = $('#ed-img-format').value, [type, q, ext] = fmt === 'png' ? ['image/png', undefined, 'png'] : ['image/jpeg', fmt === 'jpeg-hi' ? 0.92 : 0.6, 'jpg'];
+  const name = ($('#ed-title').value.trim() || 'slides').replace(/[^\w -]+/g, ''), files = [], t0 = performance.now();
+  for (let i = all ? 0 : a - 1; i < (all ? slides.length : z); i++) {
+    const s = slides[i]; if (s.dataset.visibility === 'hidden') continue;
+    const n = $('#ed-img-builds').checked ? new Set([...s.querySelectorAll('.fragment')].map(f => +(f.dataset.fragmentIndex ?? 0))).size : 0;
+    for (let k = 0; k <= n; k++) {
+      setStatus(`Making image ${files.length + 1}…`);
+      const blob = await slidePNG(s, n ? k : Infinity, type, q);
+      files.push([`${name} ${String(i + 1).padStart(3, '0')}${n ? '-' + (k + 1) : ''}.${ext}`, new Uint8Array(await blob.arrayBuffer())]);
+    }
+  }
+  const el = document.createElement('a'); el.href = URL.createObjectURL(new Blob([zipStore(files)], { type: 'application/zip' })); el.download = name + '.zip'; el.click();
+  setTimeout(() => URL.revokeObjectURL(el.href), 2000); setStatus(`${files.length} images in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+};
+/* A .zip of files stored as they are (images are compressed already): local headers, the central directory, its end. */
+const CRC_TABLE = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+function zipStore(files) {
+  const crcT = CRC_TABLE;
+  const crc = d => { let c = ~0; for (const b of d) c = crcT[(c ^ b) & 255] ^ (c >>> 8); return ~c >>> 0; }, enc = new TextEncoder(), parts = [], dir = []; let off = 0;
+  const head = (sig, len) => { const b = new DataView(new ArrayBuffer(len)); b.setUint32(0, sig, true); return b; };
+  for (const [name, data] of files) {
+    const nm = enc.encode(name), c = crc(data), h = head(0x04034b50, 30);
+    h.setUint16(4, 20, true); h.setUint32(14, c, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, nm.length, true);
+    const d = head(0x02014b50, 46); d.setUint16(4, 20, true); d.setUint16(6, 20, true); d.setUint32(16, c, true); d.setUint32(20, data.length, true); d.setUint32(24, data.length, true); d.setUint16(28, nm.length, true); d.setUint32(42, off, true);
+    parts.push(h, nm, data); dir.push(d, nm); off += 30 + nm.length + data.length;
+  }
+  const size = dir.reduce((n, p) => n + p.byteLength, 0), e = head(0x06054b50, 22);
+  e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, size, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...dir, e].map(p => p instanceof DataView ? p.buffer : p));
 }
 $('#ed-app-icon').onclick = async e => { e.preventDefault(); await flushSave(); if (!draftEdited()) return leaveDraft(); showDraftDlg(true); };
 /* Leaving an untitled draft: it won't be saved, so ask, as Slides asks before discarding. */

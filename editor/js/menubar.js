@@ -58,7 +58,7 @@ const MENUS = {
     { label: 'Import from Google Slides', icon: 'cloud_download', run: () => askURL('Import from Google Slides: link to the deck', importGoogle), mac: true },
     { label: 'Make a copy', icon: 'file_copy', run: () => askURL('Make a copy: folder name', name => switchDeck({ copy: name }), deckName() + '-copy') },
     '-',
-    { label: 'Download', icon: 'download', items: onThisSide([{ label: 'Glideshow deck, one file (.html)', run: downloadOneFile }, { label: 'PDF document (.pdf)', run: printDeck }, { label: 'PNG image (.png, current slide)', run: downloadSlidePNG }, { label: 'Microsoft PowerPoint (.pptx)', run: async () => { await flushSave(); setStatus('Making the PowerPoint file…'); location.href = '/api/pptx'; }, mac: true }, { label: 'Web page folder (.zip)', run: () => { location.href = '/api/zip'; }, mac: true }]) },   // the print dialog's Save as PDF
+    { label: 'Download', icon: 'download', items: onThisSide([{ label: 'Glideshow deck, one file (.html)', run: downloadOneFile }, { label: 'PDF document (.pdf)', run: printDeck }, { label: 'PNG image (.png, current slide)', run: downloadSlidePNG }, { label: 'Images of the slides (.zip)…', run: () => showImgDlg() }, { label: 'Microsoft PowerPoint (.pptx)', run: async () => { await flushSave(); setStatus('Making the PowerPoint file…'); location.href = '/api/pptx'; }, mac: true }, { label: 'Web page folder (.zip)', run: () => { location.href = '/api/zip'; }, mac: true }]) },   // the print dialog's Save as PDF
     '-',
     { label: 'Rename', icon: 'edit', run: () => { $('#ed-title').focus(); $('#ed-title').select(); } },
     { label: 'Move to trash', icon: 'delete', run: trashDeck },

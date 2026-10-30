@@ -1390,6 +1390,24 @@ def checks(pg, deck: Path, errors):
           n1 == n0 + 1 and n2 == n0 and pf == "#00ff00" and "<b>bold</b>" in rich and "script" not in rich and plain.count("<b>") == 1
           and compact == "none" and notes_off and saved == "All changes saved" and printed,
           f"{n0} {n1} {n2} {pf} {rich} {plain} {compact} {notes_off} {saved} {printed}")
+    # Download → Images of the slides (Keynote's Export → Images, k13): a range, each stage of builds, JPEG / PNG, one .zip
+    import io, zipfile
+    nimg = pg.evaluate("""(() => { const a = blankSlide(), b = blankSlide(); slides.push(a, b);
+      [0, 1].forEach(i => { const x = makeBox({ x: 100 + i * 600, y: 300, w: 400, h: 300, html: 'step ' + i }); x.style.setProperty('--fill', '#1a73e8'); x.classList.add('fragment', 'fade-in'); x.dataset.fragmentIndex = String(i); a.append(x); });
+      go(slides.length - 1); render(); commit(); return slides.length; })()""")
+    def zip_of(setup):
+        pg.click("#ed-menubar [data-menu=File]"); pg.hover(".menu-item:has(.menu-label:text-is('Download'))"); pg.click(".menu-item:has(.menu-label:text-is('Images of the slides (.zip)…'))")
+        pg.evaluate(setup)
+        with pg.expect_download(timeout=30000) as d: pg.click("#ed-img-ok")
+        return zipfile.ZipFile(io.BytesIO(Path(d.value.path()).read_bytes()))
+    z1 = zip_of(f"(() => {{ document.querySelector('#ed-imgdlg input[value=from]').checked = true; document.querySelector('#ed-img-from').value = '{nimg - 1}'; document.querySelector('#ed-img-builds').checked = true; document.querySelector('#ed-img-format').value = 'png'; }})()")
+    n1 = z1.namelist(); st = [z1.read(n) for n in n1]
+    z2 = zip_of("(() => { document.querySelector('#ed-imgdlg input[value=all]').checked = true; document.querySelector('#ed-img-builds').checked = false; document.querySelector('#ed-img-format').value = 'jpeg-lo'; })()")
+    n2 = z2.namelist()
+    pg.evaluate("(() => { slides.splice(slides.length - 2, 2); go(slides.length - 1); render(); commit(); })()")
+    check("Download → Images of the slides: a range with an image per build stage as PNG (3 stages + 1 slide), or every slide as JPEG, in one .zip (Keynote's Export → Images)",
+          len(n1) == 4 and all(n.endswith(".png") for n in n1) and n1[0].endswith(f"{nimg - 1:03d}-1.png") and st[0][:4] == b"\x89PNG" and len(set(st[:3])) == 3
+          and len(n2) >= nimg - 1 and all(n.endswith(".jpg") for n in n2) and z2.read(n2[0])[:2] == b"\xff\xd8", f"{n1} {n2[:3]} {len(n2)} {nimg}")
     # Print preview with Keynote's PDF options (k13): 1 slide with notes, each stage of builds, skipped slides, hide background
     pg.evaluate("""(async () => { const a = blankSlide(), h = blankSlide(); slides.push(a, h); const n = document.createElement('aside'); n.className = 'notes'; n.textContent = 'Say the print line'; a.append(n);
       const b = makeBox({ x: 100, y: 100, w: 400, h: 200, html: 'built' }); b.classList.add('fragment', 'fade-in'); a.append(b); h.dataset.visibility = 'hidden'; a.dataset.printTest = '';

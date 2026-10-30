@@ -328,6 +328,16 @@
     <footer><button id="ed-show-done" class="done">Done</button></footer>
   </div>
 </div>
+<div id="ed-imgdlg" class="backdrop" hidden>
+  <div class="dialog bg-dialog" role="dialog" aria-label="Download images">
+    <header><h2>Download images</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <div class="bg-row"><span>Slides</span><span><label class="chk"><input type="radio" name="ed-img-range" value="all" checked> All</label>
+      <label class="chk"><input type="radio" name="ed-img-range" value="from"> From <input type="number" id="ed-img-from" min="1" class="short"> to <input type="number" id="ed-img-to" min="1" class="short"></label></span></div>
+    <div class="bg-row"><label class="chk"><input type="checkbox" id="ed-img-builds"> Create an image for each stage of builds</label></div>
+    <div class="bg-row"><span>Format</span><select id="ed-img-format"><option value="jpeg-hi">JPEG (higher quality)</option><option value="jpeg-lo">JPEG (smaller file size)</option><option value="png">PNG</option></select></div>
+    <footer><button id="ed-img-cancel" class="outlined">Cancel</button><button id="ed-img-ok" class="done">Download</button></footer>
+  </div>
+</div>
 <div id="ed-linkdlg" class="backdrop" hidden>
   <div class="dialog bg-dialog" role="dialog" aria-label="Link">
     <header><h2>Link</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
