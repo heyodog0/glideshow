@@ -2048,7 +2048,10 @@ def reveal_checks(b, errors, deck_file: Path):
       const out = [g?.label, [...(g?.children || [])].map(o => o.value), [...(t?.children || [])].map(o => o.textContent)]; setTransPanel(false); return out; }""")
     check("Motion panel → More effects (D7): Blur, Drop, Spin, Iris, Scale big in; Disappear, Blur, Scale, Iris out; transitions Iris and Reveal",
           more[0] == "More effects" and more[1] == ["blur-in", "drop-in", "spin-in", "iris-in", "scale-big", "drift-in", "drift-scale", "fade-move-in", "fade-scale", "blinds-in",
-          "cube-in", "flip-in", "spin-y", "pivot-in", "twist-scale", "squish-in", "disappear", "blur-out", "scale-out", "iris-out"] and more[2][:2] == ["Iris", "Reveal"], str(more))
+          "cube-in", "flip-in", "spin-y", "pivot-in", "twist-scale", "squish-in", "sparkle-in", "shimmer-in", "confetti-in", "flash-in", "fireworks-in", "disappear", "blur-out", "scale-out", "iris-out"] and more[2][:2] == ["Iris", "Reveal"], str(more))
+    pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1); slides[cur].dataset.k9 = '';
+      ['sparkle-in', 'shimmer-in', 'confetti-in', 'flash-in', 'fireworks-in'].forEach((e, i) => { const b = makeBox({ x: 100 + i * 350, y: 400, w: 250, h: 200, html: e }); b.style.setProperty('--fill', '#1a73e8'); slides[cur].append(b); render(); sel = new Set([b]); addAnim(); setEffect(b, e); });
+      commit(); render(); }""")
     # the rest of Keynote's (r08): builds and transitions under More effects
     k8 = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1); slides[cur].dataset.transition = 'fade-black'; slides[cur].dataset.k8 = '';
       const effs = ['drift-in', 'drift-scale', 'fade-move-in', 'fade-scale', 'blinds-in', 'cube-in', 'flip-in', 'spin-y', 'pivot-in', 'twist-scale', 'squish-in'];
@@ -2187,6 +2190,13 @@ def reveal_checks(b, errors, deck_file: Path):
     bad_t = {k: x for k, x in k8v[0].items() if x != [True, True]}
     bad_b = [x for x in k8v[1] if not (x[1] and x[2] == 1 and x[3] in ("none", "1", "1 1") and x[4] in ("none", "0deg", "y 0deg") and x[5] in ("none", "0px 0px", "0px", "0%", "0px 0%"))]
     check("…in the slideshow each new transition moves something and ends with the new slide in place; each new build plays and ends at rest", not bad_t and not bad_b and len(k8v[1]) == 11, f"{bad_t} {bad_b}")
+    pt = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => 'k9' in x.dataset), h = Reveal.getIndices(s).h, wait = ms => new Promise(r => setTimeout(r, ms)), out = [];
+      Reveal.slide(h, 0, -1); await wait(500);
+      for (const b of s.querySelectorAll('.box.fragment')) { Reveal.nextFragment(); await wait(300); const cv = b.nextElementSibling?.matches?.('canvas.gs-particles');
+        await wait(2900); out.push([b.textContent, !!cv, !s.querySelector('canvas.gs-particles'), +getComputedStyle(b).opacity]); }
+      Reveal.slide(0); return out; }""")
+    check("…Keynote's special effects (Sparkle, Shimmer, Confetti, Flash bulbs, Fireworks): particles drawn over the box while it builds in, gone after, the box in place",
+          len(pt) == 5 and all(x[1] and x[2] and x[3] == 1 for x in pt), str(pt))
     pcs = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => 'k8' in x.dataset), h = Reveal.getIndices(s).h, cs = e => getComputedStyle(e), wait = ms => new Promise(r => setTimeout(r, ms)), out = {};
       for (const t of ['doorway', 'flop', 'mosaic', 'blinds', 'obj-flip', 'obj-revolve', 'obj-cube']) {
         s.dataset.transition = t; Reveal.slide(h - 1, 0, -1); await wait(400); Reveal.slide(h, 0, -1); await wait(150);

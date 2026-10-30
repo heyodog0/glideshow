@@ -132,7 +132,7 @@ Rules:
   (Rotate by `data-angle` degrees, 360 by default, negative counterclockwise; it stays turned), `pulse`, `pop` (Pop emphasis).
   More effects: in `blur-in`, `drop-in` (falls in and bounces), `spin-in` (Twirl: a flat spin), `iris-in`, `scale-big` (from three times its size),
   `drift-in`, `drift-scale`, `fade-move-in`, `fade-scale`, `blinds-in` (seven slats), `cube-in`, `flip-in`, `spin-y` (Spin: a turn about
-  the vertical axis), `pivot-in`, `twist-scale`, `squish-in` (falls and bounces, squashing);
+  the vertical axis), `pivot-in`, `twist-scale`, `squish-in` (falls and bounces, squashing), and Keynote's special effects `sparkle-in`, `shimmer-in`, `confetti-in`, `flash-in`, `fireworks-in` (present.js draws their particles);
   out `disappear`, `blur-out`, `scale-out`, `iris-out`.
   `move-to` (Move): the box moves to `data-to="x,y"` (its top-left there, in slide px; moving the box keeps the end) and
   stays; a straight path, or a curve with `data-via="x,y"` (the box's top-left halfway: the path is the quadratic Bézier

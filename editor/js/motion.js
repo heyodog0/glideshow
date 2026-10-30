@@ -71,6 +71,7 @@ const EFFECTS = [['appear', 'Appear'], ['fade-in', 'Fade in'], ['fade-right', 'F
   ['blur-in', 'Blur', 1], ['drop-in', 'Drop', 1], ['spin-in', 'Twirl', 1], ['iris-in', 'Iris', 1], ['scale-big', 'Scale big', 1],
   ['drift-in', 'Drift', 1], ['drift-scale', 'Drift and scale', 1], ['fade-move-in', 'Fade and move', 1], ['fade-scale', 'Fade and scale', 1], ['blinds-in', 'Blinds', 1],
   ['cube-in', 'Cube', 1], ['flip-in', 'Flip', 1], ['spin-y', 'Spin', 1], ['pivot-in', 'Pivot', 1], ['twist-scale', 'Twist and scale', 1], ['squish-in', 'Squish', 1],
+  ['sparkle-in', 'Sparkle', 1], ['shimmer-in', 'Shimmer', 1], ['confetti-in', 'Confetti', 1], ['flash-in', 'Flash bulbs', 1], ['fireworks-in', 'Fireworks', 1],
   ['disappear', 'Disappear', 1], ['blur-out', 'Blur out', 1], ['scale-out', 'Scale out', 1], ['iris-out', 'Iris out', 1]];
 const effectOf = b => EFFECTS.find(([c]) => b.classList.contains(c))?.[0] || 'fade-in';
 const animBoxes = () => boxes().filter(b => b.classList.contains('fragment'))
@@ -280,6 +281,9 @@ async function playAnims() {
     'flip-in': [{ opacity: 0, rotate: 'y 180deg' }, { opacity: 1, offset: .4 }, { opacity: 1, rotate: 'y 0deg' }], 'spin-y': [{ opacity: 0, rotate: 'y 360deg' }, { opacity: 1, offset: .5 }, { opacity: 1, rotate: 'y 0deg' }],
     'pivot-in': [{ rotate: '-45deg', transformOrigin: '-60% -120%' }, { rotate: '0deg', transformOrigin: '-60% -120%' }], 'twist-scale': [{ opacity: 0, scale: 2.5, rotate: '-15deg' }, { opacity: 1, offset: .14 }, { scale: 1.15, offset: .55 }, { opacity: 1, scale: 1, rotate: '0deg' }],
     'squish-in': [{ translate: `0 -${H}px`, scale: '1 1' }, { translate: '0 0', scale: '1 1', offset: .35 }, { translate: '0 17.5%', scale: '1.5 .65', offset: .42 }, { translate: '0 -15%', scale: '.8 1.3', offset: .52 }, { translate: '0 -25%', scale: '1 1', offset: .62 }, { translate: '0 12.5%', scale: '1.3 .75', offset: .72 }, { translate: '0 0', scale: '1 1' }],
+    'sparkle-in': [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0)' }], 'shimmer-in': [{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1 }],   // (the particles play in the slideshow)
+    'confetti-in': [{ opacity: 0 }, { opacity: 0, offset: .85 }, { opacity: 1 }], 'flash-in': [{ opacity: 0, filter: 'brightness(2)' }, { opacity: 1, filter: 'brightness(1.6)', offset: .75 }, { opacity: 1, filter: 'none' }],
+    'fireworks-in': [{ opacity: 0 }, { opacity: 1, offset: .65 }, { opacity: 1 }],
     'blur-out': [{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(24px)' }], 'scale-out': [{ scale: 1 }, { scale: 0 }], 'iris-out': [{ clipPath: 'circle(75% at 50% 50%)' }, { clipPath: 'circle(0% at 50% 50%)' }], pop: [{ scale: 1 }, { scale: 1.25, offset: .3 }, { scale: .95, offset: .6 }, { scale: 1 }] };
   const spin = b => [{ rotate: '0deg' }, { rotate: (b.dataset.angle ?? 360) + 'deg' }];
   const move = b => { const g = geo(b); return Array.from({ length: 25 }, (_, i) => { const p = movePoint(b, i / 24); return { translate: `${p.x - g.x}px ${p.y - g.y}px`, rotate: p.a + 'deg' }; }); };

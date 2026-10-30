@@ -212,6 +212,19 @@
 .reveal.ready .slides section .fragment.twist-scale.visible { animation: gs-twist-scale 2.2s ease-out both; }
 .reveal.ready .slides section .fragment.squish-in.visible { animation: gs-squish-in 1.2s linear both; }
 .reveal.ready .slides > section:has(.fragment:is(.cube-in, .flip-in, .spin-y)) { perspective: 2400px; }
+/* Keynote's special effects (r08b): the box comes in as below while present.js draws the particles over it (Sparkle: a
+   wipe with a band of sparkles; Shimmer: twinkles that fill in; Confetti: specks flying together; Flash bulbs: flashes as
+   it fades in; Fireworks: bursts around it as it fades in). */
+.reveal.ready .slides section .fragment.sparkle-in.visible { animation: gs-sparkle-in 1.4s linear both; }
+.reveal.ready .slides section .fragment.shimmer-in.visible { animation: gs-shimmer-in 1.2s ease-in both; }
+.reveal.ready .slides section .fragment.confetti-in.visible { animation: gs-confetti-in 1.5s both; }
+.reveal.ready .slides section .fragment.flash-in.visible { animation: gs-flash-in 1.2s both; }
+.reveal.ready .slides section .fragment.fireworks-in.visible { animation: gs-fireworks-in 2.8s both; }
+@keyframes gs-sparkle-in { from { opacity: 1; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0); } }
+@keyframes gs-shimmer-in { from, 30% { opacity: 0; } to { opacity: 1; } }
+@keyframes gs-confetti-in { from, 85% { opacity: 0; } to { opacity: 1; } }
+@keyframes gs-flash-in { from, 40% { opacity: 0; filter: brightness(2); } 75% { opacity: 1; filter: brightness(1.6); } to { opacity: 1; filter: none; } }
+@keyframes gs-fireworks-in { from { opacity: 0; } 65%, to { opacity: 1; } }
 @keyframes gs-drift-in { from { opacity: .6; translate: calc(-.65 * var(--slide-w, 1920px)) 0; } 70% { opacity: 1; } to { opacity: 1; translate: 0 0; } }
 @keyframes gs-drift-scale { from { opacity: 0; scale: .25; } 75% { opacity: 1; scale: .95; } to { opacity: 1; scale: 1; } }
 @keyframes gs-fade-move-in { from { opacity: 0; translate: -120% 0; } to { opacity: 1; translate: 0 0; } }
