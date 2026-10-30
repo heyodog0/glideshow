@@ -137,6 +137,10 @@ Rules:
   `move-to` (Move): the box moves to `data-to="x,y"` (its top-left there, in slide px; moving the box keeps the end) and
   stays; a straight path, or a curve with `data-via="x,y"` (the box's top-left halfway: the path is the quadratic Bézier
   through it). `data-align="path"` (Align to path) turns the box with the path's direction, from no turn at the start.
+  More builds on the same box (Keynote's Add Action): `data-builds="effect key=value …; …"`, each a step of its own after the
+  box's own build (`start=with` shares the step before, `start=after` starts by itself), e.g. `"move-to to=1400,600; spin
+  angle=90 start=after; fade-out"`; keys `to` (a Move's end, its top-left; it goes on from where the box last stopped),
+  `angle`, `duration`, `delay`, `ease`, `start`. present.js wraps the box in one element per build so they compose.
   On a line or an open drawing: `line-draw` (drawn along its stroke) and `line-erase` (undrawn from its start); a
   dashed line just appears. `data-direction="end"` (end to start) or `"middle"` (middle to ends); the arrowheads ride the
   drawn ends unless `data-endpoints="off"`, which shows them once it's drawn.

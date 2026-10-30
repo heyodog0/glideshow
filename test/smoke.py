@@ -2096,7 +2096,18 @@ def reveal_checks(b, errors, deck_file: Path):
     pg.evaluate("document.querySelector('.anim-row.open .aln input').click()"); bend_ms = (time.perf_counter() - t0) * 1000
     cv2 = pg.evaluate("""() => { const m = [...sel][0], r = document.querySelector('#ed-ui .move-mid').getBoundingClientRect(), gh = document.querySelector('#ed-ui .move-ghost');
       return [m.dataset.via, m.dataset.align, Math.round(r.y + r.height / 2), parseFloat(gh.style.rotate) || 0, !document.querySelector('.anim-row.open .aln').hidden, movePoint(m, .5).y]; }""")
-    pg.screenshot(path=str(HERE / "move-curve.png")); pg.evaluate("setTransPanel(false)")
+    pg.screenshot(path=str(HERE / "move-curve.png"))
+    # chained actions (D12, r07): Add action chains a Move from where the box stopped; its ghost drags; more builds in the row
+    ch = pg.evaluate("""() => { const m = [...sel][0]; openAnims.add(m); renderAnims();
+      document.querySelector('.anim-row.open .addact').click(); const g = [...document.querySelectorAll('#ed-ui .move-ghost')].find(e => e.dataset.chain === '0'), r = g.getBoundingClientRect();
+      return [m.dataset.builds, document.querySelectorAll('.anim-row.open .xb').length, r.x + r.width / 2, r.y + r.height / 2, !!document.querySelector('#ed-ui .move-line path[stroke-dasharray]')]; }""")
+    pg.mouse.move(ch[2], ch[3]); pg.mouse.down(); pg.mouse.move(ch[2], ch[3] + 200 * cv[2], steps=5); pg.mouse.up()
+    ch2 = pg.evaluate("""() => { const m = [...sel][0]; document.querySelector('.anim-row.open .addact').click(); const x = document.querySelectorAll('.anim-row.open .xb')[1];
+      x.querySelector('.xe').value = 'spin'; x.querySelector('.xe').onchange(); const y = document.querySelectorAll('.anim-row.open .xb')[1]; y.querySelector('.xs').value = 'after'; y.querySelector('.xs').onchange();
+      const out = [m.dataset.builds, !document.querySelectorAll('.anim-row.open .xb')[1].querySelector('.xa').hidden]; openAnims.delete(m); return out; }""")
+    pg.screenshot(path=str(HERE / "move-chain.png")); pg.evaluate("setTransPanel(false)")
+    check("chained actions (Add action, D12): a Move from where the box stopped (data-builds), its ghost drags, the first path turns dashed; a Rotate after it, listed in the row with its angle",
+          ch[0] == "move-to to=1460,600" and ch[1] == 1 and ch[4] and ch2[0] == "move-to to=1460,800; spin start=after" and ch2[1], f"{ch} {ch2}")
     check(f"curved Move: dragging the halfway handle bends the path through it (data-via); Align to path turns the ghost with the path ({bend_ms:.0f} ms incl. the drag)",
           cv2[0] == "700,300" and cv2[1] == "path" and abs(cv2[2] - (cv[1] - 300 * cv[2])) <= 3 and cv2[3] > 45 and cv2[4] and abs(cv2[5] - 300) < 1, f"{cv} {cv2}")
     pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
@@ -2256,6 +2267,13 @@ def reveal_checks(b, errors, deck_file: Path):
       const c = () => { const r = b.getBoundingClientRect(), o = s.getBoundingClientRect(); return [Math.round((r.x + r.width / 2 - o.x) / sc), Math.round((r.y + r.height / 2 - o.y) / sc)]; };
       const rest = [c(), getComputedStyle(b).offsetRotate]; b.style.transitionDuration = '2s'; b.style.transitionTimingFunction = 'linear'; Reveal.nextFragment(); await wait(1000);
       const mid = c(); await wait(1300); const end = c(); Reveal.slide(0); return [rest, mid, end, b.classList.contains('gs-path')]; }""")
+    chv = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => x.querySelector('.box.move-to[data-builds]')), b = s.querySelector('.box.move-to[data-builds]'), wait = ms => new Promise(r => setTimeout(r, ms));
+      Reveal.slide(Reveal.getIndices(s).h, 0, -1); await wait(600); const sc = s.getBoundingClientRect().width / s.offsetWidth, ws = s.querySelectorAll('.gs-build').length;
+      const c = () => { const r = b.getBoundingClientRect(), o = s.getBoundingClientRect(); return [Math.round((r.x + r.width / 2 - o.x) / sc), Math.round((r.y + r.height / 2 - o.y) / sc)]; };
+      Reveal.nextFragment(); await wait(2300); const one = c(); Reveal.nextFragment(); await wait(1600); const two = c(); await wait(1200); const spun = getComputedStyle(b.parentElement.parentElement).rotate;
+      Reveal.slide(0); return [ws, one, two, spun]; }""")
+    check("…in the slideshow the chained Move goes on from where the first ended, then the Rotate starts by itself (each extra build a wrapper)",
+          chv[0] == 2 and chv[1] == [1300, 675] and chv[2] == [1560, 875] and chv[3] not in ("none", "0deg"), str(chv))
     check("…a curved Move travels along its curve (above the straight line halfway) and ends at data-to; at rest the box hasn't moved or turned",
           cvv[3] and cvv[0][0] == [300, 675] and cvv[1][1] < 500 and abs(cvv[2][0] - 1300) <= 3 and abs(cvv[2][1] - 675) <= 3, str(cvv))
 

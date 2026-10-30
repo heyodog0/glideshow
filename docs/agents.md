@@ -181,6 +181,16 @@ lines short or the font smaller (`check` reports code that is cut off).
 (`data-adj` / `data-adj2`, 0..1 of the box, may be negative) points at the feature, or an `ellipse` with
 `--fill: transparent; --stroke: #d93025; --sw: 6px` around it.
 
+**More than one build on a box.** A box's own build is its `fragment` class (with `data-fragment-index`); further builds on
+the same box go in one attribute, `data-builds`, a `;`-separated list of `effect key=value …`. Each is a step of its own
+after the box's own build (`start=with`: the same step; `start=after`: its own step that starts by itself). A Move goes
+on from where the box last stopped; `to` is the box's top-left at its end, in slide px:
+```html
+<div class="box fragment move-to" id="dot" data-fragment-index="0" data-to="800,300" data-builds="move-to to=1400,600; spin angle=90 start=after; fade-out duration=0.8" style="left: 200px; top: 300px; width: 120px; height: 120px; --fill: #1a73e8;"></div>
+```
+Effects for these: `move-to` (`to=x,y`), `spin` (`angle`), `pulse`, `pop`, `fade-out`, `disappear`, `scale-out`, `blur-out`,
+`iris-out`; keys `duration`, `delay` (s), `ease`, `start`.
+
 **Building a diagram up step by step (Morph).** One slide per step. Each step's boxes have ids unique in the whole deck,
 and each step after the first has `data-auto-animate` and pairs every box that carries over with `data-morph="<its id on
 the slide before>"`; a box with no partner fades in. The first step has no `data-auto-animate`. When a step rewords a

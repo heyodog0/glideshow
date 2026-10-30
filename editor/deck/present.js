@@ -72,8 +72,36 @@
         { scale: false, measure: e => within(e.closest('.box'))(e) });
     return pairs;
   } });
+  /* More than one build on a box (D12, Keynote's chained actions): data-builds="effect key=value …; …", e.g.
+     "move-to to=1400,300; spin angle=90 start=after; fade-out". Each is a build of its own after the box's own one (start:
+     click, the default, a step of its own; with, the same step; after, its own step that starts by itself). At load each
+     becomes a wrapper round the box carrying that build, so the effects compose; a Move goes on from where the one
+     before it ended. Keys: to (a Move's end, the box's top-left there), angle, duration, delay, ease, start. */
+  const parseBuilds = t => (t || '').split(';').map(x => x.trim()).filter(Boolean).map(x => { const [eff, ...kv] = x.split(/\s+/); return { eff, ...Object.fromEntries(kv.map(p => p.split('='))) }; });
+  const wrapBuilds = sl => sl.querySelectorAll(':scope > .box[data-builds]').forEach(box => {
+    const list = parseBuilds(box.dataset.builds), st = box.style; if (!list.length) return;
+    let at = box.classList.contains('fragment') ? +(box.dataset.fragmentIndex ?? 0) : -1, x = parseFloat(st.left) || 0, y = parseFloat(st.top) || 0;
+    const end = (box.dataset.to || '').split(',').map(Number); if (box.classList.contains('move-to') && end.length === 2 && end.every(isFinite)) [x, y] = end;
+    const geom = { left: st.left, top: st.top, width: st.width, height: st.height }; box.dataset.gsAt = `${parseFloat(st.left) || 0},${parseFloat(st.top) || 0}`; st.left = st.top = '0px';   // (its own Move still measured from there)
+    let inner = box;
+    for (const b of list) {
+      const w = document.createElement('div'); w.className = 'gs-build fragment ' + b.eff;
+      Object.assign(w.style, { position: 'absolute', left: '0px', top: '0px', width: geom.width, height: geom.height });
+      inner.replaceWith(w); w.append(inner);
+      if (inner !== box) { inner.style.left = inner.style.top = '0px'; }
+      if (b.start !== 'with') { at++; sl.querySelectorAll('.fragment').forEach(f => { if (f !== w && !f.contains(w) && +(f.dataset.fragmentIndex ?? -1) >= at) f.dataset.fragmentIndex = String(+f.dataset.fragmentIndex + 1); }); }
+      w.dataset.fragmentIndex = String(Math.max(0, at));
+      if (b.start === 'after') w.dataset.start = 'after';
+      for (const k of ['duration', 'delay', 'ease', 'angle']) if (b[k]) w.dataset[k] = b[k];
+      const to = (b.to || '').split(',').map(Number);
+      if (b.eff === 'move-to' && to.length === 2 && to.every(isFinite)) { w.style.setProperty('--gs-mx', to[0] - x + 'px'); w.style.setProperty('--gs-my', to[1] - y + 'px'); [x, y] = to; }
+      inner = w;
+    }
+    Object.assign(inner.style, { left: geom.left, top: geom.top });   // the outermost wrapper sits where the box did
+  });
   const prepare = () => {
     const all = Reveal.getSlides();
+    all.forEach(wrapBuilds);
     all.forEach((sl, i) => { if (sl.hasAttribute('data-auto-animate') && all[i - 1] && !all[i - 1].hasAttribute('data-auto-animate')) all[i - 1].setAttribute('data-auto-animate', ''); });
     document.querySelectorAll('.reveal .slides .box').forEach(b => { if (!b.dataset.id) b.dataset.id = b.dataset.morph || b.id; });
     all.forEach((sl, i) => { const m = sl.dataset.morphMatch; if (sl.hasAttribute('data-auto-animate') && all[i - 1] && /^(word|character)$/.test(m || ''))
@@ -122,10 +150,10 @@
       if (d.delay && !/^(after|transition)$/.test(d.start || '')) { st.transitionDelay = st.animationDelay = d.delay + 's'; st.setProperty('--gs-delay', d.delay + 's'); }   // (--gs-*: Line Draw's stroke)
       if (d.angle) st.setProperty('--gs-angle', d.angle + 'deg');   // the Rotate action's turn
       const to = (d.to || '').split(',').map(Number);   // the Move action's end: data-to = its top-left there
-      if (f.classList.contains('move-to') && to.length === 2 && to.every(isFinite)) { st.setProperty('--gs-mx', to[0] - (parseFloat(st.left) || 0) + 'px'); st.setProperty('--gs-my', to[1] - (parseFloat(st.top) || 0) + 'px'); }
+      if (f.classList.contains('move-to') && to.length === 2 && to.every(isFinite)) { const [ox, oy] = (d.gsAt || `${parseFloat(st.left) || 0},${parseFloat(st.top) || 0}`).split(',').map(Number); st.setProperty('--gs-mx', to[0] - ox + 'px'); st.setProperty('--gs-my', to[1] - oy + 'px'); }
       const via = (d.via || '').split(',').map(Number);   // a curved Move (data-via: the top-left halfway) or one aligned to its path: along an offset-path
       if (f.classList.contains('move-to') && to.length === 2 && to.every(isFinite) && (d.via && via.length === 2 && via.every(isFinite) || d.align === 'path')) {
-        const x = parseFloat(st.left) || 0, y = parseFloat(st.top) || 0, w2 = (parseFloat(st.width) || 0) / 2, h2 = (parseFloat(st.height) || 0) / 2;
+        const [x, y] = (d.gsAt || `${parseFloat(st.left) || 0},${parseFloat(st.top) || 0}`).split(',').map(Number), w2 = (parseFloat(st.width) || 0) / 2, h2 = (parseFloat(st.height) || 0) / 2;
         const ex = to[0] - x, ey = to[1] - y, [vx, vy] = d.via ? [via[0] - x, via[1] - y] : [ex / 2, ey / 2], cx = 2 * vx - ex / 2, cy = 2 * vy - ey / 2;   // the Bézier through the halfway point
         f.classList.add('gs-path'); st.setProperty('--gs-path', `path('M${w2},${h2} Q${cx + w2},${cy + h2} ${ex + w2},${ey + h2}')`);
         st.setProperty('--gs-orot', d.align === 'path' ? `auto ${-Math.atan2(cy, cx) * 180 / Math.PI}deg` : '0deg');   // turned with the path, from no turn
@@ -456,6 +484,7 @@
     .reveal .gs-word { white-space: nowrap; }
     .reveal .gs-mw { display: inline-block; }
     .reveal .gs-cc { display: block; }
+    .reveal .slides .gs-build { box-sizing: border-box; }   /* a wrapper carrying one of a box's extra builds (data-builds) */
     .reveal .slides > .gs-pieces { position: absolute; left: 0; top: 0; width: var(--slide-w, 1920px); height: var(--slide-h, 1080px); z-index: 30; pointer-events: none; }   /* a transition in pieces */   /* a table cell's contents, built by themselves (by row content …) */
     .reveal .slides .fragment.gs-hl.visible:not(.current-fragment) { opacity: .35; }
     .reveal .backgrounds { display: none; }

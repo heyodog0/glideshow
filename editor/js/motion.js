@@ -87,7 +87,7 @@ const openAnims = new Set();
 const START_LABEL = { click: 'On click', with: 'With previous', after: 'After previous', transition: 'After transition' };
 const EASES = [['', 'Acceleration: default'], ['linear', 'None'], ['ease-in', 'Ease in'], ['ease-out', 'Ease out'], ['ease-in-out', 'Ease in and out']];
 $('#ed-t-ease').innerHTML = EASES.map(([v, l]) => `<option value="${v}">${v ? l : 'Default'}</option>`).join('');
-const TIMING = ['start', 'duration', 'delay', 'ease', 'angle', 'to', 'via', 'align', 'direction', 'endpoints', 'textOrder', 'buildFrom', 'buildTo'];   // and Rotate's angle and Move's end, copied and removed with them
+const TIMING = ['start', 'duration', 'delay', 'ease', 'angle', 'to', 'via', 'align', 'direction', 'endpoints', 'textOrder', 'buildFrom', 'buildTo', 'builds'];   // and Rotate's angle and Move's end, copied and removed with them
 /* Delivery (data-build), as Keynote: a text box by paragraph, by highlighted paragraph (the earlier ones dim), by word
    or by character; a table by row, column or cell. present.js plays them. */
 const DELIVERY_TEXT = [['', 'All at once'], ['paragraph', 'By paragraph'], ['group', 'By bullet group'], ['highlight', 'By highlighted paragraph'], ['word', 'By word'], ['character', 'By character']];
@@ -162,7 +162,8 @@ function renderAnims() {
       <select class="ease">${EASES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <select class="dl"></select>
       <select class="tord" title="Order">${TEXT_ORDERS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
-      <div class="timing brange"><label>Build from<input class="bf" type="number" min="1" step="1" placeholder="First"></label><label>to<input class="bt" type="number" min="1" step="1" placeholder="Last"></label></div></div>`;
+      <div class="timing brange"><label>Build from<input class="bf" type="number" min="1" step="1" placeholder="First"></label><label>to<input class="bt" type="number" min="1" step="1" placeholder="Last"></label></div>
+      <div class="xbuilds"></div><button class="addact add"><span class="icon">add</span>Add action</button></div>`;
     const when = start === 'with' ? `With build ${step}` : start === 'after' && i ? `After build ${step - 1}` : START_LABEL[start] || 'On click';   // Keynote names the build it follows
     const dl = deliveries(b), how = dl.find(([v]) => v && v === b.dataset.build)?.[1];
     r.querySelector('.eff').textContent = `${EFFECTS.find(e => e[0] === effectOf(b))[1]}${how ? ' ' + how.toLowerCase() : ''}  (${when})`;
@@ -192,6 +193,7 @@ function renderAnims() {
     const ds = /** @type {HTMLSelectElement} */ (r.querySelector('select.dl'));
     ds.hidden = !dl.length; ds.innerHTML = dl.map(([v, l]) => `<option value="${v}">${l}</option>`).join(''); ds.value = b.dataset.build || '';
     ds.onchange = () => { each(x => { if (ds.value && deliveries(x).some(([v]) => v === ds.value)) x.dataset.build = ds.value; else delete x.dataset.build; }); commit(); renderAnims(); };
+    drawExtraRows(r, b);
     const to = /** @type {HTMLSelectElement} */ (r.querySelector('select.tord')), br = /** @type {HTMLElement} */ (r.querySelector('.brange')), [bf, bt] = /** @type {HTMLInputElement[]} */ ([...br.querySelectorAll('input')]);
     to.hidden = !/^(word|character)$/.test(b.dataset.build || ''); to.value = b.dataset.textOrder || '';   // Keynote's text order; Build from … to …
     br.hidden = !/^(paragraph|group|highlight)$/.test(b.dataset.build || ''); bf.value = b.dataset.buildFrom || ''; bt.value = b.dataset.buildTo || '';
@@ -221,6 +223,41 @@ function defaultTo(b) {   // beside the box, as Keynote (to its right, or its le
   return `${Math.round(right > g.x + g.w / 2 ? right : Math.max(0, g.x - g.w - 60))},${Math.round(g.y)}`;
 }
 function moveTo(b) { const [x, y] = (b.dataset.to || '').split(',').map(Number); if (isFinite(x) && isFinite(y) && b.dataset.to) return [x, y]; const g = geo(b); return [g.x, g.y]; }
+/* A box's further builds after its own (D12, Keynote's Add Action): data-builds="effect key=value …; …" (present.js plays
+   them). Listed in its row, each with its effect, start and duration (a Rotate's angle); Add action chains a Move from
+   where the box last stopped, its ghost on the canvas as the first Move's, the earlier paths dashed. */
+const XB_EFFECTS = [['move-to', 'Move'], ['spin', 'Rotate'], ['pulse', 'Pulse'], ['pop', 'Pop (emphasis)'], ['fade-out', 'Fade out'], ['disappear', 'Disappear'], ['scale-out', 'Scale out'], ['blur-out', 'Blur out'], ['iris-out', 'Iris out']];
+/** @returns {Record<string, string>[]} */
+const buildsOf = b => (b.dataset.builds || '').split(';').map(x => x.trim()).filter(Boolean).map(x => { const [eff, ...kv] = x.split(/\s+/); return { eff, ...Object.fromEntries(kv.map(p => p.split('='))) }; });
+function setBuilds(b, list) {
+  const t = list.map(o => [o.eff, ...Object.entries(o).filter(([k, v]) => k !== 'eff' && v != null && v !== '').map(([k, v]) => `${k}=${v}`)].join(' ')).join('; ');
+  if (t) b.dataset.builds = t; else delete b.dataset.builds;
+}
+/* Where the box is after its own build and the extra Moves before extra build n (all of them by default). */
+function chainAt(b, n = Infinity) {
+  let [x, y] = b.classList.contains('move-to') ? moveTo(b) : [geo(b).x, geo(b).y];
+  buildsOf(b).slice(0, n).forEach(o => { const t = (o.to || '').split(',').map(Number); if (o.eff === 'move-to' && t.length === 2 && t.every(isFinite)) [x, y] = t; });
+  return [x, y];
+}
+function drawExtraRows(r, b) {
+  const xb = /** @type {HTMLElement} */ (r.querySelector('.xbuilds')), list = buildsOf(b);
+  xb.innerHTML = list.map((x, j) => `<div class="xb"><span class="step">+${j + 1}</span><select class="xe">${XB_EFFECTS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+    <select class="xs"><option value="">On click</option><option value="with">With previous</option><option value="after">After previous</option></select>
+    <input class="xd" type="number" min="0.1" step="0.1" placeholder="0.5" title="Duration (s)"><input class="xa" type="number" step="15" placeholder="360" title="Angle (°)"><button class="xdel" title="Delete action"><span class="icon">close</span></button></div>`).join('');
+  [...xb.children].forEach((row, j) => {
+    const x = list[j], q = s => /** @type {HTMLInputElement} */ (row.querySelector(s)), save = () => { setBuilds(b, list); commit(); drawOverlay(); renderAnims(); };
+    q('.xe').value = x.eff; q('.xs').value = x.start || ''; q('.xd').value = x.duration || ''; q('.xa').value = x.angle || ''; q('.xa').hidden = x.eff !== 'spin';
+    q('.xe').onchange = () => { x.eff = q('.xe').value; if (x.eff !== 'move-to') delete x.to; if (x.eff !== 'spin') delete x.angle; if (x.eff === 'move-to' && !x.to) { const [px, py] = chainAt(b, j); x.to = `${Math.round(px + geo(b).w + 60)},${Math.round(py)}`; } save(); };
+    q('.xs').onchange = () => { x.start = q('.xs').value; save(); };
+    q('.xd').onchange = () => { const v = parseFloat(q('.xd').value); x.duration = v > 0 ? String(Math.round(v * 100) / 100) : ''; save(); };
+    q('.xa').onchange = () => { const v = parseFloat(q('.xa').value); x.angle = isFinite(v) ? String(Math.round(v)) : ''; save(); };
+    q('.xdel').onclick = () => { list.splice(j, 1); save(); };
+  });
+  /** @type {HTMLButtonElement} */ (r.querySelector('.addact')).onclick = () => {   // Keynote's default: a Move beside where it ends
+    const [px, py] = chainAt(b), g = geo(b), right = Math.min(px + g.w + 60, W - g.w);
+    list.push({ eff: 'move-to', to: `${Math.round(right > px + g.w / 2 ? right : Math.max(0, px - g.w - 60))},${Math.round(py)}` }); setBuilds(b, list); commit(); drawOverlay(); renderAnims();
+  };
+}
 function viaOf(b) { const [x, y] = (b.dataset.via || '').split(',').map(Number); return b.dataset.via && isFinite(x) && isFinite(y) ? [x, y] : null; }
 /* Where the Move's box is at t (0…1): its top-left, and its turn in degrees when aligned to the path. */
 function movePoint(b, t) {
@@ -231,8 +268,11 @@ function movePoint(b, t) {
 }
 function drawMovePath() {
   if (trans.hidden || sel.size !== 1 || editing) return;
-  const b = [...sel][0]; if (!b.classList.contains('move-to')) return;
+  const b = [...sel][0], chain = buildsOf(b).filter(o => o.eff === 'move-to');
+  if (!b.classList.contains('move-to') && !chain.length) return;
   const g = geo(b), host = frameFor(b), k = 1 / scale; let [tx, ty] = moveTo(b);
+  drawChain(b, g, host, k);
+  if (!b.classList.contains('move-to')) return;
   const gh = /** @type {HTMLElement} */ (b.cloneNode(true)); gh.removeAttribute('id'); gh.classList.remove('fragment'); gh.classList.add('move-ghost');
   gh.querySelectorAll('[id]').forEach(e => e.removeAttribute('id')); gh.title = 'Drag to set where the Move ends';
   const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'), ln = document.createElementNS(NS, 'path'), mid = document.createElementNS(NS, 'circle');
@@ -242,7 +282,7 @@ function drawMovePath() {
     const pts = Array.from({ length: 33 }, (_, i) => movePoint(b, i / 32)), m = movePoint(b, .5);
     ln.setAttribute('d', 'M' + pts.map(p => `${p.x + g.w / 2},${p.y + g.h / 2}`).join('L'));
     mid.setAttribute('cx', String(m.x + g.w / 2)); mid.setAttribute('cy', String(m.y + g.h / 2)); gh.style.rotate = pts[32].a ? pts[32].a + 'deg' : ''; };
-  at(); host.append(svg, gh);
+  at(); host.append(svg, gh); if (chain.length) ln.setAttribute('stroke-dasharray', `${8 * k} ${6 * k}`);   // an earlier Move: dashed
   mid.onmousedown = e => e.stopPropagation();
   mid.onpointerdown = e => {   // bend the path: the handle stays under the pointer, on the curve
     e.stopPropagation(); e.preventDefault(); mid.setPointerCapture(e.pointerId);
@@ -258,6 +298,26 @@ function drawMovePath() {
       tip.textContent = `x ${toIn(tx)} in  y ${toIn(ty)} in`; tip.style.left = tx + g.w / 2 + 'px'; tip.style.top = ty + g.h / 2 + 'px'; };
     gh.onpointerup = () => { gh.onpointermove = gh.onpointerup = null; tip.remove(); b.dataset.to = `${tx},${ty}`; commit(); drawOverlay(); renderAnims(); };
   };
+}
+/* The extra Moves (data-builds): a line from where the box was to each ghost, all but the last dashed; drag a ghost to set its end. */
+function drawChain(b, g, host, k) {
+  const list = buildsOf(b), NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'); svg.classList.add('move-line'); host.append(svg);
+  const moves = /** @type {[Record<string, string>, number][]} */ (list.map((o, j) => [o, j])).filter(([o]) => o.eff === 'move-to');
+  moves.forEach(([o, j], n) => {
+    const [px, py] = chainAt(b, j); let [ex, ey] = (o.to || '').split(',').map(Number); if (!o.to || !isFinite(ex) || !isFinite(ey)) [ex, ey] = [px, py];
+    const ln = document.createElementNS(NS, 'line'); ln.setAttribute('stroke-width', String(2 * k)); if (n < moves.length - 1) ln.setAttribute('stroke-dasharray', `${8 * k} ${6 * k}`); svg.append(ln);
+    const gh = /** @type {HTMLElement} */ (b.cloneNode(true)); gh.removeAttribute('id'); gh.classList.remove('fragment'); gh.classList.add('move-ghost'); gh.dataset.chain = String(j);
+    gh.querySelectorAll('[id]').forEach(e => e.removeAttribute('id')); gh.title = 'Drag to set where this Move ends'; host.append(gh);
+    const at = () => { gh.style.left = ex + 'px'; gh.style.top = ey + 'px'; [['x1', px + g.w / 2], ['y1', py + g.h / 2], ['x2', ex + g.w / 2], ['y2', ey + g.h / 2]].forEach(([a, v]) => ln.setAttribute(String(a), String(v))); };
+    at(); gh.onmousedown = e => e.stopPropagation();
+    gh.onpointerdown = e => {
+      e.stopPropagation(); e.preventDefault(); gh.setPointerCapture(e.pointerId);
+      const sx = e.clientX, sy = e.clientY, x0 = ex, y0 = ey, tip = div('move-tip'); tip.style.setProperty('--k', k + 'px'); host.append(tip);
+      gh.onpointermove = m => { ex = Math.round(x0 + (m.clientX - sx) / scale); ey = Math.round(y0 + (m.clientY - sy) / scale); at();
+        tip.textContent = `x ${toIn(ex)} in  y ${toIn(ey)} in`; tip.style.left = ex + g.w / 2 + 'px'; tip.style.top = ey + g.h / 2 + 'px'; };
+      gh.onpointerup = () => { gh.onpointermove = gh.onpointerup = null; tip.remove(); o.to = `${ex},${ey}`; setBuilds(b, list); commit(); drawOverlay(); renderAnims(); };
+    };
+  });
 }
 /* Preview: the slide's animations one after another on the canvas. */
 async function playAnims() {
