@@ -137,8 +137,9 @@ Rules:
   `move-to` (Move): the box moves to `data-to="x,y"` (its top-left there, in slide px; moving the box keeps the end) and
   stays; a straight path, or a curve with `data-via="x,y"` (the box's top-left halfway: the path is the quadratic Bézier
   through it). `data-align="path"` (Align to path) turns the box with the path's direction, from no turn at the start.
-  On a line or an open drawing: `line-draw` (drawn along its stroke, arrowheads at the end) and `line-erase` (undrawn); a
-  dashed line just appears.
+  On a line or an open drawing: `line-draw` (drawn along its stroke) and `line-erase` (undrawn from its start); a
+  dashed line just appears. `data-direction="end"` (end to start) or `"middle"` (middle to ends); the arrowheads ride the
+  drawn ends unless `data-endpoints="off"`, which shows them once it's drawn.
   `data-build="paragraph"` on an animated text box makes each paragraph or bullet its own step with the box's effect; `"highlight"` the same, dimming the ones already shown; `"word"` / `"character"` keep one step, the text arriving a word or letter at a time over `data-duration` (default 1 s; in-effects only). On a table box `"row"`, `"column"` or `"cell"` makes each its own step.
   Timing (Motion panel): `data-start="after"` plays a build by itself once the one before has finished, `data-start="transition"` (the slide's first build) once the slide's transition has; `data-duration` and `data-delay` in seconds (defaults reveal's ~0.5 s and 0); `data-ease` = `linear | ease-in | ease-out | ease-in-out`.
   Pictures that replace each other in one place (a plot that updates): stack them at the same position, the first

@@ -2050,8 +2050,11 @@ def reveal_checks(b, errors, deck_file: Path):
       const l = makeBox({ x: 200, y: 300, w: 800, h: 200, shape: 'arrowline' }), r = makeBox({ x: 200, y: 600, w: 300, h: 200, html: 'r' });
       const e = makeBox({ x: 200, y: 900, w: 800, h: 100, shape: 'line' });
       slides[cur].append(l, r, e); render(); sel = new Set([l, r]); addAnim(); setEffect(l, 'line-draw'); sel = new Set([e]); addAnim(); setEffect(e, 'line-erase'); commit(); render();
-      return [effectsFor(l).some(e => e[0] === 'line-draw'), effectsFor(r).some(e => e[0] === 'line-draw'), l.querySelector('svg.shape path.l')?.getAttribute('pathLength')]; }""")
-    check("Line draw (in and out) is offered on lines and open drawings only, as Keynote; it measures the stroke for drawing", ld == [True, False, "1"], str(ld))
+      setTransPanel(true); sel = new Set([l]); openAnims.add(l); renderAnims(); const row = [...document.querySelectorAll('.anim-row')].find(x => x.classList.contains('open')), opts = [...row.querySelector('select.ldir').options].map(o => o.text).join('/');
+      const shown = [!row.querySelector('select.ldir').hidden, !row.querySelector('.lends').hidden, row.querySelector('.lends input').checked]; openAnims.delete(l); setTransPanel(false);
+      return [effectsFor(l).some(e => e[0] === 'line-draw'), effectsFor(r).some(e => e[0] === 'line-draw'), l.querySelector('svg.shape path.l')?.getAttribute('pathLength'), opts, ...shown]; }""")
+    check("Line draw (in and out) is offered on lines and open drawings only, as Keynote; it measures the stroke for drawing; its row has Direction (Start to end / End to start / Middle to ends) and Include endpoints (on)",
+          ld == [True, False, "1", "Start to end/End to start/Middle to ends", True, True, True], str(ld))
     rest = pg.evaluate("""() => { const all = slides.flatMap(x => boxes(x)), by = c => all.find(b => b.classList.contains(c)), cs = b => getComputedStyle(b);
       const was = cur, ln = by('line-draw'); go(slides.indexOf(ln.closest('section'))); const p = ln.querySelector('path.l');
       const out = [cs(p).strokeDashoffset, cs(p).strokeDasharray]; go(slides.indexOf(by('wipe-r').closest('section')));
@@ -2132,11 +2135,17 @@ def reveal_checks(b, errors, deck_file: Path):
     lv = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => x.querySelector('.box.line-draw')), h = Reveal.getIndices(s).h, b = s.querySelector('.box.line-draw'),
       p = b.querySelector('path.l'), head = b.querySelector('svg.shape > :not(.l):not(.hit):not(defs)'), cs = e => getComputedStyle(e), wait = ms => new Promise(r => setTimeout(r, ms));
       Reveal.slide(h, 0, -1); await wait(900); const before = [parseFloat(cs(p).strokeDashoffset), +cs(head).opacity];
-      Reveal.nextFragment(); await wait(200); const mid = parseFloat(cs(p).strokeDashoffset); await wait(900);
+      Reveal.nextFragment(); await wait(200); const mid = parseFloat(cs(p).strokeDashoffset), ride = [+cs(head).opacity, /^translate/.test(head.getAttribute('transform') || '')]; await wait(900);
       const after = [parseFloat(cs(p).strokeDashoffset), +cs(head).opacity, cs(b).visibility], ep = s.querySelector('.box.line-erase path.l'), shown = parseFloat(cs(ep).strokeDashoffset);
-      Reveal.nextFragment(); await wait(900); const erased = parseFloat(cs(ep).strokeDashoffset); Reveal.slide(0); return [p.getAttribute('pathLength'), before, mid, after, [shown, erased]]; }""")
-    check("…in the slideshow Line draw draws the arrow's stroke from its start, then shows the arrowhead", lv[0] == "1" and lv[1] == [1, 0] and 0 < lv[2] < 1 and lv[3] == [0, 1, "visible"], str(lv))
-    check("…and Line draw out undraws a line that was showing", lv[4] == [0, 1], str(lv[4]))
+      Reveal.nextFragment(); await wait(900); const erased = parseFloat(cs(ep).strokeDashoffset);
+      b.dataset.direction = 'end'; Reveal.slide(h, 0, -1); await wait(900); const endDir = parseFloat(cs(p).strokeDashoffset);
+      b.dataset.direction = 'middle'; Reveal.slide(h, 0, -1); await wait(900); const midDir = cs(p).strokeDasharray; Reveal.nextFragment(); await wait(200); const midHalf = cs(p).strokeDasharray; await wait(900);
+      const midDone = [cs(p).strokeDasharray, head.getAttribute('transform')]; delete b.dataset.direction;
+      Reveal.slide(0); return [p.getAttribute('pathLength'), before, mid, after, [shown, erased], ride, endDir, midDir, midHalf, midDone]; }""")
+    check("…in the slideshow Line draw draws the arrow's stroke from its start, the arrowhead riding its tip (Include endpoints, as r06)", lv[0] == "1" and lv[1] == [1, 0] and 0 < lv[2] < 1 and lv[5] == [1, True] and lv[3] == [0, 1, "visible"], str(lv))
+    check("…Line draw out undraws a line from its start (r06); End to start begins from the end; Middle to ends grows from the middle and ends whole",
+          lv[4] == [0, -1] and lv[6] == -1 and lv[7].replace("px", "").replace(",", "").split() == ["0", "0.5", "0", "1"] and lv[8] != lv[7]
+          and lv[9][0].replace("px", "").replace(",", "").split() == ["0", "0", "1", "1"] and lv[9][1] is None, str(lv[4:]))
     mvv = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => x.querySelector('.box.move-to')), b = s.querySelector('.box.move-to'), wait = ms => new Promise(r => setTimeout(r, ms));
       Reveal.slide(Reveal.getIndices(s).h, 0, -1); await wait(600); while (!b.classList.contains('visible')) Reveal.nextFragment(); await wait(900);
       const r = b.getBoundingClientRect(), sc = s.getBoundingClientRect().width / s.offsetWidth, out = [Math.round((r.x - s.getBoundingClientRect().x) / sc), Math.round((r.y - s.getBoundingClientRect().y) / sc), b.dataset.to];

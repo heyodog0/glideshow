@@ -642,7 +642,7 @@ body.theme-mode #ed-notes, body.theme-mode #ed-splitter { display: none !importa
 .live-dialog textarea { width: 100%; height: 50vh; font: 13px/1.5 ui-monospace, Menlo, monospace; color: var(--ink); background: var(--surface); border: 1px solid var(--divider); border-radius: var(--radius); padding: 10px 12px; resize: vertical; tab-size: 2; }
 .anim-body .timing { display: flex; gap: 12px; } .anim-body .timing label { flex: 1; }
 .anim-body .timing input { width: 100%; height: 36px; box-sizing: border-box; }
-.anim-body select[hidden], .anim-body .ang[hidden], .anim-body .pos[hidden], .anim-body .aln[hidden] { display: none; }
+.anim-body select[hidden], .anim-body .ang[hidden], .anim-body .pos[hidden], .anim-body .aln[hidden], .anim-body .lends[hidden] { display: none; }
 /* Keynote's Move action: a translucent ghost where the box ends, a red path to it, the position while dragging */
 .move-ghost { opacity: .45; pointer-events: auto; cursor: move; }
 .move-line { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; } .move-line path { stroke: #ea4335; }

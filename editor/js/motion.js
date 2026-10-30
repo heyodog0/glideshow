@@ -148,6 +148,8 @@ function renderAnims() {
       <label>Delay (s)<input class="del" type="number" min="0" max="60" step="0.1" placeholder="0"></label></div>
       <div class="timing pos"><label>Position X (in)<input class="mx" type="number" step="0.01"></label><label>Y (in)<input class="my" type="number" step="0.01"></label></div>
       <label class="chk aln"><input type="checkbox"> Align to path</label>
+      <select class="ldir" title="Direction"><option value="">Start to end</option><option value="end">End to start</option><option value="middle">Middle to ends</option></select>
+      <label class="chk lends"><input type="checkbox"> Include endpoints</label>
       <label class="ang">Angle (°)<input type="number" min="-3600" max="3600" step="15" placeholder="360"></label>
       <select class="ease">${EASES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <select class="dl"></select></div>`;
@@ -165,6 +167,10 @@ function renderAnims() {
     ang.hidden = effectOf(b) !== 'spin'; af.value = b.dataset.angle ?? '';
     const pos = /** @type {HTMLElement} */ (r.querySelector('.pos')), [mx, my] = /** @type {HTMLInputElement[]} */ ([...pos.querySelectorAll('input')]), [tx, ty] = moveTo(b);
     pos.hidden = effectOf(b) !== 'move-to'; mx.value = String(toIn(tx)); my.value = String(toIn(ty));
+    const ld = /** @type {HTMLSelectElement} */ (r.querySelector('select.ldir')), le = /** @type {HTMLElement} */ (r.querySelector('.lends')), lc = /** @type {HTMLInputElement} */ (le.firstElementChild);
+    ld.hidden = le.hidden = !STROKE_ONLY.includes(effectOf(b)); ld.value = b.dataset.direction || ''; lc.checked = b.dataset.endpoints !== 'off';   // Line Draw's Direction and Include endpoints
+    ld.onchange = () => { each(x => { if (ld.value) x.dataset.direction = ld.value; else delete x.dataset.direction; }); commit(); renderAnims(); };
+    lc.onchange = () => { each(x => { if (lc.checked) delete x.dataset.endpoints; else x.dataset.endpoints = 'off'; }); commit(); renderAnims(); };
     const aln = /** @type {HTMLElement} */ (r.querySelector('.aln')), ac = /** @type {HTMLInputElement} */ (aln.firstElementChild);
     aln.hidden = effectOf(b) !== 'move-to'; ac.checked = b.dataset.align === 'path';
     ac.onchange = () => { each(x => { if (ac.checked) x.dataset.align = 'path'; else delete x.dataset.align; }); commit(); drawOverlay(); renderAnims(); };
@@ -273,8 +279,13 @@ async function playAnims() {
     if (['after', 'transition'].includes(startOf(step[0]))) await wait((+step[0].dataset.delay || 0) * 1000);
     await Promise.all(step.map(b => { b.style.visibility = '';
       const ln = STROKE_ONLY.includes(effectOf(b)) && b.querySelector('svg.shape path.l[pathLength]');   // Line draw: the stroke draws (or undraws)
-      if (ln) { ln.style.strokeDasharray = '1 1'; const draw = [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }];
-        return ln.animate(effectOf(b) === 'line-draw' ? draw : draw.reverse(), { duration: (+b.dataset.duration || 0.5) * 1000, easing: b.dataset.ease || 'ease' }).finished.then(() => { ln.style.strokeDasharray = ''; }); }
+      if (ln) {   // its Direction; the erase from where it started; the arrowheads riding the ends
+        const dir = b.dataset.direction, er = effectOf(b) === 'line-erase', ms = (+b.dataset.duration || 0.5) * 1000, off = (dir === 'end') !== er ? -1 : 1;
+        if (dir !== 'middle') ln.style.strokeDasharray = '1 1';
+        const lkf = dir === 'middle' ? (er ? [{ strokeDasharray: '.5 0 .5 1' }, { strokeDasharray: '0 1 0 1' }] : [{ strokeDasharray: '0 .5 0 1' }, { strokeDasharray: '0 0 1 1' }])
+          : er ? [{ strokeDashoffset: 0 }, { strokeDashoffset: off }] : [{ strokeDashoffset: off }, { strokeDashoffset: 0 }];
+        const run = ln.animate(lkf, { duration: ms, easing: b.dataset.ease || 'ease' }); rideLineEnds(b, ms);
+        return run.finished.then(() => { ln.style.strokeDasharray = ''; }); }
       return b.animate(effectOf(b) === 'spin' ? spin(b) : effectOf(b) === 'move-to' ? move(b) : kf[effectOf(b)], { duration: (+b.dataset.duration || 0.5) * 1000, delay: startOf(b) === 'with' || startOf(b) === 'click' ? (+b.dataset.delay || 0) * 1000 : 0, easing: b.dataset.ease || 'ease', fill: 'backwards' }).finished; }));
   }
 }

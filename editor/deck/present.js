@@ -333,6 +333,9 @@
     v.play().catch(() => {});
   });
   Reveal.on('slidechanged', playShown); Reveal.on('fragmentshown', playShown);
+  /* Line Draw: its arrowheads ride the stroke's ends while it draws or erases (shapes.js rideLineEnds). */
+  const ride = e => e.fragments?.forEach(f => { if (f.matches('.line-draw, .line-erase')) window.rideLineEnds?.(f, ((+f.dataset.duration || 0.5) + (+f.dataset.delay || 0)) * 1000); });
+  Reveal.on('fragmentshown', ride); Reveal.on('fragmenthidden', ride);
 
   Reveal.configure({ controls: false, progress: false, slideNumber: false, margin: 0 });   // edge to edge, as Slides
   const css = document.createElement('style');

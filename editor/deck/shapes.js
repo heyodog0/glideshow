@@ -41,6 +41,30 @@
   /* Line Draw (class line-draw / line-erase, base.css): the stroke measured as 1, so its dash can draw it. Dashed lines keep
      their dashes and just appear. */
   function drawable(e, b) { if (b.matches('.line-draw, .line-erase') && !DASH[b.dataset.dash]) e.setAttribute('pathLength', '1'); }
+  /* Line Draw's Include endpoints (on unless data-endpoints="off"): while the stroke draws or erases, its arrowheads ride
+     the drawn stretch's ends, turned with the line there. Each frame reads the stretch from the stroke's dash as its
+     animation has it (CSS in the show, the editor's preview alike), for ms. */
+  function rideLineEnds(b, ms) {
+    const p = b.querySelector(':scope > svg.shape > path.l[pathLength]'), m0 = [...b.querySelectorAll(':scope > svg.shape > .m0')], m1 = [...b.querySelectorAll(':scope > svg.shape > .m1')];
+    if (!p || b.dataset.endpoints === 'off' || !(m0.length + m1.length)) return;
+    const L = p.getTotalLength(), at = t => p.getPointAtLength(Math.max(0, Math.min(1, t)) * L);
+    const ang = t => { const a = at(t - 0.002), c = at(t + 0.002); return Math.atan2(c.y - a.y, c.x - a.x) * 180 / Math.PI; };
+    const E0 = at(0), E1 = at(1), A0 = ang(0), A1 = ang(1);
+    const stretch = () => {   // the drawn part, as [from, to] along the line (0…1), or null when nothing shows
+      const cs = getComputedStyle(p), d = cs.strokeDasharray.split(/[\s,]+/).map(parseFloat), o = parseFloat(cs.strokeDashoffset) || 0;
+      if (d.length >= 4) return d[0] > 1e-3 ? [0, 1] : d[2] > 1e-3 ? [d[1], d[1] + d[2]] : null;   // Middle to Ends: dash 0, gap, dash
+      const a = Math.max(0, -o), z = Math.min(1, 1 - o); return z - a > 1e-3 ? [a, z] : null;
+    };
+    const place = (els, t, E, A) => els.forEach(e => { const P = at(t); if (Math.abs(t - (E === E0 ? 0 : 1)) < 1e-4) e.removeAttribute('transform'); else e.setAttribute('transform', `translate(${P.x} ${P.y}) rotate(${ang(t) - A}) translate(${-E.x} ${-E.y})`); });
+    const until = performance.now() + ms + 80;
+    const frame = () => {
+      const s = stretch(); [...m0, ...m1].forEach(e => { e.style.opacity = s ? '' : '0'; });
+      if (s) { place(m0, s[0], E0, A0); place(m1, s[1], E1, A1); }
+      if (performance.now() < until) requestAnimationFrame(frame); else [...m0, ...m1].forEach(e => { e.style.opacity = ''; });
+    };
+    frame();
+  }
+  window.rideLineEnds = rideLineEnds;
 
   /* Shapes are drawn from the OOXML preset geometry that Google Slides itself uses (ECMA-376 presetShapeDefinitions:
      guides, adjust values, paths, text rectangle, handles). data-adj, data-adj2… are the presets' adj values scaled 0–1;
@@ -221,6 +245,7 @@
         const d = s === 'curve' ? `M${p0} C${/** @type {any} */ (route).c[0]} ${/** @type {any} */ (route).c[1]} ${p1}` : route ? 'M' + [p0, ...route.pts.slice(1, -1), p1].join(' L') : `M${p0} L${p1}`;
         const main = el('path', { d }, 'l');
         dash(main, b, width); drawable(main, b);
+        A.els.forEach(e => e.classList.add('m0')); B.els.forEach(e => e.classList.add('m1'));   // the line's start and end (Line Draw moves them)
         out = [el('path', { d: d.replace(/^M[^ ]+/, `M${ax},${ay}`) }, 'hit'), main, ...A.els, ...B.els];
         break;
       }

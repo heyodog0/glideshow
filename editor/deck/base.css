@@ -162,15 +162,22 @@
 .reveal.ready .slides section .fragment.spin.visible { rotate: var(--gs-angle, 360deg); }
 .reveal.ready .slides section .fragment.pulse.visible { animation: gs-pulse .5s ease-in-out; }
 .reveal.ready .slides section .fragment.pop.visible { animation: gs-pop .5s; }
-/* Line Draw: a line or drawing appears as if drawn (line-draw), its arrowheads at the end; Line Draw out (line-erase)
-   undraws it back to its start. shapes.js measures the stroke as 1 (pathLength); --gs-dur / -ease / -delay from present.js. */
+/* Line Draw: a line or drawing appears as if drawn (line-draw); Line Draw out (line-erase) undraws it from its start.
+   data-direction: start to end (absent), "end" (end to start) or "middle" (middle to ends). Its arrowheads ride the drawn
+   ends (shapes.js rideLineEnds) or, with data-endpoints="off", appear once it's drawn. shapes.js measures the stroke as 1
+   (pathLength); --gs-dur / -ease / -delay from present.js. */
 .reveal.ready .slides section .fragment:is(.line-draw, .line-erase) { opacity: 1; transition-property: visibility; transition-duration: 0s; }
 .reveal.ready .slides section .fragment.line-erase { visibility: inherit; }
-.reveal.ready .slides section .fragment:is(.line-draw, .line-erase) path.l[pathLength] { stroke-dasharray: 1 1; stroke-dashoffset: 0; transition: stroke-dashoffset var(--gs-dur, .5s) var(--gs-ease, ease) var(--gs-delay, 0s); }
-.reveal.ready .slides section .fragment.line-draw:not(.visible) path.l[pathLength], .reveal.ready .slides section .fragment.line-erase.visible path.l[pathLength] { stroke-dashoffset: 1; }
+.reveal.ready .slides section .fragment:is(.line-draw, .line-erase) path.l[pathLength] { stroke-dasharray: 1 1; stroke-dashoffset: 0; transition: stroke-dashoffset var(--gs-dur, .5s) var(--gs-ease, ease) var(--gs-delay, 0s), stroke-dasharray var(--gs-dur, .5s) var(--gs-ease, ease) var(--gs-delay, 0s); }
+.reveal.ready .slides section .fragment.line-draw:not(.visible):not([data-direction]) path.l[pathLength], .reveal.ready .slides section .fragment.line-erase.visible[data-direction="end"] path.l[pathLength] { stroke-dashoffset: 1; }
+.reveal.ready .slides section .fragment.line-draw:not(.visible)[data-direction="end"] path.l[pathLength], .reveal.ready .slides section .fragment.line-erase.visible:not([data-direction]) path.l[pathLength] { stroke-dashoffset: -1; }
+.reveal.ready .slides section .fragment.line-draw[data-direction="middle"] path.l[pathLength] { stroke-dasharray: 0 0 1 1; } .reveal.ready .slides section .fragment.line-draw:not(.visible)[data-direction="middle"] path.l[pathLength] { stroke-dasharray: 0 .5 0 1; }
+.reveal.ready .slides section .fragment.line-erase[data-direction="middle"] path.l[pathLength] { stroke-dasharray: .5 0 .5 1; } .reveal.ready .slides section .fragment.line-erase.visible[data-direction="middle"] path.l[pathLength] { stroke-dasharray: 0 1 0 1; }
 .reveal.ready .slides section .fragment:is(.line-draw, .line-erase) svg.shape > :not(.l, .hit, defs) { transition: opacity .15s; }
 .reveal.ready .slides section .fragment.line-draw:not(.visible) svg.shape > :not(.l, .hit, defs), .reveal.ready .slides section .fragment.line-erase.visible svg.shape > :not(.l, .hit, defs) { opacity: 0; }
-.reveal.ready .slides section .fragment.line-draw.visible svg.shape > :not(.l, .hit, defs) { transition-delay: calc(var(--gs-delay, 0s) + var(--gs-dur, .5s)); }
+.reveal.ready .slides section .fragment.line-draw.visible[data-endpoints="off"] svg.shape > :not(.l, .hit, defs) { transition-delay: calc(var(--gs-delay, 0s) + var(--gs-dur, .5s)); }
+.reveal.ready .slides section .fragment.line-draw.visible:not([data-endpoints="off"]) svg.shape > :is(.m0, .m1) { transition: none; }   /* riding the ends from the start */
+.reveal.ready .slides section .fragment.line-erase.visible:not([data-endpoints="off"]) svg.shape > :is(.m0, .m1) { transition: opacity 0s calc(var(--gs-delay, 0s) + var(--gs-dur, .5s)); }
 /* More effects (D7): Blur, Drop (falls in and bounces), Spin, Iris, Scale big (in); Disappear, Blur out, Scale out, Iris out. */
 .reveal.ready .slides section .fragment:is(.blur-in, .blur-out) { transition-property: opacity, filter, visibility; transition-duration: .5s; }
 .reveal.ready .slides section .fragment.blur-in:not(.visible), .reveal.ready .slides section .fragment.blur-out.visible { filter: blur(24px); }
