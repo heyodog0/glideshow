@@ -2368,15 +2368,15 @@ def reveal_checks(b, errors, deck_file: Path):
     check("…and a brushed line draws in as its brush (Tapered's mask from hidden, halfway, to whole; Rough's stroke) and out (Swelled ends' mask undraws)",
           ln[0] == 1 and ln[1] == 1 and ln[2] == 0 and 0.05 < ln[3] < 0.95 and ln[4] == "1" and ln[5] == 0 and ln[6] == 0 and ln[7] == -1, str(ln))
     pcs = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => 'k8' in x.dataset), h = Reveal.getIndices(s).h, cs = e => getComputedStyle(e), wait = ms => new Promise(r => setTimeout(r, ms)), out = {};
-      for (const t of ['doorway', 'flop', 'mosaic', 'blinds', 'obj-flip', 'obj-revolve', 'obj-cube']) {
+      for (const t of ['doorway', 'flop', 'mosaic', 'blinds', 'grid', 'color-planes', 'reflection', 'twist', 'obj-flip', 'obj-revolve', 'obj-cube']) {
         s.dataset.transition = t; Reveal.slide(h - 1, 0, -1); await wait(400); Reveal.slide(h, 0, -1); await wait(150);
         const layer = document.querySelector('.reveal .slides > .gs-pieces'), ob = s.previousElementSibling.querySelector('.box');
         const mid = [layer ? layer.children.length : 0, ob ? cs(ob).animationName : ''];
         await wait(2400); out[t] = [...mid, !document.querySelector('.reveal .slides > .gs-pieces'), +cs(s).opacity === 1 && ['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(cs(s).transform)]; }
       s.dataset.transition = 'fade-black'; Reveal.slide(0); return out; }""")
-    want = {"doorway": 2, "flop": 3, "mosaic": 35, "blinds": 7}
+    want = {"doorway": 2, "flop": 3, "mosaic": 35, "blinds": 7, "grid": 1, "color-planes": 7, "reflection": 2, "twist": 32}
     bad_p = {k: x for k, x in pcs.items() if not (x[2] and x[3] and (x[0] == want[k] if k in want else x[1].startswith("gs-o-")))}
-    check("…Doorway, Flop, Mosaic and Blinds play in pieces of the old slide (2, 3, 35, 7) that go away after; Object flip / revolve / cube turn each box in 3D", not bad_p, str(pcs))
+    check("…Doorway, Flop, Mosaic, Blinds, and r08c-d's Grid (a wall of slides), Color planes (three planes each, over black), Reflection, Twist (16 strips, both faces) play in pieces that go away after; Object flip / revolve / cube turn each box in 3D", not bad_p, str(pcs))
     mt = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => 'k8' in x.dataset), h = Reveal.getIndices(s).h, cs = e => getComputedStyle(e), wait = ms => new Promise(r => setTimeout(r, ms)), out = {};
       for (const t of ['switch', 'perspective', 'page-flip', 'droplet', 'swoosh', 'swing', 'sparkle', 'shimmer', 'confetti']) {
         s.dataset.transition = t; Reveal.slide(h - 1, 0, -1); await wait(400); Reveal.slide(h, 0, -1); await wait(200);

@@ -379,8 +379,12 @@
   /* Keynote's transitions in pieces (data-transition doorway / flop / mosaic / blinds): copies of the slides, each clipped
      to its piece, play over the arriving slide and are then removed. Doorway: the old slide opens as two doors towards
      you while the new comes forward; Flop: its top half folds down over the bottom, carrying the new bottom half; Mosaic:
-     7 × 5 tiles turn away, right to left; Blinds: 7 strips turn, left to right. */
-  const PIECES = { doorway: 1.5, flop: 1, mosaic: 1.25, blinds: 1.1, 'page-flip': 1 };
+     7 × 5 tiles turn away, right to left; Blinds: 7 strips turn, left to right. Over black (r08c, r08d): Grid: the camera pulls
+     back from the old slide to a wall of slides with black gutters, pans to the new one and closes in; Color planes: the old
+     slide splits into its red, green and blue planes, which turn away one after another, and the new one's turn in and
+     merge; Reflection: the two slides meet at an inside corner, set back, and the view turns from the old to the new (no floor reflection); Twist: 16
+     strips, left to right, turn over about the middle line, the new slide on their backs. */
+  const PIECES = { doorway: 1.5, flop: 1, mosaic: 1.25, blinds: 1.1, 'page-flip': 1, grid: 1.1, 'color-planes': 1.25, reflection: 1.5, twist: 1.5 };
   Reveal.on('slidechanged', e => {
     const s = e.currentSlide, kind = s?.dataset.transition, old = e.previousSlide;
     if (!(kind in PIECES) || !old || document.body.classList.contains('sl-instant')) return;
@@ -405,6 +409,31 @@
       go(top, [{ transform: 'perspective(2000px) rotateX(0)', filter: 'brightness(1)' }, { transform: 'perspective(2000px) rotateX(-90deg)', filter: 'brightness(.5)', offset: 0.5 }, { transform: 'perspective(2000px) rotateX(-90deg)', filter: 'brightness(.5)' }], { easing: 'ease-in' });
       go(flap, [{ transform: 'perspective(2000px) rotateX(90deg)', filter: 'brightness(.5)' }, { transform: 'perspective(2000px) rotateX(90deg)', filter: 'brightness(.5)', offset: 0.5 }, { transform: 'none', filter: 'none' }], { easing: 'ease-out' });
       go(under, [{ opacity: 1 }, { opacity: 1, offset: 0.99 }, { opacity: 0 }], { easing: 'linear' });
+    } else if (kind === 'grid') {   // a 4 × 3 wall, old and new slides alternating, the old one at (1, 1) and the new beside it
+      const g = 60, wall = document.createElement('div'); Object.assign(wall.style, { position: 'absolute', left: '0', top: '0', transformOrigin: '0 0' }); layer.append(wall); layer.style.background = '#000';
+      for (let y = 0; y < 3; y++) for (let x = 0; x < 4; x++) { const c = copy((x + y) % 2 ? s : old, [0, 0, 0, 0]); Object.assign(c.style, { left: x * (W + g) + 'px', top: y * (H + g) + 'px' }); wall.append(c); }
+      const at = (cx, k) => `translate(${W / 2 - k * (cx * (W + g) + W / 2)}px, ${H / 2 - k * ((H + g) + H / 2)}px) scale(${k})`;
+      go(wall, [{ transform: at(1, 1) }, { transform: at(1.15, 0.55), offset: 0.35 }, { transform: at(1.85, 0.55), offset: 0.65 }, { transform: at(2, 1) }]);
+    } else if (kind === 'reflection') {   // an inside corner: the new slide on the left, hinged at the corner to the old on the right
+      layer.style.background = '#000'; const n = copy(s, [0, 0, 0, 0]), o = copy(old, [0, 0, 0, 0]), P = Array.from({ length: 11 }, (_, i) => i / 10);
+      const at = p => `perspective(2400px) translateX(${W * Math.sin(p * Math.PI / 2) - W / 2}px) translateZ(${-0.7 * W * Math.sin(p * Math.PI)}px)`;   // the corner, seen from the middle
+      go(n, P.map(p => ({ transform: `${at(p)} rotateY(${(1 - p) * 90}deg) translateX(${-W / 2}px)`, filter: `brightness(${0.5 + 0.5 * p})` })));
+      go(o, P.map(p => ({ transform: `${at(p)} rotateY(${-p * 90}deg) translateX(${W / 2}px)`, filter: `brightness(${1 - 0.5 * p})` })));
+    } else if (kind === 'twist') {
+      layer.style.background = '#000'; const N = 16, sw = W / N;
+      for (let i = 0; i < N; i++) { const clip = [0, W - (i + 1) * sw, 0, i * sw], f = copy(old, clip), b = copy(s, clip), o = { duration: ms * 0.5, delay: ms * 0.5 * i / (N - 1) };
+        f.style.backfaceVisibility = b.style.backfaceVisibility = 'hidden';
+        go(f, [{ transform: 'perspective(2400px) rotateX(0deg)', filter: 'brightness(1)' }, { transform: 'perspective(2400px) rotateX(90deg)', filter: 'brightness(.35)', offset: 0.5 }, { transform: 'perspective(2400px) rotateX(180deg)', filter: 'brightness(.35)' }], o);
+        go(b, [{ transform: 'perspective(2400px) rotateX(-180deg)', filter: 'brightness(.35)' }, { transform: 'perspective(2400px) rotateX(-90deg)', filter: 'brightness(.35)', offset: 0.5 }, { transform: 'perspective(2400px) rotateX(0deg)', filter: 'brightness(1)' }], o); }
+    } else if (kind === 'color-planes') {   // each slide as three planes (one colour channel each) added together over black
+      Object.assign(layer.style, { background: '#000', isolation: 'isolate' });
+      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); defs.setAttribute('width', '0'); defs.setAttribute('height', '0'); defs.style.position = 'absolute';
+      defs.innerHTML = ['1 0 0', '0 1 0', '0 0 1'].map((m, k) => { const [r, g2, b] = m.split(' '); return `<filter id="gs-cp${k}" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="${r} 0 0 0 0  0 ${g2} 0 0 0  0 0 ${b} 0 0  0 0 0 1 0"/></filter>`; }).join(''); layer.append(defs);
+      [0, 1, 2].forEach(k => {
+        const o = copy(old, [0, 0, 0, 0]), n = copy(s, [0, 0, 0, 0]); [o, n].forEach(c => { c.style.filter = `url(#gs-cp${k})`; c.style.mixBlendMode = 'screen'; });
+        go(o, [{ transform: 'perspective(2400px) none', opacity: 1 }, { transform: `perspective(2400px) translateX(${(k - 1) * 3}%) rotateY(${-35 - 10 * k}deg)`, opacity: 1, offset: 0.5 }, { transform: `perspective(2400px) translateX(${(k - 1) * 8}%) rotateY(${-90 - 10 * k}deg)`, opacity: 0 }], { duration: ms * 0.55, delay: ms * 0.05 * k });
+        go(n, [{ transform: `perspective(2400px) translateX(${(1 - k) * 8}%) rotateY(${90 + 10 * k}deg)`, opacity: 0 }, { transform: `perspective(2400px) translateX(${(1 - k) * 3}%) rotateY(${35 + 10 * k}deg)`, opacity: 1, offset: 0.5 }, { transform: 'perspective(2400px) none', opacity: 1 }], { duration: ms * 0.55, delay: ms * (0.35 + 0.05 * k) });
+      });
     } else {
       const [cols, rows] = kind === 'mosaic' ? [7, 5] : [7, 1], tw = W / cols, th = H / rows;
       for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {

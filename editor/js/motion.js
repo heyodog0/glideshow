@@ -13,7 +13,8 @@ const TRANSITIONS = [['none', 'None'], ['fade', 'Dissolve'], ['fade-in fade-out'
   ['clothesline', 'Clothesline', 1], ['fall', 'Fall', 1], ['pivot', 'Pivot', 1], ['revolving-door', 'Revolving door', 1], ['k-scale', 'Scale', 1], ['swap', 'Swap', 1],
   ['twirl', 'Twirl', 1], ['obj-pop', 'Object pop', 1], ['obj-zoom', 'Object zoom', 1], ['obj-push', 'Object push', 1],
   ['doorway', 'Doorway', 1], ['flop', 'Flop', 1], ['mosaic', 'Mosaic', 1], ['blinds', 'Blinds', 1], ['obj-flip', 'Object flip', 1], ['obj-revolve', 'Object revolve', 1], ['obj-cube', 'Object cube', 1],
-  ['switch', 'Switch', 1], ['perspective', 'Perspective', 1], ['page-flip', 'Page flip', 1], ['droplet', 'Droplet', 1], ['swoosh', 'Swoosh', 1], ['swing', 'Swing', 1], ['sparkle', 'Sparkle', 1], ['shimmer', 'Shimmer', 1], ['confetti', 'Confetti', 1]];
+  ['switch', 'Switch', 1], ['perspective', 'Perspective', 1], ['page-flip', 'Page flip', 1], ['droplet', 'Droplet', 1], ['swoosh', 'Swoosh', 1], ['swing', 'Swing', 1], ['sparkle', 'Sparkle', 1], ['shimmer', 'Shimmer', 1], ['confetti', 'Confetti', 1],
+  ['grid', 'Grid', 1], ['color-planes', 'Color planes', 1], ['reflection', 'Reflection', 1], ['twist', 'Twist', 1]];
 /* A list's options, with its third-column entries under "More effects" (D7). */
 const optionsOf = list => list.filter(x => !x[2]).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')
   + (list.some(x => x[2]) ? `<optgroup label="More effects">${list.filter(x => x[2]).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</optgroup>` : '');
@@ -409,7 +410,9 @@ function playTransition() {
     switch: [{ transform: 'translate(-18%, 12%) rotate(-25deg)' }, { transform: 'none' }], perspective: [{ transform: 'perspective(2000px) translate(60%, -45%) rotateY(-50deg) scale(.7)' }, { transform: 'none' }],
     'page-flip': [{ clipPath: 'inset(0 0 0 100%)' }, { clipPath: 'inset(0)' }], droplet: [{ clipPath: 'circle(0% at 50% 50%)', opacity: .3 }, { clipPath: 'circle(75% at 50% 50%)', opacity: 1 }],
     swoosh: [{ transform: 'scale(.05) rotate(-10deg)' }, { transform: 'none' }], swing: [{ opacity: 0 }, { opacity: 1 }], sparkle: [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0)' }],
-    shimmer: [{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1 }], confetti: [{ transform: 'scale(.8)' }, { transform: 'none' }] }[k];
+    shimmer: [{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1 }], confetti: [{ transform: 'scale(.8)' }, { transform: 'none' }],
+    grid: [{ transform: 'translateX(55%) scale(.55)' }, { transform: 'scale(.55)', offset: .65 }, { transform: 'none' }], 'color-planes': [{ transform: 'perspective(2000px) rotateY(90deg)', opacity: 0 }, { transform: 'none', opacity: 1 }],
+    reflection: [{ transform: 'perspective(2000px) rotateY(80deg)', transformOrigin: '100% 50%' }, { transform: 'none', transformOrigin: '100% 50%' }], twist: [{ transform: 'perspective(2000px) rotateX(-90deg)' }, { transform: 'none' }] }[k];
   if (frames) s.animate(frames, { duration: ms, easing: 'cubic-bezier(.26,.86,.44,.985)' });
 }
 
