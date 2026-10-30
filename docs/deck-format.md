@@ -116,6 +116,10 @@ Rules:
   ids stay unique in the deck, so a copied box gets a new id and `data-morph` names the one it continues. In the editor:
   duplicate the slide (Duplicate slide sets `data-morph` on each copy), change the copy, and give it `data-auto-animate`. By
   hand, see "Building a diagram up step by step" above. Optional `data-auto-animate-duration` in seconds (0.5 fast, 1.4 slow).
+  Keynote's options, also optional: `data-auto-animate-unmatched="false"` (boxes with no partner appear at once instead of
+  fading in), `data-auto-animate-easing` (a CSS easing: `linear`, `ease-in`, `ease-out`, `ease-in-out`; `ease` by default)
+  and `data-morph-match="word|character"`: within each pair of boxes, each word (or letter) that is in both moves from where
+  it was to where it is, so reworded text rearranges itself; new words fade in. A box's text always moves with its box.
 - Object animations are reveal fragments on the box: `class="box fragment fade-in"` (or `appear`, `fade-right` = fly in from left, `fade-left`, `fade-up`, `fade-down`, `zoom-in`), ordered by `data-fragment-index` (`data-with-previous` marks one that plays with the one before it, sharing its index). Alt text: the image's `alt`, or `aria-label` on the box.
 - Image adjustments (Format options → Adjustments): `data-adjust="exposure:20 saturation:-30"` on an image's box, any of `exposure saturation contrast highlights shadows sharpness temperature tint`, each -100…100 (0 = left out). shapes.js draws them as an SVG filter on the `<img>` (derived, never saved).
   More effects: `fade-out`, `semi-fade-out` (dim), `fade-in-then-out`, `fade-in-then-semi-out` (fade in, then dim when the

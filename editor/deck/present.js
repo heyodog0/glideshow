@@ -35,10 +35,46 @@
     box.classList.add('gs-seq');
     box.style.cssText += `;--gs-step:${step}ms;--gs-d:${eff === 'appear' ? 0 : Math.min(total, Math.max(200, step * 3))}ms;--gs-from:${FROM[eff]};--gs-ease:${box.dataset.ease || 'ease'};transition-duration:${total}ms`;
   };
+  /* Magic Move's Match by word / by character (data-morph-match on the slide): the text of its boxes and of the slide
+     before's in spans, so each word (or letter, kept within its word) moves from where it was in the box this one
+     continues, and new ones fade in. Not in boxes built by word or character. */
+  const morphSplit = (box, mode) => {
+    if (box.querySelector('.gs-mw') || /^(word|character)$/.test(box.dataset.build || '')) return;
+    const texts = [], tw = document.createTreeWalker(box.querySelector(':scope > .content') || box, NodeFilter.SHOW_TEXT);
+    for (let n; (n = tw.nextNode());) if (n.data.trim() && !n.parentElement?.closest('svg, style, script, .gs-mw')) texts.push(n);
+    for (const t of texts) {
+      const frag = document.createDocumentFragment();
+      for (const piece of t.data.split(/(\s+)/)) {
+        if (!piece) continue;
+        if (/^\s+$/.test(piece)) { frag.append(piece); continue; }
+        const word = document.createElement('span');
+        if (mode === 'word') { word.className = 'gs-mw'; word.textContent = piece; }
+        else { word.className = 'gs-word'; for (const ch of piece) word.append(Object.assign(document.createElement('span'), { className: 'gs-mw', textContent: ch })); }
+        frag.append(word);
+      }
+      t.replaceWith(frag);
+    }
+  };
+  /* Morph's pairs: boxes by data-id (a group's inner boxes measured within the group), not reveal's default of also pairing
+     paragraphs by their text, which moved a box's text twice as far as the box; then, on a slide matching by word or
+     character, the words (letters) of each pair of boxes, measured within their box. */
+  Reveal.configure({ autoAnimateMatcher: function (from, to) {
+    const pairs = [], scale = Reveal.getScale(), within = box => e => { let x = 0, y = 0;
+      for (let n = e; n && n !== box; n = /** @type {HTMLElement} */ (n.offsetParent)) { x += n.offsetLeft; y += n.offsetTop; }
+      return { x: x * scale, y: y * scale, width: e.offsetWidth * scale, height: e.offsetHeight * scale }; };
+    this.findAutoAnimateMatches(pairs, from, to, ':scope > .box[data-id]', e => e.dataset.id);
+    for (const p of [...pairs]) this.findAutoAnimateMatches(pairs, p.from, p.to, '.box[data-id]', e => e.dataset.id, { measure: e => within(e.parentElement.closest('.box'))(e) });
+    if (/^(word|character)$/.test(to.dataset.morphMatch || ''))
+      for (const p of [...pairs]) this.findAutoAnimateMatches(pairs, p.from, p.to, '.gs-mw', e => e.closest('.box') === p.from || e.closest('.box') === p.to ? e.textContent : null,
+        { scale: false, measure: e => within(e.closest('.box'))(e) });
+    return pairs;
+  } });
   const prepare = () => {
     const all = Reveal.getSlides();
     all.forEach((sl, i) => { if (sl.hasAttribute('data-auto-animate') && all[i - 1] && !all[i - 1].hasAttribute('data-auto-animate')) all[i - 1].setAttribute('data-auto-animate', ''); });
     document.querySelectorAll('.reveal .slides .box').forEach(b => { if (!b.dataset.id) b.dataset.id = b.dataset.morph || b.id; });
+    all.forEach((sl, i) => { const m = sl.dataset.morphMatch; if (sl.hasAttribute('data-auto-animate') && all[i - 1] && /^(word|character)$/.test(m || ''))
+      [sl, all[i - 1]].forEach(s => s.querySelectorAll('.box').forEach(b => morphSplit(b, m))); });
     let changed = false;
     all.forEach(sl => {
       const frags = [...sl.querySelectorAll('.box.fragment[data-build]')].sort((a, b) => (+a.dataset.fragmentIndex || 0) - (+b.dataset.fragmentIndex || 0));
@@ -269,6 +305,7 @@
     .reveal .gs-seq .gs-w { display: inline-block; opacity: 0; transform: var(--gs-from); transition: opacity var(--gs-d) var(--gs-ease), transform var(--gs-d) var(--gs-ease); transition-delay: calc(var(--i) * var(--gs-step)); }
     .reveal .gs-seq.visible .gs-w { opacity: 1; transform: none; }
     .reveal .gs-word { white-space: nowrap; }
+    .reveal .gs-mw { display: inline-block; }
     .reveal .slides .fragment.gs-hl.visible:not(.current-fragment) { opacity: .35; }
     .reveal .backgrounds { display: none; }
     .sl-bar { position: fixed; left: 20px; bottom: 20px; z-index: 102; display: flex; align-items: center; height: 36px; padding: 0 4px;

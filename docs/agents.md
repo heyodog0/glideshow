@@ -183,7 +183,8 @@ lines short or the font smaller (`check` reports code that is cut off).
 
 **Building a diagram up step by step (Morph).** One slide per step. Each step's boxes have ids unique in the whole deck,
 and each step after the first has `data-auto-animate` and pairs every box that carries over with `data-morph="<its id on
-the slide before>"`; a box with no partner fades in. The first step has no `data-auto-animate`.
+the slide before>"`; a box with no partner fades in. The first step has no `data-auto-animate`. When a step rewords a
+title or label, `data-morph-match="word"` on that step's `<section>` slides the words that stay into their new places.
 ```html
 <section data-layout="title-only">
   <div class="box" id="s1-title" data-placeholder="Click to add title" data-role="title" data-valign="top" style="left: 65px; top: 93px; width: 1790px; height: 122px;"><div class="content" style="font-size: calc(var(--th-title-size, 74.67px) * 1); text-align: left; padding: 9.6px 19.2px;">The pipeline</div></div>

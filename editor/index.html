@@ -185,6 +185,11 @@
     <details class="item"><summary><span class="thumbmark"></span><span id="ed-t-name">None</span></summary>
       <label>Type<select id="ed-t-kind"></select></label>
       <div class="range">Slow<input type="range" id="ed-t-speed" min="0" max="2" step="1" value="1">Fast</div>
+      <div id="ed-t-morph" hidden>
+        <label class="chk"><input type="checkbox" id="ed-t-fade" checked> Fade unmatched objects</label>
+        <label>Match<select id="ed-t-match"><option value="">By object</option><option value="word">By word</option><option value="character">By character</option></select></label>
+        <label>Acceleration<select id="ed-t-ease"></select></label>
+      </div>
       <div class="actions"><button id="ed-t-all">Apply to all slides</button></div>
     </details>
     <h3>Object Animations</h3>

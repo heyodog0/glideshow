@@ -15,7 +15,9 @@ const optionsOf = list => list.filter(x => !x[2]).map(([v, l]) => `<option value
   + (list.some(x => x[2]) ? `<optgroup label="More effects">${list.filter(x => x[2]).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</optgroup>` : '');
 const SPEEDS = ['slow', '', 'fast'];
 /* Morph is reveal's Auto-Animate (Keynote's Magic Move): data-auto-animate on the slide, its speed as
-   data-auto-animate-duration. Boxes pair with the previous slide's by data-morph (Duplicate slide sets it), else by id. */
+   data-auto-animate-duration. Boxes pair with the previous slide's by data-morph (Duplicate slide sets it), else by id.
+   Keynote's options: Fade unmatched objects (off: data-auto-animate-unmatched="false"), Match by word or character
+   (data-morph-match, present.js), Acceleration (data-auto-animate-easing). */
 const MORPH_S = { slow: '1.4', fast: '0.5' };
 const kindOf = s => s.hasAttribute('data-auto-animate') ? 'morph' : s.dataset.transition || 'none';
 const speedOf = s => s.hasAttribute('data-auto-animate') ? Object.keys(MORPH_S).find(k => MORPH_S[k] === s.dataset.autoAnimateDuration) || '' : s.dataset.transitionSpeed || '';
@@ -28,16 +30,24 @@ function updateTransPanel() {
   const s = slides[cur];
   $('#ed-t-kind').value = kindOf(s);
   $('#ed-t-speed').value = Math.max(0, SPEEDS.indexOf(speedOf(s)));
+  $('#ed-t-morph').hidden = kindOf(s) !== 'morph';
+  $('#ed-t-fade').checked = s.dataset.autoAnimateUnmatched !== 'false';
+  $('#ed-t-match').value = s.dataset.morphMatch || '';
+  $('#ed-t-ease').value = s.dataset.autoAnimateEasing || '';
 }
 function writeTransition(s) {
   const k = $('#ed-t-kind').value, sp = SPEEDS[+$('#ed-t-speed').value];
-  s.removeAttribute('data-auto-animate'); delete s.dataset.autoAnimateDuration;
+  s.removeAttribute('data-auto-animate'); for (const d of ['autoAnimateDuration', 'autoAnimateUnmatched', 'autoAnimateEasing', 'morphMatch']) delete s.dataset[d];
   if (k === 'none') { delete s.dataset.transition; delete s.dataset.transitionSpeed; return; }
-  if (k === 'morph') { delete s.dataset.transition; delete s.dataset.transitionSpeed; s.setAttribute('data-auto-animate', ''); if (sp) s.dataset.autoAnimateDuration = MORPH_S[sp]; return; }
+  if (k === 'morph') { delete s.dataset.transition; delete s.dataset.transitionSpeed; s.setAttribute('data-auto-animate', ''); if (sp) s.dataset.autoAnimateDuration = MORPH_S[sp];
+    if (!$('#ed-t-fade').checked) s.dataset.autoAnimateUnmatched = 'false';
+    if ($('#ed-t-match').value) s.dataset.morphMatch = $('#ed-t-match').value;
+    if ($('#ed-t-ease').value) s.dataset.autoAnimateEasing = $('#ed-t-ease').value;
+    return; }
   s.dataset.transition = k;
   if (sp) s.dataset.transitionSpeed = sp; else delete s.dataset.transitionSpeed;
 }
-$('#ed-t-kind').onchange = $('#ed-t-speed').onchange = () => { writeTransition(slides[cur]); commit(); playTransition(); renderAnims(); };
+$('#ed-t-kind').onchange = $('#ed-t-speed').onchange = $('#ed-t-fade').onchange = $('#ed-t-match').onchange = $('#ed-t-ease').onchange = () => { writeTransition(slides[cur]); commit(); playTransition(); renderAnims(); };
 $('#ed-t-all').onclick = () => { slides.forEach(writeTransition); commit(); setStatus('Transition applied to all slides'); };
 $('#ed-trans-close').onclick = () => setTransPanel(false);
 $('#ed-transition').onclick = () => setTransPanel(trans.hidden);
@@ -68,6 +78,7 @@ const openAnims = new Set();
    build only), data-duration / data-delay in seconds, data-ease the acceleration. present.js plays them. */
 const START_LABEL = { click: 'On click', with: 'With previous', after: 'After previous', transition: 'After transition' };
 const EASES = [['', 'Acceleration: default'], ['linear', 'None'], ['ease-in', 'Ease in'], ['ease-out', 'Ease out'], ['ease-in-out', 'Ease in and out']];
+$('#ed-t-ease').innerHTML = EASES.map(([v, l]) => `<option value="${v}">${v ? l : 'Default'}</option>`).join('');
 const TIMING = ['start', 'duration', 'delay', 'ease', 'angle', 'to'];   // and Rotate's angle and Move's end, copied and removed with them
 /* Delivery (data-build), as Keynote: a text box by paragraph, by highlighted paragraph (the earlier ones dim), by word
    or by character; a table by row, column or cell. present.js plays them. */
@@ -239,7 +250,7 @@ $('#ed-anim-play').onclick = async () => { playTransition(); await new Promise(r
 /* Preview the current slide's transition on the canvas (an approximation of reveal's). */
 function playTransition() {
   const s = slides[cur], k = kindOf(s), ms = { slow: 1200, fast: 400 }[speedOf(s)] || 800;
-  if (k === 'morph') return playMorph(s, (+s.dataset.autoAnimateDuration || 1) * 1000);
+  if (k === 'morph') return playMorph(s, (+s.dataset.autoAnimateDuration || 1) * 1000, s.dataset.autoAnimateEasing || 'ease', s.dataset.autoAnimateUnmatched !== 'false');
   const frames = { fade: [{ opacity: 0 }, { opacity: 1 }], 'fade-in fade-out': [{ opacity: 0 }, { opacity: 1 }],
     slide: [{ transform: 'translateX(100%)' }, { transform: 'none' }], 'sl-left': [{ transform: 'translateX(-100%)' }, { transform: 'none' }],
     convex: [{ transform: 'perspective(2000px) rotateY(90deg)' }, { transform: 'none' }], concave: [{ transform: 'perspective(2000px) rotateY(-90deg)' }, { transform: 'none' }],
@@ -253,14 +264,15 @@ function playTransition() {
   if (frames) s.animate(frames, { duration: ms, easing: 'cubic-bezier(.26,.86,.44,.985)' });
 }
 
-/* Morph's preview: each box that has a partner on the slide before moves from the partner's place and size; the rest fade in. */
-function playMorph(s, ms) {
+/* Morph's preview: each box that has a partner on the slide before moves from the partner's place and size; the rest fade
+   in (or appear, without Fade unmatched objects). Text matched by word or character plays only in the slideshow. */
+function playMorph(s, ms, easing, fade) {
   const prev = slides[slides.indexOf(s) - 1]; if (!prev) return;
   const key = b => b.dataset.morph || b.id, before = new Map(boxes(prev).map(b => [key(b), b]));
   boxes(s).filter(b => !parentBox(b)).forEach(b => {
     const p = before.get(key(b)), at = ['left', 'top', 'width', 'height'];
-    if (!p) return b.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing: 'ease' });
-    b.animate([Object.fromEntries(at.map(k => [k, p.style[k]])), Object.fromEntries(at.map(k => [k, b.style[k]]))], { duration: ms, easing: 'ease' });
+    if (!p) return fade && b.animate([{ opacity: 0 }, { opacity: 0, offset: .2 }, { opacity: 1 }], { duration: ms, easing: 'ease' });   // as reveal: the last 80%
+    b.animate([Object.fromEntries(at.map(k => [k, p.style[k]])), Object.fromEntries(at.map(k => [k, b.style[k]]))], { duration: ms, easing });
   });
 }
 

@@ -1890,6 +1890,25 @@ def reveal_checks(b, errors, deck_file: Path):
       return [s.getAttribute('data-auto-animate'), !!t, Reveal.getSlides()[Reveal.getIndices().h - 1]?.hasAttribute('data-auto-animate')]; }""")
     check("…in the slideshow the box morphs: reveal's Auto-Animate pairs it with the slide before's (both slides marked, the box a target)",
           run[0] == "running" and run[1] and run[2], str(run))
+    # Magic Move's options (r03): Fade unmatched objects, Match by object / word / character, Acceleration, shown for Morph only
+    mo = pg.evaluate("""() => { const c = boxes(slides[cur])[0]; c.querySelector('.content').textContent = 'me Morph now'; commit(); updateTransPanel();
+      const shown = !$('#ed-t-morph').hidden, t0 = performance.now();
+      $('#ed-t-fade').checked = false; $('#ed-t-fade').onchange(); $('#ed-t-match').value = 'word'; $('#ed-t-match').onchange();
+      $('#ed-t-ease').value = 'ease-in-out'; $('#ed-t-ease').onchange(); const ms = performance.now() - t0, d = slides[cur].dataset;
+      return [shown, d.autoAnimateUnmatched, d.morphMatch, d.autoAnimateEasing, [...$('#ed-t-match').options].map(o => o.text).join('/'), Math.round(ms)]; }""")
+    settle()
+    check(f"Magic Move options under Morph: Fade unmatched objects, Match by object / word / character, Acceleration, saved on the slide ({mo[5]} ms for three changes)",
+          mo[:5] == [True, "false", "word", "ease-in-out", "By object/By word/By character"] and 'data-morph-match="word"' in saved() and mo[5] < 300, str(mo))
+    v.reload(); v.wait_for_function("window.Reveal?.isReady?.()", timeout=20000); v.wait_for_timeout(300)
+    v.evaluate(f"Reveal.slide({first})"); v.wait_for_timeout(300); v.evaluate("Reveal.next()"); v.wait_for_timeout(250)
+    ww = v.evaluate("""() => { const s = Reveal.getCurrentSlide(), b = s.querySelector('.box'), r = b.getBoundingClientRect(), w = [...s.querySelectorAll('.gs-mw')];
+      const x = t => Math.round(w.find(e => e.textContent === t).getBoundingClientRect().x - r.x);
+      return [w.map(e => e.textContent).join(' '), w.map(e => e.dataset.autoAnimateTarget === 'unmatched' ? 'u' : e.dataset.autoAnimateTarget ? 'm' : '-').join(''), x('Morph') < x('me') ? 'old order' : 'new order', s.dataset.autoAnimateUnmatched]; }""")
+    v.wait_for_timeout(1200)
+    end = v.evaluate("""() => { const s = Reveal.getCurrentSlide(), r = s.querySelector('.box').getBoundingClientRect(), w = [...s.querySelectorAll('.gs-mw')];
+      return Math.round(w.find(e => e.textContent === 'Morph').getBoundingClientRect().x - r.x) > Math.round(w.find(e => e.textContent === 'me').getBoundingClientRect().x - r.x); }""")
+    check("…in the slideshow, Match by word: the words in both slides slide into their new order within the moving box; the new one appears at once (Fade unmatched objects off)",
+          ww[:2] == ["me Morph now", "mm-"] and ww[2] == "old order" and ww[3] == "false" and end, str(ww + [end]))
 
     # builds: more effects; by paragraph; a stack of pictures shown one after another
     eff = pg.evaluate("EFFECTS.map(e => e[0])")
