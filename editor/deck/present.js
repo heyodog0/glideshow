@@ -282,11 +282,44 @@
   if (embedded) Reveal.on('ready', () => window.focus());
   if (embedded) for (const ev of ['slidechanged', 'fragmentshown', 'fragmenthidden']) Reveal.on(ev, () => { const i = Reveal.getIndices(); parent.postMessage({ slides: 'at', h: i.h, v: i.v || 0, f: i.f ?? -1 }, '*'); });   // Record slideshow listens
   if (/print-pdf/.test(location.search)) {   // PDF, as Slides prints it: one page per slide, edge to edge, no numbers, colours kept
-    Reveal.configure({ slideNumber: false, margin: 0, pdfSeparateFragments: false, pdfMaxPagesPerSlide: 1, showNotes: false });
+    /* Slides' Print preview bar (not printed) with Keynote's PDF options: 1 slide with notes (the notes under each slide),
+       Include each stage of builds, Include skipped slides (the server keeps them in), Hide background. Each is a word in
+       the address, so a choice reloads the page. */
+    const q = new URLSearchParams(location.search), opt = k => q.has(k);
+    Reveal.configure({ slideNumber: false, margin: 0, pdfSeparateFragments: opt('builds'), pdfMaxPagesPerSlide: opt('builds') ? 99 : 1, showNotes: false });
     const css = document.createElement('style');
     css.textContent = `* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }   /* without the print dialog's "Background graphics" */
-      @page { margin: 0; } .reveal .slide-number, .sl-bar { display: none !important; }`;
+      @page { margin: 0; } .reveal .slide-number, .sl-bar { display: none !important; }
+      .gs-print-bar { position: fixed; z-index: 1000; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 16px; height: 56px; padding: 0 16px; background: #fff;
+        box-shadow: 0 1px 3px rgba(60, 64, 67, .3); font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
+      .gs-print-bar select { height: 36px; padding: 0 8px; border: 1px solid #c4c7c5; border-radius: 4px; font: inherit; background: #fff; }
+      .gs-print-bar label { display: flex; align-items: center; gap: 6px; cursor: pointer; } .gs-print-bar .sp { flex: 1; }
+      .gs-print-bar button { height: 36px; padding: 0 16px; border: 1px solid #747775; border-radius: 18px; background: #fff; color: #0b57d0; font: 500 14px Roboto, Arial, sans-serif; cursor: pointer; }
+      .gs-print-bar button.go { border: 0; background: #0b57d0; color: #fff; }
+      .gs-pdf-notes { position: absolute; left: 0; box-sizing: border-box; padding: 48px 96px; font: 32px/1.5 Arial, sans-serif; color: #1f1f1f; white-space: pre-wrap; background: #fff; }
+      ${opt('nobg') ? '.reveal .slides section, .reveal .pdf-page { background: #fff !important; } .reveal .slide-background { display: none !important; }' : ''}
+      @media screen { html.print-pdf body { padding-top: 56px !important; } html.print-pdf .reveal .slides { zoom: var(--gs-fit, 1) !important; } }   /* pages fitted to the window */
+      @media print { .gs-print-bar { display: none !important; } }`;
     document.head.append(css);
+    const bar = document.createElement('div'); bar.className = 'gs-print-bar';
+    bar.innerHTML = `<select title="Layout"><option value="">1 slide without notes</option><option value="notes">1 slide with notes</option></select>
+      <label><input type="checkbox" data-k="builds">Include each stage of builds</label><label><input type="checkbox" data-k="skipped">Include skipped slides</label>
+      <label><input type="checkbox" data-k="nobg">Hide background</label><span class="sp"></span><button class="pdf">Download as PDF</button><button class="go">Print</button>`;
+    const sel = bar.querySelector('select'); sel.value = opt('notes') ? 'notes' : '';
+    bar.querySelectorAll('input').forEach(c => { c.checked = opt(c.dataset.k); });
+    const reload = () => { const n = ['print-pdf', ...(sel.value ? ['notes'] : []), ...[...bar.querySelectorAll('input:checked')].map(c => c.dataset.k)]; location.search = '?' + n.join('&'); };
+    sel.onchange = reload; bar.querySelectorAll('input').forEach(c => { c.onchange = reload; });
+    bar.querySelectorAll('button').forEach(b => { b.onclick = () => print(); });   // Chrome's dialog saves a PDF too
+    const addBar = () => document.body.append(bar); document.body ? addBar() : addEventListener('DOMContentLoaded', addBar);
+    const fit = () => document.documentElement.style.setProperty('--gs-fit', String(Math.min(1, (innerWidth - 32) / Reveal.getConfig().width))); fit(); addEventListener('resize', fit);
+    if (opt('notes')) Reveal.on('pdf-ready', () => {   // each page taller, the slide's notes under it
+      const W = Reveal.getConfig().width, H = Reveal.getConfig().height, PH = Math.round(H * 1.6);
+      document.querySelectorAll('.reveal .pdf-page').forEach(pg => {
+        const s = pg.querySelector('section'), n = document.createElement('div'); pg.style.height = PH + 'px';
+        n.className = 'gs-pdf-notes'; Object.assign(n.style, { top: H + 'px', width: W + 'px', height: PH - H + 'px' }); n.textContent = s ? (s.querySelector('aside.notes')?.textContent || '').trim() : ''; pg.append(n);
+      });
+      document.head.append(Object.assign(document.createElement('style'), { textContent: `@page { size: ${W}px ${PH}px; margin: 0; }` }));
+    });
     return;
   }
 

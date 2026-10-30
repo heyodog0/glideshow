@@ -1390,6 +1390,21 @@ def checks(pg, deck: Path, errors):
           n1 == n0 + 1 and n2 == n0 and pf == "#00ff00" and "<b>bold</b>" in rich and "script" not in rich and plain.count("<b>") == 1
           and compact == "none" and notes_off and saved == "All changes saved" and printed,
           f"{n0} {n1} {n2} {pf} {rich} {plain} {compact} {notes_off} {saved} {printed}")
+    # Print preview with Keynote's PDF options (k13): 1 slide with notes, each stage of builds, skipped slides, hide background
+    pg.evaluate("""(async () => { const a = blankSlide(), h = blankSlide(); slides.push(a, h); const n = document.createElement('aside'); n.className = 'notes'; n.textContent = 'Say the print line'; a.append(n);
+      const b = makeBox({ x: 100, y: 100, w: 400, h: 200, html: 'built' }); b.classList.add('fragment', 'fade-in'); a.append(b); h.dataset.visibility = 'hidden'; a.dataset.printTest = '';
+      go(slides.length - 1); render(); commit(); await flushSave(); })()""")
+    def pdf_pages(q):
+        w = pg.context.new_page(); w.goto(URL + "deck/deck.html?print-pdf" + q); w.wait_for_function("document.querySelectorAll('.pdf-page').length > 0", timeout=20000); w.wait_for_timeout(400)
+        out = w.evaluate("""(() => { const ps = [...document.querySelectorAll('.pdf-page')], t = ps.find(p => p.querySelector('section[data-print-test]'));
+          return [ps.length, t ? parseFloat(t.style.height) : 0, t?.querySelector('.gs-pdf-notes')?.textContent || '', !!document.querySelector('.gs-print-bar'),
+            [...document.querySelectorAll('.gs-print-bar input:checked')].map(c => c.dataset.k).join(','), document.querySelector('.gs-print-bar select')?.value]; })()""")
+        if q == "": w.select_option(".gs-print-bar select", "notes"); w.wait_for_url("**notes"); out.append(w.url.split("?")[1])
+        w.close(); return out
+    p0, p1 = pdf_pages(""), pdf_pages("&notes&builds&skipped&nobg")
+    pg.evaluate("(async () => { slides.splice(slides.length - 2, 2); go(slides.length - 1); render(); commit(); await flushSave(); })()")
+    check("Print preview, as Slides with Keynote's PDF options: a bar (1 slide with notes, Include each stage of builds, Include skipped slides, Hide background, Download as PDF, Print); with notes each slide's notes print under it; builds add a page per stage; skipped slides come back",
+          p0[3] and p0[6] == "print-pdf&notes" and abs(p0[1] - 1080) <= 1 and p1[0] == p0[0] + 2 and p1[1] == round(1080 * 1.6) and p1[2] == "Say the print line" and p1[4] == "builds,skipped,nobg" and p1[5] == "notes", f"{p0} {p1}")
     tb = pg.evaluate("(() => { const b = makeBox({x:100,y:100,w:400,h:100,html:'Plain'}); slides[cur].append(b); render(); sel = new Set([b]); drawOverlay(); return b.id; })()")
     pg.keyboard.press("Meta+b"); pg.keyboard.press("Meta+i"); pg.keyboard.press("Meta+u")
     on = pg.evaluate(f"(() => {{ const c = document.querySelector('#{tb} .content').style; return [c.fontWeight, c.fontStyle, c.textDecoration]; }})()")

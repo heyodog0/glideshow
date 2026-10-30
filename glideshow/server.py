@@ -118,6 +118,10 @@ class Handler(SimpleHTTPRequestHandler):
         if path.startswith("/editor/"):
             return self.send_file(EDITOR, path.removeprefix("/editor/"))
         if path.startswith("/deck/"):
+            if path == "/deck/deck.html" and "skipped" in parse_qs(urlparse(self.path).query, keep_blank_values=True):   # Print preview → Include skipped slides:
+                data = self.deck_file.read_text().replace("Reveal.initialize({", "Reveal.initialize({ showHiddenSlides: true,", 1).encode()   # reveal drops them otherwise
+                self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data)))
+                self.send_header("Cache-Control", "no-store"); self.end_headers(); self.wfile.write(data); return None
             return self.send_file(self.deck, path.removeprefix("/deck/"))
         if path == "/api/deck":
             return self.send_json({"html": self.deck_file.read_text(), "mtime": self.mtime(), "draft": is_draft(self.deck), "id": deck_id(self.deck)})   # id: its files under /library/<id>/ (slides copied to another deck)
