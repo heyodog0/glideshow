@@ -1940,7 +1940,16 @@ def reveal_checks(b, errors, deck_file: Path):
       commit(); setTransPanel(true); renderAnims(); const g = document.querySelector('.anim-row select.e optgroup'), t = document.querySelector('#ed-t-kind optgroup');
       const out = [g?.label, [...(g?.children || [])].map(o => o.value), [...(t?.children || [])].map(o => o.textContent)]; setTransPanel(false); return out; }""")
     check("Motion panel → More effects (D7): Blur, Drop, Spin, Iris, Scale big in; Disappear, Blur, Scale, Iris out; transitions Iris and Reveal",
-          more[0] == "More effects" and more[1] == ["blur-in", "drop-in", "spin-in", "iris-in", "scale-big", "disappear", "blur-out", "scale-out", "iris-out"] and more[2] == ["Iris", "Reveal"], str(more))
+          more[0] == "More effects" and more[1] == ["blur-in", "drop-in", "spin-in", "iris-in", "scale-big", "drift-in", "drift-scale", "fade-move-in", "fade-scale", "blinds-in",
+          "cube-in", "flip-in", "spin-y", "pivot-in", "twist-scale", "squish-in", "disappear", "blur-out", "scale-out", "iris-out"] and more[2][:2] == ["Iris", "Reveal"], str(more))
+    # the rest of Keynote's (r08): builds and transitions under More effects
+    k8 = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1); slides[cur].dataset.transition = 'fade-black'; slides[cur].dataset.k8 = '';
+      const effs = ['drift-in', 'drift-scale', 'fade-move-in', 'fade-scale', 'blinds-in', 'cube-in', 'flip-in', 'spin-y', 'pivot-in', 'twist-scale', 'squish-in'];
+      effs.forEach((e, i) => { const b = makeBox({ x: 60 + i * 160, y: 400, w: 130, h: 130, html: e }); b.style.setProperty('--fill', '#fbbc04'); slides[cur].append(b); render(); sel = new Set([b]); addAnim(); setEffect(b, e); });
+      commit(); setTransPanel(true); renderAnims(); const t0 = performance.now(); playTransition(); playAnims(); const ms = performance.now() - t0;
+      const out = [[...document.querySelector('#ed-t-kind optgroup').children].map(o => o.textContent), boxes().filter(b => effs.includes(effectOf(b))).length, Math.round(ms)]; setTransPanel(false); return out; }""")
+    check(f"More effects from r08: Drift, Drift and scale, Fade and move, Fade and scale, Blinds, Cube, Flip, Spin, Pivot, Twist and scale, Squish; 13 more transitions; the editor previews them ({k8[2]} ms to start)",
+          k8[1] == 11 and k8[0][2:] == ["Fade through black", "Fade and move", "Drop", "Clothesline", "Fall", "Pivot", "Revolving door", "Scale", "Swap", "Twirl", "Object pop", "Object zoom", "Object push"] and k8[2] < 100, str(k8))
     ld = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1);
       const l = makeBox({ x: 200, y: 300, w: 800, h: 200, shape: 'arrowline' }), r = makeBox({ x: 200, y: 600, w: 300, h: 200, html: 'r' });
       const e = makeBox({ x: 200, y: 900, w: 800, h: 100, shape: 'line' });
@@ -2045,6 +2054,17 @@ def reveal_checks(b, errors, deck_file: Path):
       s.dataset.transition = 'reveal-l'; Reveal.slide(h - 1, 0, -1); await wait(900); Reveal.slide(h, 0, -1); await wait(250); const p = s.previousElementSibling;
       const out = [+cs(s).opacity, cs(p).zIndex, new DOMMatrix(cs(p).transform).m41 < 0]; await wait(900); out.push(new DOMMatrix(cs(p).transform).m41 <= -p.offsetWidth * .99); s.dataset.transition = 'iris'; Reveal.slide(0); return out; }""")
     check("…Reveal: the old slide moves off to the left over the new one, which is already there", rv == [1, "12", True, True], str(rv))
+    k8v = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => 'k8' in x.dataset), h = Reveal.getIndices(s).h, cs = e => getComputedStyle(e), wait = ms => new Promise(r => setTimeout(r, ms));
+      const tr = {}; for (const t of ['fade-black', 'fade-move', 'drop', 'clothesline', 'fall', 'pivot', 'revolving-door', 'k-scale', 'swap', 'twirl', 'obj-pop', 'obj-zoom', 'obj-push']) {
+        s.dataset.transition = t; Reveal.slide(h - 1, 0, -1); await wait(400); Reveal.slide(h, 0, -1); await wait(200); const p = s.previousElementSibling, ob = p.querySelector('.box');
+        const moving = cs(s).animationName !== 'none' || cs(p).transform !== 'none' || +cs(s).opacity < 1 || (ob && cs(ob).animationName !== 'none');
+        await wait(t === 'clothesline' ? 2500 : 1900); tr[t] = [moving, +cs(s).opacity === 1 && ['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(cs(s).transform)]; }
+      s.dataset.transition = 'fade-black'; Reveal.slide(h, 0, -1); await wait(1700); const bs = [...s.querySelectorAll('.box.fragment')], bu = [];
+      for (const b of bs) { Reveal.nextFragment(); await wait(120); const mid = cs(b).animationName; await wait(2300); bu.push([b.textContent, mid !== 'none', +cs(b).opacity, cs(b).scale, cs(b).rotate, cs(b).translate, cs(b).maskImage]); }
+      Reveal.slide(0); return [tr, bu]; }""")
+    bad_t = {k: x for k, x in k8v[0].items() if x != [True, True]}
+    bad_b = [x for x in k8v[1] if not (x[1] and x[2] == 1 and x[3] in ("none", "1", "1 1") and x[4] in ("none", "0deg", "y 0deg") and x[5] in ("none", "0px 0px", "0px", "0%", "0px 0%"))]
+    check("…in the slideshow each new transition moves something and ends with the new slide in place; each new build plays and ends at rest", not bad_t and not bad_b and len(k8v[1]) == 11, f"{bad_t} {bad_b}")
     shown = lambda x: x[0] == 1 and x[1] == "visible"
     check("…in the slideshow Iris opens the new slide from a circle over the old one; More effects build in and out", t[0].startswith("circle(") and t[1] == 1 and t[2].startswith("circle(75%")
           and not any(shown(x) for x in b0[:5]) and all(shown(x) for x in b0[5:]) and b0[0][2].startswith("blur") and b0[2][5] == "-360deg" and b0[4][3] == "3"

@@ -109,7 +109,7 @@ Rules:
   `data-autofit="none|shrink|resize"`: no fitting, shrink the text to fit the box (done at load by `#deck-shapes`), or grow the box to fit the text (the default for text boxes).
 - Text boxes grow to fit their text while editing. `data-minh` is the height the user dragged; the editor never shrinks a box below it (optional; defaults to the current height).
 - Links (Insert → Link): text links are `<a href>`; a picture, line, drawing or group links as a whole with `data-link` on its `.box`. Either takes a URL, `mailto:` / `tel:`, or a slideshow target: `#next`, `#previous`, `#first`, `#last` (slides, not builds), `#slide=<data-sid>` (that slide, wherever it moves), `#exit` (end the slideshow). present.js follows them; a click on a link doesn't also advance.
-- Slide transitions: `data-transition` on the `<section>` = `fade` (Dissolve) | `fade-in fade-out` (Fade) | `slide` | `sl-left` | `sl-up` / `sl-down` (slide from bottom / top: Keynote's Push) | `convex` (Flip) | `concave` (Cube) | `zoom` (Gallery) | `wipe-r` / `wipe-l` / `wipe-d` / `wipe-u` (Wipe from left / right / top / bottom) | `move-in-r` / `-l` / `-d` / `-u` (Move in from left … : the new slide moves over the old one) | `iris` (opens from a circle in the middle) | `reveal-l` (Reveal: the old slide moves off to the left), optional `data-transition-speed="slow|fast"`.
+- Slide transitions: `data-transition` on the `<section>` = `fade` (Dissolve) | `fade-in fade-out` (Fade) | `slide` | `sl-left` | `sl-up` / `sl-down` (slide from bottom / top: Keynote's Push) | `convex` (Flip) | `concave` (Cube) | `zoom` (Gallery) | `wipe-r` / `wipe-l` / `wipe-d` / `wipe-u` (Wipe from left / right / top / bottom) | `move-in-r` / `-l` / `-d` / `-u` (Move in from left … : the new slide moves over the old one) | `iris` (opens from a circle in the middle) | `reveal-l` (Reveal: the old slide moves off to the left) | Keynote's others: `fade-black` (through black), `fade-move`, `drop` (falls in and bounces), `clothesline`, `fall` (the old slide tips towards you), `pivot` (swings in about its top-left corner), `revolving-door`, `k-scale` (Scale), `swap`, `twirl`, and `obj-pop` / `obj-zoom` / `obj-push` (each slide's boxes leave and arrive while the background changes), optional `data-transition-speed="slow|fast"`.
 - Morph (Keynote's Magic Move, reveal's Auto-Animate): `data-auto-animate` on a `<section>` (instead of `data-transition`)
   animates from the slide before: each box that has a partner there moves, resizes and recolours into place, and the rest fade.
   A box's partner is the box on the slide before whose `id` equals this box's `data-morph` (or, without one, its own `id`);
@@ -127,7 +127,9 @@ Rules:
   `strike`. Keynote's: `wipe-r` / `wipe-l` / `wipe-d` / `wipe-u` (Wipe from left / right / top / bottom), `move-in-r` / `-l` / `-d` /
   `-u` (Move in from off the slide, from the left …), `scale-in` (Scale), `pop-in` (Pop); actions on a box already shown: `spin`
   (Rotate by `data-angle` degrees, 360 by default, negative counterclockwise; it stays turned), `pulse`, `pop` (Pop emphasis).
-  More effects: in `blur-in`, `drop-in` (falls in and bounces), `spin-in`, `iris-in`, `scale-big` (from three times its size);
+  More effects: in `blur-in`, `drop-in` (falls in and bounces), `spin-in` (Twirl: a flat spin), `iris-in`, `scale-big` (from three times its size),
+  `drift-in`, `drift-scale`, `fade-move-in`, `fade-scale`, `blinds-in` (seven slats), `cube-in`, `flip-in`, `spin-y` (Spin: a turn about
+  the vertical axis), `pivot-in`, `twist-scale`, `squish-in` (falls and bounces, squashing);
   out `disappear`, `blur-out`, `scale-out`, `iris-out`.
   `move-to` (Move): the box moves to `data-to="x,y"` (its top-left there, in slide px; moving the box keeps the end) and
   stays; a straight path, or a curve with `data-via="x,y"` (the box's top-left halfway: the path is the quadratic Bézier

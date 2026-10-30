@@ -189,6 +189,77 @@
 @keyframes gs-pop-in { from { scale: 0; } 60% { scale: 1.12; } 80% { scale: .96; } to { scale: 1; } }
 @keyframes gs-pulse { 50% { scale: 1.15; } }
 @keyframes gs-pop { 30% { scale: 1.25; } 60% { scale: .95; } to { scale: 1; } }
+/* The rest of Keynote's effects (D7, from r08): builds under "More effects", played as keyframes on the box's own
+   translate / scale / rotate (a box's rotate transform stays), timed as Keynote's previews. */
+@property --gs-s { syntax: '<number>'; inherits: false; initial-value: 1; }
+.reveal.ready .slides section .fragment.drift-in.visible { animation: gs-drift-in 1.2s cubic-bezier(.15, .85, .25, 1) both; }
+.reveal.ready .slides section .fragment.drift-scale.visible { animation: gs-drift-scale .8s ease-out both; }
+.reveal.ready .slides section .fragment.fade-move-in.visible { animation: gs-fade-move-in .85s ease-out both; }
+.reveal.ready .slides section .fragment.fade-scale.visible { animation: gs-fade-scale 2.3s cubic-bezier(.2, .7, .3, 1) both; }
+.reveal.ready .slides section .fragment.blinds-in { mask-image: linear-gradient(90deg, transparent calc(50% - var(--gs-s) * 50%), #000 0 calc(50% + var(--gs-s) * 50%), transparent 0); mask-size: 100% 100%; mask-repeat: repeat-x; }   /* 7 slats, each opening from its middle */
+.reveal.ready .slides section .fragment.blinds-in.visible { animation: gs-blinds .8s ease-out both; }
+.reveal.ready .slides section .fragment.cube-in.visible { animation: gs-cube-in 1s ease-out both; }
+.reveal.ready .slides section .fragment.flip-in.visible { animation: gs-flip-in 1s ease-out both; }
+.reveal.ready .slides section .fragment.spin-y.visible { animation: gs-spin-y 1s ease-out both; }
+.reveal.ready .slides section .fragment.pivot-in.visible { animation: gs-pivot-in .7s ease-out both; }
+.reveal.ready .slides section .fragment.twist-scale.visible { animation: gs-twist-scale 2.2s ease-out both; }
+.reveal.ready .slides section .fragment.squish-in.visible { animation: gs-squish-in 1.2s linear both; }
+.reveal.ready .slides > section:has(.fragment:is(.cube-in, .flip-in, .spin-y)) { perspective: 2400px; }
+@keyframes gs-drift-in { from { opacity: .6; translate: calc(-.65 * var(--slide-w, 1920px)) 0; } 70% { opacity: 1; } to { opacity: 1; translate: 0 0; } }
+@keyframes gs-drift-scale { from { opacity: 0; scale: .25; } 75% { opacity: 1; scale: .95; } to { opacity: 1; scale: 1; } }
+@keyframes gs-fade-move-in { from { opacity: 0; translate: -120% 0; } to { opacity: 1; translate: 0 0; } }
+@keyframes gs-fade-scale { from { opacity: 0; scale: .85; } to { opacity: 1; scale: 1; } }
+@keyframes gs-blinds { from { opacity: 0; --gs-s: 0; mask-size: calc(100% / 7) 100%; } 99% { opacity: 1; --gs-s: 1; mask-size: calc(100% / 7) 100%; } to { opacity: 1; --gs-s: 1; mask-size: 100% 100%; } }   /* one whole mask at rest: no seams */
+@keyframes gs-cube-in { from { opacity: 0; rotate: y 90deg; transform-origin: 0 50%; } 50% { opacity: 1; } 80% { rotate: y -8deg; } 99.9% { opacity: 1; rotate: y 0deg; transform-origin: 0 50%; } to { opacity: 1; rotate: y 0deg; } }
+@keyframes gs-flip-in { from { opacity: 0; rotate: y 180deg; } 40% { opacity: 1; } 85% { rotate: y -6deg; } to { opacity: 1; rotate: y 0deg; } }
+@keyframes gs-spin-y { from { opacity: 0; rotate: y 360deg; } 50% { opacity: 1; } 90% { rotate: y -5deg; } to { opacity: 1; rotate: y 0deg; } }
+@keyframes gs-pivot-in { from { opacity: 1; rotate: -45deg; transform-origin: -60% -120%; } 99.9% { rotate: 0deg; transform-origin: -60% -120%; } to { opacity: 1; rotate: 0deg; } }   /* about a point up-left of the box */
+@keyframes gs-twist-scale { from { opacity: 0; scale: 2.5; rotate: -15deg; } 14% { opacity: 1; } 27% { scale: 2; } 55% { scale: 1.15; } to { opacity: 1; scale: 1; rotate: 0deg; } }
+@keyframes gs-squish-in { from { opacity: 1; translate: 0 calc(-1 * var(--slide-h, 1080px)); scale: 1 1; } 35% { translate: 0 0; scale: 1 1; } 42% { translate: 0 17.5%; scale: 1.5 .65; }
+  52% { translate: 0 -15%; scale: .8 1.3; } 62% { translate: 0 -25%; scale: 1 1; } 72% { translate: 0 12.5%; scale: 1.3 .75; } 80% { translate: 0 -5%; scale: .9 1.1; }
+  87% { translate: 0 -8%; scale: 1 1; } 93% { translate: 0 5%; scale: 1.1 .9; } to { opacity: 1; translate: 0 0; scale: 1 1; } }   /* falls, squashes and bounces on its bottom edge */
+/* …and transitions: the new slide animates in over the old one, which stays (or leaves its own way); Object Pop / Zoom
+   / Push move each slide's boxes, the background changing between them. data-transition-speed scales them (--gs-k). */
+.reveal.ready .slides > section[data-transition-speed="fast"] { --gs-k: .5; } .reveal.ready .slides > section[data-transition-speed="slow"] { --gs-k: 1.5; }
+.reveal.ready .slides > section.past:has(+ section.present:is([data-transition="drop"], [data-transition="clothesline"], [data-transition="pivot"], [data-transition="k-scale"], [data-transition="swap"], [data-transition="revolving-door"], [data-transition="fall"], [data-transition="twirl"], [data-transition^="obj-"])) { opacity: 1; visibility: visible; transform: none; transition: none; }
+.reveal.ready .slides > section.present:is([data-transition="fall"], [data-transition="fade-black"], [data-transition^="obj-"]) { transition: none; }
+.reveal.ready .slides > section.past:has(+ section.present[data-transition="fade-black"]) { opacity: 0; transform: none; transition: opacity calc(.75s * var(--gs-k, 1)) ease-in; }   /* to black, then up from it */
+.reveal.ready .slides > section.present[data-transition="fade-black"] { animation: gs-t-fade-black calc(1.5s * var(--gs-k, 1)) both; }
+.reveal.ready .slides > section[data-transition="fade-move"].future, .reveal.ready .slides > section.past:has(+ section.present[data-transition="fade-move"]) { opacity: 0; }
+.reveal.ready .slides > section[data-transition="fade-move"].future { transform: translate(100%, 0); }
+.reveal.ready .slides > section.past:has(+ section.present[data-transition="fade-move"]) { transform: translate(-100%, 0); }
+.reveal.ready .slides > section.present[data-transition="drop"] { animation: gs-drop calc(1.2s * var(--gs-k, 1)) both; }
+.reveal.ready .slides > section.present[data-transition="clothesline"] { transform-origin: 50% 0; animation: gs-t-clothesline calc(2.5s * var(--gs-k, 1)) ease-out both; }
+.reveal.ready .slides > section.past:has(+ section.present[data-transition="clothesline"]) { transform-origin: 50% 0; transform: translate(-110%, 0) rotate(-14deg); transition: transform calc(1s * var(--gs-k, 1)) ease-in; }
+.reveal.ready .slides > section.past:has(+ section.present[data-transition="fall"]) { z-index: 12; transform-origin: 50% 100%; transform: perspective(2000px) rotateX(-90deg); transition: transform calc(1.25s * var(--gs-k, 1)) cubic-bezier(.55, 0, .9, .6); }   /* tips over its bottom edge towards you */
+.reveal.ready .slides > section.present[data-transition="pivot"] { transform-origin: 0 0; animation: gs-t-pivot calc(1.25s * var(--gs-k, 1)) ease-out both; }
+.reveal.ready .slides > section.past:has(+ section.present[data-transition="revolving-door"]) { transform-origin: 0 50%; transform: perspective(2000px) rotateY(90deg); opacity: 0; transition: transform calc(1.25s * var(--gs-k, 1)) ease-in, opacity calc(1.25s * var(--gs-k, 1)) ease-in; }
+.reveal.ready .slides > section.present[data-transition="revolving-door"] { transform-origin: 0 50%; animation: gs-t-revolving calc(1.25s * var(--gs-k, 1)) ease-out both; }
+.reveal.ready .slides > section.present[data-transition="k-scale"] { animation: gs-t-scale calc(.6s * var(--gs-k, 1)) ease-out both; }
+.reveal.ready .slides > section.past:has(+ section.present[data-transition="swap"]) { transform: translate(-30%, 0) scale(.5); opacity: .3; transition: transform calc(1.25s * var(--gs-k, 1)) ease-in-out, opacity calc(1.25s * var(--gs-k, 1)); }
+.reveal.ready .slides > section.present[data-transition="swap"] { animation: gs-t-swap calc(1.25s * var(--gs-k, 1)) ease-in-out both; }
+.reveal.ready .slides > section.past:has(+ section.present[data-transition="twirl"]) { transform: rotate(360deg) scale(.35); opacity: 0; transition: transform calc(.8s * var(--gs-k, 1)) ease-in, opacity calc(.8s * var(--gs-k, 1)) ease-in; }
+.reveal.ready .slides > section.present[data-transition="twirl"] { animation: gs-t-twirl calc(1.6s * var(--gs-k, 1)) ease-out both; }
+.reveal.ready .slides > section.present[data-transition^="obj-"] { animation: gs-t-obj calc(var(--gs-od, 1s) * var(--gs-k, 1)) both; }   /* the new background once the old boxes have gone */
+.reveal.ready .slides > section[data-transition="obj-pop"] { --gs-od: .6s; } .reveal.ready .slides > section[data-transition="obj-zoom"] { --gs-od: 1.3s; } .reveal.ready .slides > section[data-transition="obj-push"] { --gs-od: 1.8s; }
+.reveal.ready .slides > section.past:has(+ section.present[data-transition="obj-pop"]) > .box { animation: gs-o-pop-out calc(.6s * var(--gs-k, 1)) both; }
+.reveal.ready .slides > section.present[data-transition="obj-pop"] > .box:not(.fragment) { animation: gs-o-pop-in calc(.6s * var(--gs-k, 1)) ease-out both; }
+.reveal.ready .slides > section.past:has(+ section.present[data-transition="obj-zoom"]) > .box { animation: gs-o-zoom-out calc(1.3s * var(--gs-k, 1)) both; }
+.reveal.ready .slides > section.present[data-transition="obj-zoom"] > .box:not(.fragment) { animation: gs-o-zoom-in calc(1.3s * var(--gs-k, 1)) ease-in both; }
+.reveal.ready .slides > section.past:has(+ section.present[data-transition="obj-push"]) > .box { animation: gs-o-push-out calc(1.8s * var(--gs-k, 1)) both; }
+.reveal.ready .slides > section.present[data-transition="obj-push"] > .box:not(.fragment) { animation: gs-o-push-in calc(1.8s * var(--gs-k, 1)) both; }
+@keyframes gs-t-fade-black { from, 50% { opacity: 0; } to { opacity: 1; } }
+@keyframes gs-t-clothesline { from { transform: translate(110%, 0) rotate(-12deg); } 45% { transform: translate(0, 0) rotate(8deg); } 65% { transform: rotate(-6deg); } 82% { transform: rotate(3deg); } to { transform: none; } }
+@keyframes gs-t-pivot { from { transform: rotate(-90deg); } 75% { transform: rotate(3deg); } to { transform: none; } }   /* about its top-left corner */
+@keyframes gs-t-revolving { from { transform: perspective(2000px) rotateY(70deg); } to { transform: none; } }
+@keyframes gs-t-scale { from { transform: scale(.88); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes gs-t-swap { from { transform: translate(30%, 0) scale(.5); opacity: .5; } to { transform: none; opacity: 1; } }
+@keyframes gs-t-twirl { from, 50% { transform: rotate(-360deg) scale(.35); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes gs-t-obj { from, 40% { opacity: 0; } 50%, to { opacity: 1; } }
+@keyframes gs-o-pop-out { to { scale: 1.08; opacity: 0; } } @keyframes gs-o-pop-in { from, 40% { scale: .35; opacity: 0; } to { scale: 1; opacity: 1; } }
+@keyframes gs-o-zoom-out { 45%, to { scale: 1.2; opacity: 0; } } @keyframes gs-o-zoom-in { from, 45% { scale: .4; opacity: 0; } to { scale: 1; opacity: 1; } }
+@keyframes gs-o-push-out { from { animation-timing-function: ease-in; } 33%, to { translate: var(--slide-w, 1920px) 0; } }
+@keyframes gs-o-push-in { from, 45% { translate: calc(-1 * var(--slide-w, 1920px)) 0; animation-timing-function: ease-out; } to { translate: 0 0; } }
 .box[data-placeholder]:has(> .content:empty) { display: none; }   /* an unfilled layout placeholder: the editor shows "Click to add …", decks show nothing */
 
 /* Notes for the AI (AGENTS.md): sticky notes on a slide that only the editor shows */

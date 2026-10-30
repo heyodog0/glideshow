@@ -13,7 +13,7 @@
      text arriving a word or letter at a time over the build's duration. */
   /* By word / by character: each word (or letter, kept within its word so lines break as before) in a span that arrives
      with the box's effect, one after another over the build's duration. Out and emphasis effects stay whole. */
-  const FROM = { appear: 'none', 'fade-in': 'none', 'fade-right': 'translateX(-1em)', 'fade-left': 'translateX(1em)', 'fade-up': 'translateY(.8em)', 'fade-down': 'translateY(-.8em)', 'zoom-in': 'scale(.1)', 'scale-in': 'scale(0)', 'pop-in': 'scale(0)', 'spin-in': 'rotate(-360deg)', 'scale-big': 'scale(3)' };
+  const FROM = { appear: 'none', 'fade-in': 'none', 'fade-right': 'translateX(-1em)', 'fade-left': 'translateX(1em)', 'fade-up': 'translateY(.8em)', 'fade-down': 'translateY(-.8em)', 'zoom-in': 'scale(.1)', 'scale-in': 'scale(0)', 'pop-in': 'scale(0)', 'spin-in': 'rotate(-360deg)', 'scale-big': 'scale(3)', 'drift-in': 'translateX(-2em)', 'drift-scale': 'scale(.25)', 'fade-move-in': 'translateX(-1em)', 'fade-scale': 'scale(.85)', 'twist-scale': 'scale(2.5) rotate(-15deg)' };
   const wordByWord = (box, mode, cls) => {
     const eff = cls.find(c => c in FROM); if (!eff || cls.length > 1) return;
     const texts = [], tw = document.createTreeWalker(box.querySelector(':scope > .content') || box, NodeFilter.SHOW_TEXT);
@@ -79,7 +79,7 @@
     all.forEach(sl => {
       const frags = [...sl.querySelectorAll('.box.fragment[data-build]')].sort((a, b) => (+a.dataset.fragmentIndex || 0) - (+b.dataset.fragmentIndex || 0));
       frags.reverse().forEach(box => {   // from the last, so each one's room doesn't move the ones before it
-        const mode = box.dataset.build, cls = [...box.classList].filter(c => /^(appear|fade-[\w-]+|zoom-in|wipe-[rldu]|move-in-[rldu]|scale-in|pop-in|spin|pulse|pop|line-draw|line-erase|move-to|blur-in|drop-in|spin-in|iris-in|scale-big|disappear|blur-out|scale-out|iris-out|grow|shrink|strike|semi-fade-out|current-visible|highlight-[\w-]+)$/.test(c));   // its effect
+        const mode = box.dataset.build, cls = [...box.classList].filter(c => /^(appear|fade-[\w-]+|zoom-in|wipe-[rldu]|move-in-[rldu]|scale-in|pop-in|spin|pulse|pop|line-draw|line-erase|move-to|blur-in|drop-in|spin-in|iris-in|scale-big|disappear|blur-out|scale-out|iris-out|drift-in|drift-scale|fade-move-in|fade-scale|blinds-in|cube-in|flip-in|spin-y|pivot-in|twist-scale|squish-in|grow|shrink|strike|semi-fade-out|current-visible|highlight-[\w-]+)$/.test(c));   // its effect
         if (mode === 'word' || mode === 'character') { wordByWord(box, mode, cls); return; }
         const table = box.querySelector(':scope > .content table'), cells = table ? [...table.querySelectorAll('td, th')] : [];
         const groups = mode === 'row' ? [...(table?.rows || [])].map(r => [r]) : mode === 'cell' ? cells.map(c => [c])

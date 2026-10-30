@@ -9,7 +9,9 @@ const TRANSITIONS = [['none', 'None'], ['fade', 'Dissolve'], ['fade-in fade-out'
   ['wipe-r', 'Wipe from left'], ['wipe-l', 'Wipe from right'], ['wipe-d', 'Wipe from top'], ['wipe-u', 'Wipe from bottom'],
   ['move-in-r', 'Move in from left'], ['move-in-l', 'Move in from right'], ['move-in-d', 'Move in from top'], ['move-in-u', 'Move in from bottom'], ['morph', 'Morph'],
   // D7: the rest of Keynote's, under "More effects" (base.css)
-  ['iris', 'Iris', 1], ['reveal-l', 'Reveal', 1]];
+  ['iris', 'Iris', 1], ['reveal-l', 'Reveal', 1], ['fade-black', 'Fade through black', 1], ['fade-move', 'Fade and move', 1], ['drop', 'Drop', 1],
+  ['clothesline', 'Clothesline', 1], ['fall', 'Fall', 1], ['pivot', 'Pivot', 1], ['revolving-door', 'Revolving door', 1], ['k-scale', 'Scale', 1], ['swap', 'Swap', 1],
+  ['twirl', 'Twirl', 1], ['obj-pop', 'Object pop', 1], ['obj-zoom', 'Object zoom', 1], ['obj-push', 'Object push', 1]];
 /* A list's options, with its third-column entries under "More effects" (D7). */
 const optionsOf = list => list.filter(x => !x[2]).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')
   + (list.some(x => x[2]) ? `<optgroup label="More effects">${list.filter(x => x[2]).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</optgroup>` : '');
@@ -65,7 +67,9 @@ const EFFECTS = [['appear', 'Appear'], ['fade-in', 'Fade in'], ['fade-right', 'F
   // Keynote's actions: Rotate by data-angle (degrees, negative counterclockwise; 360 by default), Pulse, Pop
   ['spin', 'Rotate'], ['pulse', 'Pulse'], ['pop', 'Pop (emphasis)'], ['move-to', 'Move'],
   // D7: more of Keynote's, under "More effects" (base.css): in, then out
-  ['blur-in', 'Blur', 1], ['drop-in', 'Drop', 1], ['spin-in', 'Spin', 1], ['iris-in', 'Iris', 1], ['scale-big', 'Scale big', 1],
+  ['blur-in', 'Blur', 1], ['drop-in', 'Drop', 1], ['spin-in', 'Twirl', 1], ['iris-in', 'Iris', 1], ['scale-big', 'Scale big', 1],
+  ['drift-in', 'Drift', 1], ['drift-scale', 'Drift and scale', 1], ['fade-move-in', 'Fade and move', 1], ['fade-scale', 'Fade and scale', 1], ['blinds-in', 'Blinds', 1],
+  ['cube-in', 'Cube', 1], ['flip-in', 'Flip', 1], ['spin-y', 'Spin', 1], ['pivot-in', 'Pivot', 1], ['twist-scale', 'Twist and scale', 1], ['squish-in', 'Squish', 1],
   ['disappear', 'Disappear', 1], ['blur-out', 'Blur out', 1], ['scale-out', 'Scale out', 1], ['iris-out', 'Iris out', 1]];
 const effectOf = b => EFFECTS.find(([c]) => b.classList.contains(c))?.[0] || 'fade-in';
 const animBoxes = () => boxes().filter(b => b.classList.contains('fragment'))
@@ -252,6 +256,12 @@ async function playAnims() {
     'blur-in': [{ opacity: 0, filter: 'blur(24px)' }, { opacity: 1, filter: 'blur(0)' }], 'drop-in': [{ translate: `0 -${H}px` }, { translate: '0 0', offset: .6 }, { translate: '0 -6%', offset: .75 }, { translate: '0 0', offset: .87 }, { translate: '0 -2%', offset: .93 }, { translate: '0 0' }],
     'spin-in': [{ opacity: 0, rotate: '-360deg' }, { opacity: 1, rotate: '0deg' }], 'iris-in': [{ clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(75% at 50% 50%)' }],
     'scale-big': [{ opacity: 0, scale: 3 }, { opacity: 1, scale: 1 }], disappear: [{ opacity: 1 }, { opacity: 1, offset: .99 }, { opacity: 0 }],
+    'drift-in': [{ opacity: .6, translate: `${-.65 * W}px 0` }, { opacity: 1, offset: .7 }, { opacity: 1, translate: '0 0' }], 'drift-scale': [{ opacity: 0, scale: .25 }, { opacity: 1, scale: .95, offset: .75 }, { opacity: 1, scale: 1 }],
+    'fade-move-in': [{ opacity: 0, translate: '-120% 0' }, { opacity: 1, translate: '0 0' }], 'fade-scale': [{ opacity: 0, scale: .85 }, { opacity: 1, scale: 1 }],
+    'blinds-in': [{ opacity: 0, transform: 'scaleX(.05)' }, { opacity: 1, transform: 'none' }], 'cube-in': [{ opacity: 0, rotate: 'y 90deg', transformOrigin: '0 50%' }, { opacity: 1, rotate: 'y 0deg', transformOrigin: '0 50%' }],
+    'flip-in': [{ opacity: 0, rotate: 'y 180deg' }, { opacity: 1, offset: .4 }, { opacity: 1, rotate: 'y 0deg' }], 'spin-y': [{ opacity: 0, rotate: 'y 360deg' }, { opacity: 1, offset: .5 }, { opacity: 1, rotate: 'y 0deg' }],
+    'pivot-in': [{ rotate: '-45deg', transformOrigin: '-60% -120%' }, { rotate: '0deg', transformOrigin: '-60% -120%' }], 'twist-scale': [{ opacity: 0, scale: 2.5, rotate: '-15deg' }, { opacity: 1, offset: .14 }, { scale: 1.15, offset: .55 }, { opacity: 1, scale: 1, rotate: '0deg' }],
+    'squish-in': [{ translate: `0 -${H}px`, scale: '1 1' }, { translate: '0 0', scale: '1 1', offset: .35 }, { translate: '0 17.5%', scale: '1.5 .65', offset: .42 }, { translate: '0 -15%', scale: '.8 1.3', offset: .52 }, { translate: '0 -25%', scale: '1 1', offset: .62 }, { translate: '0 12.5%', scale: '1.3 .75', offset: .72 }, { translate: '0 0', scale: '1 1' }],
     'blur-out': [{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(24px)' }], 'scale-out': [{ scale: 1 }, { scale: 0 }], 'iris-out': [{ clipPath: 'circle(75% at 50% 50%)' }, { clipPath: 'circle(0% at 50% 50%)' }], pop: [{ scale: 1 }, { scale: 1.25, offset: .3 }, { scale: .95, offset: .6 }, { scale: 1 }] };
   const spin = b => [{ rotate: '0deg' }, { rotate: (b.dataset.angle ?? 360) + 'deg' }];
   const move = b => { const g = geo(b); return Array.from({ length: 25 }, (_, i) => { const p = movePoint(b, i / 24); return { translate: `${p.x - g.x}px ${p.y - g.y}px`, rotate: p.a + 'deg' }; }); };
@@ -284,7 +294,16 @@ function playTransition() {
     'wipe-d': [{ clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0)' }], 'wipe-u': [{ clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0)' }],
     'move-in-r': [{ transform: 'translateX(-100%)' }, { transform: 'none' }], 'move-in-l': [{ transform: 'translateX(100%)' }, { transform: 'none' }],
     'move-in-d': [{ transform: 'translateY(-100%)' }, { transform: 'none' }], 'move-in-u': [{ transform: 'translateY(100%)' }, { transform: 'none' }],
-    iris: [{ clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(75% at 50% 50%)' }], 'reveal-l': [{ opacity: 0 }, { opacity: 1 }] }[k];
+    iris: [{ clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(75% at 50% 50%)' }], 'reveal-l': [{ opacity: 0 }, { opacity: 1 }],
+    'fade-black': [{ opacity: 0 }, { opacity: 0, offset: .5 }, { opacity: 1 }], 'fade-move': [{ transform: 'translateX(100%)', opacity: 0 }, { transform: 'none', opacity: 1 }],
+    drop: [{ transform: 'translateY(-100%)' }, { transform: 'none', offset: .6 }, { transform: 'translateY(-6%)', offset: .75 }, { transform: 'none', offset: .87 }, { transform: 'translateY(-2%)', offset: .93 }, { transform: 'none' }],
+    clothesline: [{ transform: 'translateX(110%) rotate(-12deg)', transformOrigin: '50% 0' }, { transform: 'rotate(8deg)', transformOrigin: '50% 0', offset: .45 }, { transform: 'rotate(-6deg)', transformOrigin: '50% 0', offset: .65 }, { transform: 'rotate(3deg)', transformOrigin: '50% 0', offset: .82 }, { transform: 'none', transformOrigin: '50% 0' }],
+    fall: [{ opacity: 0 }, { opacity: 1 }], pivot: [{ transform: 'rotate(-90deg)', transformOrigin: '0 0' }, { transform: 'rotate(3deg)', transformOrigin: '0 0', offset: .75 }, { transform: 'none', transformOrigin: '0 0' }],
+    'revolving-door': [{ transform: 'perspective(2000px) rotateY(70deg)', transformOrigin: '0 50%' }, { transform: 'none', transformOrigin: '0 50%' }],
+    'k-scale': [{ transform: 'scale(.88)', opacity: 0 }, { transform: 'none', opacity: 1 }], swap: [{ transform: 'translateX(30%) scale(.5)', opacity: .5 }, { transform: 'none', opacity: 1 }],
+    twirl: [{ transform: 'rotate(-360deg) scale(.35)', opacity: 0 }, { transform: 'none', opacity: 1 }],
+    'obj-pop': [{ opacity: 0 }, { opacity: 0, offset: .4 }, { opacity: 1, offset: .5 }, { opacity: 1 }], 'obj-zoom': [{ opacity: 0 }, { opacity: 0, offset: .4 }, { opacity: 1, offset: .5 }, { opacity: 1 }],
+    'obj-push': [{ opacity: 0 }, { opacity: 0, offset: .4 }, { opacity: 1, offset: .5 }, { opacity: 1 }] }[k];
   if (frames) s.animate(frames, { duration: ms, easing: 'cubic-bezier(.26,.86,.44,.985)' });
 }
 
