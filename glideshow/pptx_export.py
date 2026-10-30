@@ -163,7 +163,7 @@ NS = 'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns
 TRANSITIONS = {"fade": "<p:fade/>", "fade-in fade-out": "<p:fade/>", "fade-black": '<p:fade thruBlk="1"/>', "slide": '<p:push dir="l"/>', "sl-left": '<p:push dir="r"/>',
                "sl-up": '<p:push dir="u"/>', "sl-down": '<p:push dir="d"/>', "wipe-r": '<p:wipe dir="r"/>', "wipe-l": '<p:wipe dir="l"/>', "wipe-d": '<p:wipe dir="d"/>',
                "wipe-u": '<p:wipe dir="u"/>', "move-in-r": '<p:cover dir="r"/>', "move-in-l": '<p:cover dir="l"/>', "move-in-d": '<p:cover dir="d"/>',
-               "move-in-u": '<p:cover dir="u"/>', "reveal-l": '<p:pull dir="l"/>', "iris": "<p:circle/>", "zoom": "<p:zoom/>", "k-scale": "<p:zoom/>", "fade-move": '<p:push dir="l"/>'}
+               "move-in-u": '<p:cover dir="u"/>', "reveal-l": '<p:pull dir="l"/>', "iris": "<p:circle/>", "zoom": "<p:zoom/>", "k-scale": "<p:zoom/>", "fade-move": '<p:push dir="l"/>', "blinds": '<p:blinds dir="vert"/>', "mosaic": "<p:dissolve/>", "flop": '<p:split orient="horz" dir="in"/>', "doorway": '<p:split orient="vert" dir="out"/>'}
 
 
 def transition(slide, sec):

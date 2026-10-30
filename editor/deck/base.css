@@ -229,6 +229,7 @@
    / Push move each slide's boxes, the background changing between them. data-transition-speed scales them (--gs-k). */
 .reveal.ready .slides > section[data-transition-speed="fast"] { --gs-k: .5; } .reveal.ready .slides > section[data-transition-speed="slow"] { --gs-k: 1.5; }
 .reveal.ready .slides > section.past:has(+ section.present:is([data-transition="drop"], [data-transition="clothesline"], [data-transition="pivot"], [data-transition="k-scale"], [data-transition="swap"], [data-transition="revolving-door"], [data-transition="fall"], [data-transition="twirl"], [data-transition^="obj-"])) { opacity: 1; visibility: visible; transform: none; transition: none; }
+.reveal.ready .slides > section:is(.present, .past, .future):is([data-transition="doorway"], [data-transition="flop"], [data-transition="mosaic"], [data-transition="blinds"]), .reveal.ready .slides > section.past:has(+ section.present:is([data-transition="doorway"], [data-transition="flop"], [data-transition="mosaic"], [data-transition="blinds"])) { transform: none; transition: none; }   /* present.js plays them in pieces */
 .reveal.ready .slides > section.present:is([data-transition="fall"], [data-transition="fade-black"], [data-transition^="obj-"]) { transition: none; }
 .reveal.ready .slides > section.past:has(+ section.present[data-transition="fade-black"]) { opacity: 0; transform: none; transition: opacity calc(.75s * var(--gs-k, 1)) ease-in; }   /* to black, then up from it */
 .reveal.ready .slides > section.present[data-transition="fade-black"] { animation: gs-t-fade-black calc(1.5s * var(--gs-k, 1)) both; }
@@ -248,6 +249,17 @@
 .reveal.ready .slides > section.past:has(+ section.present[data-transition="twirl"]) { transform: rotate(360deg) scale(.35); opacity: 0; transition: transform calc(.8s * var(--gs-k, 1)) ease-in, opacity calc(.8s * var(--gs-k, 1)) ease-in; }
 .reveal.ready .slides > section.present[data-transition="twirl"] { animation: gs-t-twirl calc(1.6s * var(--gs-k, 1)) ease-out both; }
 .reveal.ready .slides > section.present[data-transition^="obj-"] { animation: gs-t-obj calc(var(--gs-od, 1s) * var(--gs-k, 1)) both; }   /* the new background once the old boxes have gone */
+.reveal.ready .slides > section[data-transition="obj-flip"] { --gs-od: 1s; } .reveal.ready .slides > section[data-transition="obj-revolve"] { --gs-od: 1.3s; } .reveal.ready .slides > section[data-transition="obj-cube"] { --gs-od: 1.2s; }
+.reveal.ready .slides > section:is([data-transition="obj-flip"], [data-transition="obj-revolve"], [data-transition="obj-cube"]), .reveal.ready .slides > section.past:has(+ section.present:is([data-transition="obj-flip"], [data-transition="obj-revolve"], [data-transition="obj-cube"])) { perspective: 2400px; }
+.reveal.ready .slides > section.past:has(+ section.present[data-transition="obj-flip"]) > .box { animation: gs-o-flip-out calc(1s * var(--gs-k, 1)) ease-in both; }
+.reveal.ready .slides > section.present[data-transition="obj-flip"] > .box:not(.fragment) { animation: gs-o-flip-in calc(1s * var(--gs-k, 1)) ease-out both; }
+.reveal.ready .slides > section.past:has(+ section.present[data-transition="obj-revolve"]) > .box { animation: gs-o-revolve-out calc(1.3s * var(--gs-k, 1)) ease-in both; }
+.reveal.ready .slides > section.present[data-transition="obj-revolve"] > .box:not(.fragment) { animation: gs-o-revolve-in calc(1.3s * var(--gs-k, 1)) ease-out both; }
+.reveal.ready .slides > section.past:has(+ section.present[data-transition="obj-cube"]) > .box { animation: gs-o-cube-out calc(1.2s * var(--gs-k, 1)) ease-in both; }
+.reveal.ready .slides > section.present[data-transition="obj-cube"] > .box:not(.fragment) { animation: gs-o-cube-in calc(1.2s * var(--gs-k, 1)) ease-out both; }
+@keyframes gs-o-flip-out { 50%, to { rotate: y 90deg; opacity: 0; } } @keyframes gs-o-flip-in { from, 50% { rotate: y -90deg; opacity: 0; } 51% { opacity: 1; } to { rotate: y 0deg; opacity: 1; } }   /* edge-on, then the new ones turn in */
+@keyframes gs-o-revolve-out { from { transform-origin: 0 50%; } 60%, to { transform-origin: 0 50%; rotate: y -85deg; opacity: 0; } } @keyframes gs-o-revolve-in { from, 30% { transform-origin: 0 50%; rotate: y 85deg; opacity: .2; } 99.9% { transform-origin: 0 50%; } to { rotate: y 0deg; opacity: 1; } }
+@keyframes gs-o-cube-out { 60%, to { transform-origin: 100% 50%; rotate: y -90deg; translate: 30% 0; opacity: 0; } } @keyframes gs-o-cube-in { from, 25% { transform-origin: 0 50%; rotate: y 90deg; translate: -30% 0; opacity: .2; } 99.9% { transform-origin: 0 50%; } to { rotate: y 0deg; translate: 0 0; opacity: 1; } }
 .reveal.ready .slides > section[data-transition="obj-pop"] { --gs-od: .6s; } .reveal.ready .slides > section[data-transition="obj-zoom"] { --gs-od: 1.3s; } .reveal.ready .slides > section[data-transition="obj-push"] { --gs-od: 1.8s; }
 .reveal.ready .slides > section.past:has(+ section.present[data-transition="obj-pop"]) > .box { animation: gs-o-pop-out calc(.6s * var(--gs-k, 1)) both; }
 .reveal.ready .slides > section.present[data-transition="obj-pop"] > .box:not(.fragment) { animation: gs-o-pop-in calc(.6s * var(--gs-k, 1)) ease-out both; }

@@ -348,6 +348,43 @@
     v.play().catch(() => {});
   });
   Reveal.on('slidechanged', playShown); Reveal.on('fragmentshown', playShown);
+  /* Keynote's transitions in pieces (data-transition doorway / flop / mosaic / blinds): copies of the slides, each clipped
+     to its piece, play over the arriving slide and are then removed. Doorway: the old slide opens as two doors towards
+     you while the new comes forward; Flop: its top half folds down over the bottom, carrying the new bottom half; Mosaic:
+     7 × 5 tiles turn away, right to left; Blinds: 7 strips turn, left to right. */
+  const PIECES = { doorway: 1.5, flop: 1, mosaic: 1.25, blinds: 1.1 };
+  Reveal.on('slidechanged', e => {
+    const s = e.currentSlide, kind = s?.dataset.transition, old = e.previousSlide;
+    if (!(kind in PIECES) || !old || document.body.classList.contains('sl-instant')) return;
+    const W = Reveal.getConfig().width, H = Reveal.getConfig().height, ms = PIECES[kind] * 1000 * ({ fast: 0.5, slow: 1.5 }[s.dataset.transitionSpeed] || 1);
+    const layer = Object.assign(document.createElement('div'), { className: 'gs-pieces' }); s.parentElement.append(layer);
+    const copy = (sec, [t, r, b, l]) => { const c = /** @type {HTMLElement} */ (sec.cloneNode(true)); c.classList.remove('past', 'future', 'present'); c.removeAttribute('id');
+      c.querySelectorAll('video, iframe, audio').forEach(m => m.remove()); c.removeAttribute('aria-hidden'); c.hidden = false;
+      Object.assign(c.style, { display: 'block', position: 'absolute', left: '0', top: '0', width: W + 'px', height: H + 'px', opacity: '1', visibility: 'visible', transform: 'none', clipPath: `inset(${t}px ${r}px ${b}px ${l}px)`, transition: 'none' });
+      layer.append(c); return c; };
+    const anims = [];
+    const go = (el, kf, o) => anims.push(el.animate(kf, { duration: ms, easing: 'ease-in-out', fill: 'both', ...o }));
+    if (kind === 'doorway') {
+      const l = copy(old, [0, W / 2, 0, 0]), r = copy(old, [0, 0, 0, W / 2]);
+      go(l, [{ transformOrigin: '0 50%', transform: 'perspective(2000px) rotateY(0)', filter: 'brightness(1)' }, { transformOrigin: '0 50%', transform: 'perspective(2000px) rotateY(-100deg)', filter: 'brightness(.4)' }]);
+      go(r, [{ transformOrigin: '100% 50%', transform: 'perspective(2000px) rotateY(0)', filter: 'brightness(1)' }, { transformOrigin: '100% 50%', transform: 'perspective(2000px) rotateY(100deg)', filter: 'brightness(.4)' }]);
+      go(s, [{ transform: 'scale(.55)', filter: 'brightness(.5)' }, { transform: 'none', filter: 'none' }], { fill: 'none', easing: 'ease-out' });
+    } else if (kind === 'flop') {
+      const under = copy(old, [H / 2, 0, 0, 0]), top = copy(old, [0, 0, H / 2, 0]), flap = copy(s, [H / 2, 0, 0, 0]);
+      go(top, [{ transform: 'perspective(2000px) rotateX(0)', filter: 'brightness(1)' }, { transform: 'perspective(2000px) rotateX(-90deg)', filter: 'brightness(.5)', offset: 0.5 }, { transform: 'perspective(2000px) rotateX(-90deg)', filter: 'brightness(.5)' }], { easing: 'ease-in' });
+      go(flap, [{ transform: 'perspective(2000px) rotateX(90deg)', filter: 'brightness(.5)' }, { transform: 'perspective(2000px) rotateX(90deg)', filter: 'brightness(.5)', offset: 0.5 }, { transform: 'none', filter: 'none' }], { easing: 'ease-out' });
+      go(under, [{ opacity: 1 }, { opacity: 1, offset: 0.99 }, { opacity: 0 }], { easing: 'linear' });
+    } else {
+      const [cols, rows] = kind === 'mosaic' ? [7, 5] : [7, 1], tw = W / cols, th = H / rows;
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+        const t = copy(old, [y * th, W - (x + 1) * tw, H - (y + 1) * th, x * tw]), order = kind === 'mosaic' ? (cols - 1 - x) / cols + ((x * 7 + y * 13) % 5) / 25 : x / cols;
+        const o = `${(x + 0.5) * tw}px ${(y + 0.5) * th}px`;
+        go(t, [{ transformOrigin: o, transform: 'perspective(2000px) rotateY(0)', filter: 'brightness(1)' }, { transformOrigin: o, transform: 'perspective(2000px) rotateY(90deg)', filter: 'brightness(.5)' }],
+          { duration: ms * 0.55, delay: ms * 0.45 * order });
+      }
+    }
+    Promise.all(anims.map(a => a.finished)).then(() => layer.remove(), () => layer.remove());
+  });
   /* Line Draw: its arrowheads ride the stroke's ends while it draws or erases (shapes.js rideLineEnds). */
   const ride = e => e.fragments?.forEach(f => { if (f.matches('.line-draw, .line-erase')) window.rideLineEnds?.(f, ((+f.dataset.duration || 0.5) + (+f.dataset.delay || 0)) * 1000); });
   Reveal.on('fragmentshown', ride); Reveal.on('fragmenthidden', ride);
@@ -364,7 +401,8 @@
     .reveal .gs-seq.visible .gs-w { opacity: 1; transform: none; }
     .reveal .gs-word { white-space: nowrap; }
     .reveal .gs-mw { display: inline-block; }
-    .reveal .gs-cc { display: block; }   /* a table cell's contents, built by themselves (by row content …) */
+    .reveal .gs-cc { display: block; }
+    .reveal .slides > .gs-pieces { position: absolute; left: 0; top: 0; width: var(--slide-w, 1920px); height: var(--slide-h, 1080px); z-index: 30; pointer-events: none; }   /* a transition in pieces */   /* a table cell's contents, built by themselves (by row content …) */
     .reveal .slides .fragment.gs-hl.visible:not(.current-fragment) { opacity: .35; }
     .reveal .backgrounds { display: none; }
     .sl-bar { position: fixed; left: 20px; bottom: 20px; z-index: 102; display: flex; align-items: center; height: 36px; padding: 0 4px;

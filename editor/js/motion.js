@@ -11,7 +11,8 @@ const TRANSITIONS = [['none', 'None'], ['fade', 'Dissolve'], ['fade-in fade-out'
   // D7: the rest of Keynote's, under "More effects" (base.css)
   ['iris', 'Iris', 1], ['reveal-l', 'Reveal', 1], ['fade-black', 'Fade through black', 1], ['fade-move', 'Fade and move', 1], ['drop', 'Drop', 1],
   ['clothesline', 'Clothesline', 1], ['fall', 'Fall', 1], ['pivot', 'Pivot', 1], ['revolving-door', 'Revolving door', 1], ['k-scale', 'Scale', 1], ['swap', 'Swap', 1],
-  ['twirl', 'Twirl', 1], ['obj-pop', 'Object pop', 1], ['obj-zoom', 'Object zoom', 1], ['obj-push', 'Object push', 1]];
+  ['twirl', 'Twirl', 1], ['obj-pop', 'Object pop', 1], ['obj-zoom', 'Object zoom', 1], ['obj-push', 'Object push', 1],
+  ['doorway', 'Doorway', 1], ['flop', 'Flop', 1], ['mosaic', 'Mosaic', 1], ['blinds', 'Blinds', 1], ['obj-flip', 'Object flip', 1], ['obj-revolve', 'Object revolve', 1], ['obj-cube', 'Object cube', 1]];
 /* A list's options, with its third-column entries under "More effects" (D7). */
 const optionsOf = list => list.filter(x => !x[2]).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')
   + (list.some(x => x[2]) ? `<optgroup label="More effects">${list.filter(x => x[2]).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</optgroup>` : '');
@@ -325,7 +326,11 @@ function playTransition() {
     'k-scale': [{ transform: 'scale(.88)', opacity: 0 }, { transform: 'none', opacity: 1 }], swap: [{ transform: 'translateX(30%) scale(.5)', opacity: .5 }, { transform: 'none', opacity: 1 }],
     twirl: [{ transform: 'rotate(-360deg) scale(.35)', opacity: 0 }, { transform: 'none', opacity: 1 }],
     'obj-pop': [{ opacity: 0 }, { opacity: 0, offset: .4 }, { opacity: 1, offset: .5 }, { opacity: 1 }], 'obj-zoom': [{ opacity: 0 }, { opacity: 0, offset: .4 }, { opacity: 1, offset: .5 }, { opacity: 1 }],
-    'obj-push': [{ opacity: 0 }, { opacity: 0, offset: .4 }, { opacity: 1, offset: .5 }, { opacity: 1 }] }[k];
+    'obj-push': [{ opacity: 0 }, { opacity: 0, offset: .4 }, { opacity: 1, offset: .5 }, { opacity: 1 }],
+    doorway: [{ transform: 'scale(.55)', filter: 'brightness(.5)' }, { transform: 'none', filter: 'none' }], flop: [{ clipPath: 'inset(0 0 50% 0)' }, { clipPath: 'inset(0)' }],
+    mosaic: [{ clipPath: 'inset(0 0 0 100%)' }, { clipPath: 'inset(0)' }], blinds: [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0)' }],
+    'obj-flip': [{ transform: 'perspective(2000px) rotateY(-90deg)' }, { transform: 'none' }], 'obj-revolve': [{ transform: 'perspective(2000px) rotateY(80deg)', transformOrigin: '0 50%', opacity: .2 }, { transform: 'none', transformOrigin: '0 50%', opacity: 1 }],
+    'obj-cube': [{ transform: 'perspective(2000px) rotateY(90deg)', transformOrigin: '0 50%' }, { transform: 'none', transformOrigin: '0 50%' }] }[k];
   if (frames) s.animate(frames, { duration: ms, easing: 'cubic-bezier(.26,.86,.44,.985)' });
 }
 
