@@ -311,8 +311,7 @@ function startMarquee(e) {
     const p = toCanvas(ev);
     const r = { x: Math.min(p0.x, p.x), y: Math.min(p0.y, p.y), w: Math.abs(p.x - p0.x), h: Math.abs(p.y - p0.y) };
     place(m, r); m.style.borderWidth = 1 / scale + 'px';
-    sel = new Set(pickable().filter(b => {
-      if (isLocked(b)) return false;
+    sel = new Set(pickable().filter(b => {   // locked ones too, as Keynote (k14): they show their × handles and stay put
       const g = aabb(b);
       return g.x < r.x + r.w && g.x + g.w > r.x && g.y < r.y + r.h && g.y + g.h > r.y;
     }));

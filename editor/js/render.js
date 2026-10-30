@@ -231,7 +231,12 @@ function drawOverlay() {
     place(wrap, g); place(box, { x: 0, y: 0, w: g.w, h: g.h }); box.style.setProperty('--k', k + 'px'); wrap.append(box);
     const cur = { n: 'ns', s: 'ns', e: 'ew', w: 'ew', ne: 'nesw', sw: 'nesw', nw: 'nwse', se: 'nwse' };
     addHandles(wrap, g, ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'], d => cur[d] + '-resize', k, false);
-    ui.append(wrap); return;
+    ui.append(wrap);
+    for (const x of [...sel].filter(isLocked)) {   // Keynote marks each locked one in the selection with its × handles (k14)
+      const lw = div('sel-wrap locked'), lg = geo(x); place(lw, lg); lw.style.transform = x.style.transform;
+      addHandles(lw, lg, ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'], () => 'default', k, false); frameFor(x).append(lw);
+    }
+    return;
   }
   const b = [...sel][0], g = geo(b), sz = 10 * k;   // Slides: 10px round corner handles, pill-shaped side handles
   const wrap = div('sel-wrap' + (locked ? ' locked' : '')); place(wrap, g); wrap.style.transform = b.style.transform; wrap.style.scale = flipXY(b).join(' ');   // handles rotate and flip with the box
@@ -332,6 +337,7 @@ const withAlpha = (hex, a) => a >= 1 ? hex : hex + Math.round(a * 255).toString(
 function updateToolbar() {
   const b = [...sel][0];
   document.body.classList.toggle('has-sel', !!b);
+  document.body.classList.toggle('sel-locked', [...sel].some(isLocked));   // Keynote greys all but Arrange for a locked object (k14)
   // As Slides, images and lines have no text or fill controls, and a mixed selection shows only what all kinds share
   const kind = x => isStroke(x) ? 'line' : isMedia(x) ? 'image' : isGroup(x) ? 'group' : 'text', kinds = new Set([...sel].map(kind));
   document.body.classList.toggle('sel-notext', !!b && (!kinds.has('text') || kinds.size > 1));

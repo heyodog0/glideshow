@@ -259,7 +259,10 @@ body.ruler-off .ruler, body.ruler-off #ed-ruler-marks { display: none; }
 .sel-wrap { position: absolute; }
 .handle { position: absolute; background: #fff; box-shadow: inset 0 0 0 calc(var(--k, 1px) * 1.5) var(--blue); border-radius: 50%; pointer-events: auto; }
 .handle.side { border-radius: 999px; }
-.sel-wrap.locked .handle { pointer-events: none; box-shadow: inset 0 0 0 calc(var(--k, 1px) * 1.5) #9aa0a6; background: #e8eaed; }   /* a locked object (Arrange → Lock) */
+.sel-wrap.locked .handle { pointer-events: none; box-shadow: none; background: none; }   /* a locked object (Arrange → Lock): Keynote's grey × marks (k14) */
+.sel-wrap.locked .handle::after { content: ""; position: absolute; left: 50%; top: 50%; width: calc(var(--k, 1px) * 9); height: calc(var(--k, 1px) * 9); translate: -50% -50%;
+  background: linear-gradient(45deg, transparent 43%, #80868b 43% 57%, transparent 57%), linear-gradient(-45deg, transparent 43%, #80868b 43% 57%, transparent 57%); }
+body.sel-locked #ed-toolbar .grp.sel-only, body.sel-locked #ed-fmt > :not(header) { opacity: .38; pointer-events: none; }   /* nothing to format on a locked object */
 .handle.on { background: var(--blue); }
 
 .handle::before { content: ""; position: absolute; inset: calc(var(--k, 1px) * -5); }   /* a hit area 5 px beyond the handle: six times

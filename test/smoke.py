@@ -814,15 +814,16 @@ def checks(pg, deck: Path, errors):
     held = pg.evaluate("""(() => { const a = document.getElementById('%s'); return [a.isConnected, a.style.left, !!editing, !!document.querySelector('#ed-ui .sel-wrap.locked .handle'),
       !document.querySelector('#ed-ui .handle.rotate'), getComputedStyle(document.querySelector('#ed-ui .sel-wrap.locked .handle')).pointerEvents]; })()""" % ids[0])
     pg.keyboard.press("Escape"); pg.mouse.move(c[0] - 200 * sc, c[1] - 150 * sc); pg.mouse.down(); pg.mouse.move(c[0] + 700 * sc, c[1] + 150 * sc, steps=4); pg.mouse.up()
-    marq = pg.evaluate("[...sel].map(b => b.id)")
+    marq = pg.evaluate("""[[...sel].map(b => b.id).sort(), document.querySelectorAll('#ed-ui .sel-wrap.locked').length, document.body.classList.contains('sel-locked'),
+      getComputedStyle(document.querySelector('#ed-toolbar .grp.sel-only')).opacity, getComputedStyle(document.querySelector('#ed-ui .sel-wrap.locked .handle'), '::after').backgroundImage.includes('linear-gradient')]""")
     pg.mouse.click(c[0], c[1], button="right"); rmenu = pg.evaluate("[...document.querySelectorAll('.menu .menu-label')].map(e => e.textContent)"); pg.keyboard.press("Escape")
     pg.wait_for_timeout(700); saved = 'data-locked' in deck.read_text()
     pg.evaluate("closeMenu()"); pg.mouse.click(c[0], c[1]); pg.click("#ed-menubar [data-menu=Arrange]"); pg.click(".menu-item:has(.menu-label:text-is('Unlock'))")
     pg.mouse.move(c[0], c[1]); pg.mouse.down(); pg.mouse.move(c[0] + 100 * sc, c[1], steps=4); pg.mouse.up()
     freed = pg.evaluate("(() => { const a = document.getElementById('%s'); return [a.hasAttribute('data-locked'), a.style.left]; })()" % ids[0])
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
-    check(f"Arrange → Lock ({lock_ms} ms): grey handles that don't drag, no move / nudge / delete / text editing, a drag-select passes over it, saved; right-click offers Unlock, which frees it",
-          held == [True, "200px", False, True, True, "none"] and marq == [ids[1]] and "Unlock" in rmenu and saved and freed == [False, "300px"], f"{held} {marq} {rmenu} {saved} {freed}")
+    check(f"Arrange → Lock ({lock_ms} ms): grey × handles that don't drag, no move / nudge / delete / text editing; a drag-select takes it with the other (as k14), its × marks showing, the toolbar's formatting greyed; saved; right-click offers Unlock, which frees it",
+          held == [True, "200px", False, True, True, "none"] and marq == [sorted(ids), 2, True, "0.38", True] and "Unlock" in rmenu and saved and freed == [False, "300px"], f"{held} {marq} {rmenu} {saved} {freed}")
     pid = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1); finishPath([{x: 300, y: 300}, {x: 700, y: 700}, {x: 1100, y: 300}], false); return boxes().at(-1).id; })()""")
     pb = lambda: pg.evaluate(f"(() => {{ const r = document.getElementById('{pid}').getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }})()")
     r = pb(); pg.mouse.dblclick(r[0] + r[2] / 4, r[1] + r[3] / 2)
