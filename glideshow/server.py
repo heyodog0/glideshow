@@ -27,17 +27,33 @@ from .service import CACHE, DEFAULT_PORT, code_version, forget_me, live, post, r
 
 
 # Figures made by a script (data-source on a picture, `glideshow figure`): the editor's Refresh and redrawing when a file
-# the command names changes. A deck can come from anyone, so a command runs only once you've trusted it on this machine:
-# CACHE/figure-trust.json keeps a hash of each trusted deck + command.
+# the command names changes. A deck can come from anyone, so a command runs only once you've approved it on this machine:
+# CACHE/figure-trust.json maps a hash of deck + command to a hash of the code it runs (the script and any other code file
+# the command names). A changed script isn't run, not even by the watcher, until the editor has asked again; a data file
+# named in the command can change freely.
 TRUST = CACHE / "figure-trust.json"
-def _trust_key(deck: Path, cmd: str) -> str: return hashlib.sha256(f"{deck.resolve()}\0{cmd}".encode()).hexdigest()
-def trusted(deck: Path, cmd: str) -> bool:
-    try: return _trust_key(deck, cmd) in json.loads(TRUST.read_text())
-    except Exception: return False
+CODE = {".py", ".r", ".jl", ".sh", ".bash", ".zsh", ".js", ".mjs", ".ts", ".m", ".ipynb", ".rb", ".pl", ".do", ".sql", ".rmd", ".qmd"}
+PENDING: dict = {}   # (deck, figure id) → the code hash waiting to be approved (its script changed)
+def _cmd_key(deck: Path, cmd: str) -> str: return hashlib.sha256(f"{deck.resolve()}\0{cmd}".encode()).hexdigest()
+def code_hash(deck: Path, cmd: str) -> str:
+    """A hash of each code file the command runs (path and contents)."""
+    h = hashlib.sha256()
+    for f in sorted(f for f in watched_files(deck, cmd) if f.suffix.lower() in CODE):
+        h.update(str(f.resolve()).encode() + b"\0" + hashlib.sha256(f.read_bytes()).digest())
+    return h.hexdigest()
+def _trust_map() -> dict:
+    try: m = json.loads(TRUST.read_text())
+    except Exception: return {}
+    return m if isinstance(m, dict) else {}   # (an older list of command hashes: asked again once)
+def trust_state(deck: Path, cmd: str) -> str:
+    """"trusted", "changed" (approved, but its code has changed since) or "new"."""
+    seen = _trust_map().get(_cmd_key(deck, cmd))
+    return "new" if seen is None else "trusted" if seen == code_hash(deck, cmd) else "changed"
+def trusted(deck: Path, cmd: str) -> bool: return trust_state(deck, cmd) == "trusted"
 def trust(deck: Path, cmd: str):
-    try: keys = set(json.loads(TRUST.read_text()))
-    except Exception: keys = set()
-    keys.add(_trust_key(deck, cmd)); TRUST.parent.mkdir(parents=True, exist_ok=True); TRUST.write_text(json.dumps(sorted(keys)))
+    m = _trust_map(); m[_cmd_key(deck, cmd)] = code_hash(deck, cmd)
+    TRUST.parent.mkdir(parents=True, exist_ok=True); TRUST.write_text(json.dumps(m))
+    for k in [k for k in PENDING if k[0] == str(deck)]: PENDING.pop(k, None)
 def figures(deck: Path) -> list:
     """(id, command) of each picture with a data-source."""
     from .agent import _attrs, _boxes
@@ -179,7 +195,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header("Content-Disposition", f'attachment; filename="{out.name}"'); self.send_header("Content-Length", str(len(data))); self.end_headers()
             return self.wfile.write(data)
         if path == "/api/figures":   # Format options → Figure: each figure, whether its command is trusted here, the files it watches
-            return self.send_json({"figures": [{"id": i, "trusted": trusted(self.deck, c), "watch": [str(f.relative_to(self.deck)) if f.is_relative_to(self.deck) else str(f) for f in watched_files(self.deck, c)]} for i, c in figures(self.deck)]})
+            return self.send_json({"figures": [{"id": i, "state": (st := trust_state(self.deck, c)), "trusted": st == "trusted", "pending": PENDING.get((str(self.deck), i)), "cmd": c,
+                "watch": [str(f.relative_to(self.deck)) if f.is_relative_to(self.deck) else str(f) for f in watched_files(self.deck, c)]} for i, c in figures(self.deck)]})
         if path == "/api/movie":   # File → Download → Movie / Animated GIF: movie.py plays the deck in headless Chrome and records it
             import subprocess, tempfile
             q = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
@@ -254,7 +271,8 @@ class Handler(SimpleHTTPRequestHandler):
             req = json.loads(body or b"{}"); fid = req.get("id", ""); cmd = dict(figures(self.deck)).get(fid)
             if not cmd: return self.send_json({"error": "no figure with a command by that id"}, 404)
             if url.path == "/api/figure/trust": trust(self.deck, cmd); return self.send_json({"ok": True})
-            if not trusted(self.deck, cmd): return self.send_json({"untrusted": True, "cmd": cmd})   # the editor asks, then trusts it
+            st = trust_state(self.deck, cmd)
+            if st != "trusted": return self.send_json({"untrusted": True, "changed": st == "changed", "cmd": cmd})   # the editor asks, then trusts it
             r = refresh_figure(self.deck, fid)
             return self.send_json({"ok": r.returncode == 0, "log": (r.stdout + r.stderr).strip()[-1200:]}, 200 if r.returncode == 0 else 500)
         if url.path == "/api/save":
@@ -550,16 +568,20 @@ def main():
             if code_version() != version:
                 restart.set(); server.shutdown()
     threading.Thread(target=watch, daemon=True).start()
-    def figure_watch():   # a trusted figure is made again when a file its command names changes (its script, its data)
+    def figure_watch():   # an approved figure is made again when a file its command names changes; a changed script waits for the editor to ask
         seen: dict = {}
         while not restart.wait(2):
             try:
                 deck = Handler.deck
                 for fid, cmd in figures(deck):
-                    if not trusted(deck, cmd): continue
+                    if trust_state(deck, cmd) == "new": continue
                     for f in watched_files(deck, cmd):
                         key, t = (str(deck), fid, str(f)), f.stat().st_mtime
-                        if key in seen and seen[key] != t: seen[key] = t; refresh_figure(deck, fid); break
+                        if key in seen and seen[key] != t:
+                            seen[key] = t
+                            if trusted(deck, cmd): refresh_figure(deck, fid)
+                            else: PENDING[(str(deck), fid)] = code_hash(deck, cmd)
+                            break
                         seen[key] = t
             except Exception: pass
     threading.Thread(target=figure_watch, daemon=True).start()

@@ -1930,15 +1930,17 @@ def figure_checks(pg, folder: Path):
         time.sleep(0.25)
     red = (folder / "assets" / "fig-test.png").read_bytes()
     made1 = pg.evaluate("""(async () => { for (let k = 0; k < 40 && !boxes().at(-1)?.dataset.made; k++) await new Promise(r => setTimeout(r, 250)); return boxes().at(-1)?.dataset.made || ''; })()""")
-    time.sleep(1.1); (folder / "make_fig.py").write_text(FIG_SCRIPT % "40, 80, 220")   # the script changes: made again by itself
-    for _ in range(60):
+    time.sleep(1.1); (folder / "make_fig.py").write_text(FIG_SCRIPT % "40, 80, 220")   # the script changes: not run again until approved
+    pg.wait_for_selector("#ed-rundlg:not([hidden])", timeout=15000)
+    held = (folder / "assets" / "fig-test.png").read_bytes() == red; reasked = pg.evaluate("document.querySelector('#ed-rundlg h2').textContent"); pg.click("#ed-run-ok")
+    for _ in range(120):
         time.sleep(0.25)
         if (folder / "assets" / "fig-test.png").read_bytes() != red: break
     redrawn = (folder / "assets" / "fig-test.png").read_bytes() != red
     pg.wait_for_timeout(1500)   # (the redrawn figure comes back as an outside change: the slides are read again)
     pg.evaluate("(async () => { const w = window.__figWas; slides.pop(); go(w[0]); sel = new Set(w[1].map(id => document.getElementById(id)).filter(Boolean)); render(); commit(); await flushSave(); drawOverlay(); updateToolbar(); })()")
-    check("Format options → Figure (script figures first, D4): the picture's command; Refresh asks once before running it, then makes the picture; it's made again when its script changes",
-          shown == [cmd, True] and asked == cmd and red[:4] == b"\x89PNG" and bool(made1) and redrawn, f"{shown} {asked} {red[:4]} {made1} {redrawn}")
+    check("Format options → Figure (script figures first, D4): the picture's command; Refresh asks once before running it, then makes the picture; when its script changes it isn't run until the editor asks again (the approval holds the script's hash), then it's made again",
+          shown == [cmd, True] and asked == cmd and red[:4] == b"\x89PNG" and bool(made1) and held and reasked.startswith("Its script changed") and redrawn, f"{shown} {asked} {red[:4]} {made1} {held} {reasked} {redrawn}")
 
 
 def design_answer_checks(pg):

@@ -205,16 +205,28 @@ F('pstyle-update').onclick = () => {
    its watched files, Refresh (also in the picture's right-click menu) runs it again through the server and the new picture
    comes back as an outside change. A command runs only once it's trusted on this machine (the dialog asks, once). */
 const runDlg = $('#ed-rundlg');
-const askRun = cmd => new Promise(ok => { $('#ed-run-cmd').textContent = cmd; runDlg.hidden = false; $('#ed-run-cancel').focus();
+const askRun = (cmd, changed = false) => new Promise(ok => { $('#ed-run-cmd').textContent = cmd; runDlg.hidden = false; $('#ed-run-cancel').focus();
+  $('#ed-rundlg h2').textContent = changed ? 'Its script changed: run it again?' : 'Run this command?';
   const done = v => { runDlg.hidden = true; ok(v); }; $('#ed-run-ok').onclick = () => done(true); $('#ed-run-cancel').onclick = runDlg.querySelector('.sc-close').onclick = () => done(false); });
 async function refreshFigure(b) {
   if (!b?.dataset.source) return setStatus('This picture has no command to make it (Format options → Figure)', 'error');
   await flushSave(); setStatus('Making the figure…');
   const post = url => fetch(url, { method: 'POST', headers: { 'X-Glideshow': '1' }, body: JSON.stringify({ id: b.id }) });
   let r = await post('/api/figure/refresh'), first = await r.clone().json().catch(() => ({}));
-  if (first.untrusted) { if (!(await askRun(first.cmd))) return setStatus(''); await post('/api/figure/trust'); r = await post('/api/figure/refresh'); }
+  if (first.untrusted) { if (!(await askRun(first.cmd, first.changed))) return setStatus(''); await post('/api/figure/trust'); r = await post('/api/figure/refresh'); }
   const j = await r.json().catch(() => ({})); setStatus(r.ok ? 'Figure made again' : (j.error || (j.log || 'The command failed').split('\n').pop()), r.ok ? '' : 'error');
 }
+/* A figure whose script changed waits on the server (it won't run unapproved); ask here, once per change. */
+const runAsked = new Set();
+setInterval(async () => {
+  if (!runDlg.hidden || !slides.some(s => s.querySelector('.box.image[data-source]'))) return;
+  const fs = (await (await fetch('/api/figures').catch(() => null))?.json().catch(() => null))?.figures || [];
+  const f = fs.find(x => x.pending && !runAsked.has(x.id + x.pending)); if (!f) return;
+  runAsked.add(f.id + f.pending);
+  if (!(await askRun(f.cmd, true))) return;
+  await fetch('/api/figure/trust', { method: 'POST', headers: { 'X-Glideshow': '1' }, body: JSON.stringify({ id: f.id }) });   // approved as it is now
+  refreshFigure(document.getElementById(f.id) || { id: f.id, dataset: { source: f.cmd } });
+}, 3000);
 F('fig-src').onchange = one(b => { const v = F('fig-src').value.trim(); if (v) b.dataset.source = v; else delete b.dataset.source; updatePanel(); });
 F('fig-refresh').onclick = () => refreshFigure([...sel][0]);
 async function figureInfo(b) {
