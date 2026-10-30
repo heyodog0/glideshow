@@ -1902,6 +1902,18 @@ def checks(pg, deck: Path, errors):
 
 def export_checks(pg):
     """Keynote's Export (k13) as Slides places it: images of the slides, a movie / GIF, the print preview's PDF options."""
+    # PowerPoint keeps transitions and builds (k13-export-powerpoint): PowerPoint's nearest transition, Morph, the build sequence
+    import io, re as _re, urllib.request, zipfile
+    pg.evaluate("""(async () => { const a = blankSlide(), b = blankSlide(); a.dataset.transition = 'wipe-r'; b.setAttribute('data-auto-animate', ''); slides.push(a, b);
+      const x = makeBox({ x: 100, y: 100, w: 300, h: 200, html: 'pptx morph' }); x.id = 'pptx-a'; a.append(x);
+      const f = makeBox({ x: 600, y: 100, w: 300, h: 200, html: 'pptx built' }); f.classList.add('fragment', 'fade-in'); f.dataset.fragmentIndex = '0'; a.append(f);
+      const y = makeBox({ x: 900, y: 500, w: 300, h: 200, html: 'pptx morph' }); y.dataset.morph = 'pptx-a'; b.append(y); go(slides.length - 1); render(); commit(); await flushSave(); })()""")
+    t0 = time.perf_counter(); data = urllib.request.urlopen(URL + "api/pptx", timeout=300).read(); px_s = time.perf_counter() - t0
+    z = zipfile.ZipFile(io.BytesIO(data)); names = sorted((n for n in z.namelist() if _re.fullmatch(r"ppt/slides/slide\d+\.xml", n)), key=lambda n: int(_re.findall(r"\d+", n)[0]))
+    xa, xb = z.read(names[-2]).decode(), z.read(names[-1]).decode()
+    pg.evaluate("(async () => { slides.splice(slides.length - 2, 2); go(slides.length - 1); render(); commit(); await flushSave(); })()")
+    check(f"Download → PowerPoint keeps transitions and builds: Wipe from left as PowerPoint's wipe, Morph as PowerPoint's Morph (shapes named !!id pair up), the fade-in build in the click sequence ({px_s:.1f} s)",
+          '<p:wipe dir="r"/>' in xa and "<p:timing" in xa and 'presetClass="entr"' in xa and 'filter="fade"' in xa and "p159:morph" in xb and 'name="!!pptx-a"' in xa and 'name="!!pptx-a"' in xb, f"{xa[-600:]} {xb[-400:]}")
     # Download → Images of the slides (Keynote's Export → Images, k13): a range, each stage of builds, JPEG / PNG, one .zip
     import io, zipfile
     nimg = pg.evaluate("""(() => { const a = blankSlide(), b = blankSlide(); slides.push(a, b);
