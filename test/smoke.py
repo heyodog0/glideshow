@@ -1167,6 +1167,23 @@ def checks(pg, deck: Path, errors):
     check(f"Mask image (Crop ▾ → Shapes / Arrows / Callouts / Equation): clips the picture to an oval (data-mask) and opens crop mode with the faint whole picture and a Scale / Done bar ({mk[5]} ms); Scale 200% crops about the middle; dragging the picture moves it inside the frame; Done ends",
           groups[:4] == ["Shapes", "Arrows", "Callouts", "Equation"] and mk[:5] == ["ellipse", True, True, True, True] and mk[5] < 100 and scaled == "0.25 0.25 0.25 0.25"
           and panned[0] == "0.25 0.167 0.25 0.333" and panned[1:] == ["600px", "600px"] and done, f"{groups} {mk} {scaled} {panned} {done}")
+    # Remove background (Keynote's Instant Alpha, r01): the white edge goes at once, a click takes the blue square, Done trims
+    pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1);
+      const c = document.createElement('canvas'); c.width = 400; c.height = 300; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 400, 300);
+      x.fillStyle = '#d93025'; x.beginPath(); x.arc(200, 150, 100, 0, 7); x.fill(); x.fillStyle = '#1a3fbf'; x.fillRect(165, 115, 70, 70);
+      const b = makeBox({x: 400, y: 200, w: 800, h: 600, cls: 'image', html: `<img src="${c.toDataURL()}" alt="">`}); s.append(b); sel = new Set([b]); render(); })()""")
+    t0 = time.perf_counter(); pg.evaluate("removeBackground(boxes()[0])"); pg.wait_for_selector("#ed-ui .unbg-bar"); ub_ms = (time.perf_counter() - t0) * 1000
+    ub = pg.evaluate("[unbg.gone.reduce((a, v) => a + v, 0), document.querySelector('#ed-ui .unbg-bar span').textContent, getComputedStyle(boxes()[0].querySelector('img')).visibility, IMAGE_ITEMS().map(i => i.label).includes('Remove background')]")
+    r = pg.evaluate("(() => { const r = document.querySelector('#ed-ui .unbg canvas').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()")
+    pg.mouse.click(r[0], r[1]); sq = pg.evaluate("unbg.gone.reduce((a, v) => a + v, 0)"); pg.screenshot(path=str(HERE / "remove-background.png"))
+    pg.click("#ed-ui .unbg-bar .done"); pg.wait_for_function("!unbg && boxes()[0].querySelector('img').getAttribute('src').endsWith('.png') && !boxes()[0].querySelector('img').getAttribute('src').startsWith('data:')", timeout=10000)
+    fin = pg.evaluate("""(async () => { const b = boxes()[0], img = b.querySelector('img'), p = new Image(); p.src = img.src; await p.decode();
+      const c = document.createElement('canvas'); c.width = p.naturalWidth; c.height = p.naturalHeight; const x = c.getContext('2d'); x.drawImage(p, 0, 0); const a = (i, j) => x.getImageData(i, j, 1, 1).data[3];
+      const out = [a(2, 2), a(200, 150), a(110, 150), !!b.dataset.original, b.dataset.crop, b.style.width, b.style.height];
+      resetImage(b); out.push(img.getAttribute('src').startsWith('data:'), !b.dataset.original, b.dataset.crop || ''); slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); return out; })()""")
+    check(f"Remove background (Format options → Adjustments, image menu; Keynote's Instant Alpha): the white touching the edges goes at once ({ub_ms:.0f} ms), shown faint with Keynote's bar; a click takes the blue square too; Done writes a new PNG (transparent there, the red kept) and trims the frame to the circle; Reset image brings the original back",
+          ub[0] > 30000 and ub[1].startswith("Background removed") and ub[2] == "hidden" and ub[3] and sq - ub[0] > 4000 and fin[:4] == [0, 0, 255, True]
+          and fin[4] == "0.167 0.25 0.167 0.25" and fin[5:7] == ["400px", "400px"] and fin[7] and fin[8] and ub_ms < 600, f"{ub} {sq} {fin} {ub_ms:.0f}")
     up = pg.evaluate("""(async () => { const c = document.createElement('canvas'); c.width = 300; c.height = 150; c.getContext('2d').fillRect(0, 0, 300, 150);
       const blob = await new Promise(r => c.toBlob(r, 'image/png')); return (await (await fetch('/api/upload?ext=png', { method: 'POST', body: blob })).json()).src; })()""")
     pu = pg.evaluate("""(async url => { const s = blankSlide(); slides.push(s); go(slides.length - 1); sel.clear(); render();

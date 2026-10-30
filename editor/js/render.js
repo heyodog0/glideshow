@@ -245,6 +245,7 @@ function drawOverlay() {
     }
     drawCropExtras(b, g, k, frameFor(b)); frameFor(b).append(wrap); return;
   }
+  if (unbg?.b === b) { drawUnbg(frameFor(b), g, k); return; }   // Remove background: its view and bar instead of handles
   if (pointEdit === b) { drawPoints(wrap, b, g, k); frameFor(b).append(wrap); return; }   // Edit points: anchors and handles instead
   addHandles(wrap, g, dirs, d => resizeCursor(b, d), k, isLine(b));
   if (locked) { frameFor(b).append(wrap); return; }

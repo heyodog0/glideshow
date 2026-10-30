@@ -521,6 +521,8 @@ body.drawing #ed-stage, body.drawing #ed-stage * { cursor: crosshair !important;
 .mask-bar { position: absolute; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 12px; translate: -50% 0; scale: calc(var(--k, 1px) / 1px); transform-origin: 50% 0;
   border-radius: 8px; background: var(--surface); box-shadow: var(--menu-shadow); pointer-events: auto; font: 14px var(--font); white-space: nowrap; }
 .mask-bar .icon { font-size: 20px; color: var(--muted); } .mask-bar input { width: 120px; }
+.unbg { position: absolute; overflow: hidden; pointer-events: auto; cursor: crosshair; } .unbg canvas { position: absolute; }   /* Remove background: the picture as it will be */
+.unbg-bar span { margin-right: 8px; color: var(--ink); } .mask-bar button.reset { background: none; color: var(--blue); }
 .mask-bar button { height: 32px; padding: 0 14px; border: 0; border-radius: 16px; background: var(--blue); color: #fff; font-weight: 500; cursor: pointer; }
 .handle.crop.nw { border-width: calc(var(--k) * 4) 0 0 calc(var(--k) * 4); } .handle.crop.ne { border-width: calc(var(--k) * 4) calc(var(--k) * 4) 0 0; }
 .handle.crop.sw { border-width: 0 0 calc(var(--k) * 4) calc(var(--k) * 4); } .handle.crop.se { border-width: 0 calc(var(--k) * 4) calc(var(--k) * 4) 0; }

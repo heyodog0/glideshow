@@ -122,6 +122,7 @@ for (const k of ADJUST) {
   F('adj-' + k).onchange = F('adj-' + k + '-n').onchange = one(b => setAdjust(b, k, document.activeElement === F('adj-' + k + '-n') ? F('adj-' + k + '-n').value : F('adj-' + k).value));
 }
 F('adj-reset').onclick = one(b => { setImgOpacity(b, 100); delete b.dataset.adjust; adjustImage(b); updatePanel(); });
+F('unbg').onclick = () => removeBackground([...sel][0]);   // Keynote's Remove Background (objects.js)
 /* Drop shadow controls, as Slides: changing one turns the shadow on. Defaults are left out of the deck. */
 const SHADOW_UI = { color: '#000000', opacity: 0.3, angle: 90, distance: 6, blur: 8 };
 for (const k of Object.keys(SHADOW_UI)) {

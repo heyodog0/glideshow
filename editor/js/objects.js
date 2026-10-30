@@ -228,6 +228,81 @@ function drawCropExtras(b, g, k, host) {
   host.append(gh, pan, bar);
 }
 
+/* Remove background (Keynote's Instant Alpha, r01): the colour touching the picture's edges goes at once (shown faint);
+   click or drag across another colour to take it too, dragging further taking in more shades (each contiguous from where
+   you pressed). Reset brings it all back, Done (↵) writes a new PNG beside the original (data-original keeps the old one
+   for Reset image) and trims the frame to what's left (data-crop), Esc leaves it as it was. */
+let unbg = null;
+const UNBG_MAX = 2400;   // the working size, in pixels along the longer side
+async function removeBackground(b) {
+  const img = /** @type {HTMLImageElement | null} */ (b?.querySelector(':scope > .content > img')); if (!img) return;
+  endCrop(); stopEdit(); endUnbg(false);
+  const pic = new Image(); pic.src = img.currentSrc || img.src; await pic.decode().catch(() => {});
+  if (!pic.naturalWidth) return setStatus("Can't read this picture", 'error');
+  const t0 = performance.now(), z = Math.min(1, UNBG_MAX / Math.max(pic.naturalWidth, pic.naturalHeight)), cw = Math.round(pic.naturalWidth * z), ch = Math.round(pic.naturalHeight * z);
+  const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch; const x = /** @type {CanvasRenderingContext2D} */ (cv.getContext('2d', { willReadFrequently: true }));
+  x.drawImage(pic, 0, 0, cw, ch); const orig = x.getImageData(0, 0, cw, ch);
+  unbg = { b, img, cv, x, orig, cw, ch, gone: new Uint8Array(cw * ch), view: div('unbg'), bar: div('mask-bar unbg-bar') };
+  const d = orig.data, corner = [0, cw - 1, (ch - 1) * cw, ch * cw - 1].map(i => [d[i * 4], d[i * 4 + 1], d[i * 4 + 2], d[i * 4 + 3]]);
+  const ref = corner.reduce((best, c) => corner.filter(o => near(o, c, 40)).length > corner.filter(o => near(o, best, 40)).length ? c : best);   // the edges' colour: what most corners share
+  const seeds = []; for (let i = 0; i < cw; i++) seeds.push(i, (ch - 1) * cw + i); for (let j = 0; j < ch; j++) seeds.push(j * cw, j * cw + cw - 1);
+  flood(unbg.gone, seeds, ref, 40);
+  unbg.view.append(cv); sel = new Set([b]); img.style.visibility = 'hidden'; paintUnbg(); drawOverlay(); updateToolbar();
+  setStatus(`Background removed in ${Math.round(performance.now() - t0)} ms`);
+  addEventListener('keydown', unbgKeys, true);
+}
+const near = (a, c, tol) => (a[0] - c[0]) ** 2 + (a[1] - c[1]) ** 2 + (a[2] - c[2]) ** 2 + (a[3] - c[3]) ** 2 <= tol * tol;
+/* Takes into `gone` every pixel joined to a seed whose colour is within tol of ref. */
+function flood(gone, seeds, ref, tol) {
+  const { cw, ch, orig: { data: d } } = unbg, seen = new Uint8Array(cw * ch), stack = new Int32Array(cw * ch + seeds.length); let n = 0;
+  const ok = i => { const p = i * 4; return (d[p] - ref[0]) ** 2 + (d[p + 1] - ref[1]) ** 2 + (d[p + 2] - ref[2]) ** 2 + (d[p + 3] - ref[3]) ** 2 <= tol * tol; };
+  for (const s of seeds) if (!seen[s] && ok(s)) { seen[s] = 1; stack[n++] = s; }
+  while (n) { const i = stack[--n]; gone[i] = 1; const xx = i % cw;
+    for (const j of [xx > 0 ? i - 1 : -1, xx < cw - 1 ? i + 1 : -1, i - cw, i + cw]) if (j >= 0 && j < cw * ch && !seen[j] && ok(j)) { seen[j] = 1; stack[n++] = j; } }
+}
+function paintUnbg(final = false, u = unbg) {   // removed pixels faint while editing, gone when done
+  const { x, orig, gone } = u, out = new ImageData(new Uint8ClampedArray(orig.data), orig.width, orig.height), a = final ? 0 : 0.3;
+  for (let i = 0; i < gone.length; i++) if (gone[i]) out.data[i * 4 + 3] *= a;
+  x.putImageData(out, 0, 0);
+}
+function drawUnbg(host, g, k) {   // the picture as it will be, over its box, with Keynote's bar under it
+  const { b, view, bar } = unbg, c = cropOf(b), fw = g.w / (1 - c.l - c.r), fh = g.h / (1 - c.t - c.b);
+  place(view, g); view.style.transform = b.style.transform; Object.assign(unbg.cv.style, { left: -c.l * fw + 'px', top: -c.t * fh + 'px', width: fw + 'px', height: fh + 'px' });
+  if (!bar.firstChild) {
+    bar.innerHTML = '<span>Background removed. Click or drag across colors to also make them transparent.</span><button class="reset">Reset</button><button class="done">Done</button>';
+    bar.querySelector('.reset').onclick = () => { unbg.gone.fill(0); paintUnbg(); };
+    bar.querySelector('.done').onclick = () => endUnbg(true);
+    bar.onpointerdown = bar.onmousedown = e => e.stopPropagation();
+    view.onmousedown = e => e.stopPropagation();
+    view.onpointerdown = e => {   // click or drag across a colour: that colour goes too, more shades the further you drag
+      e.stopPropagation(); e.preventDefault(); const r = unbg.cv.getBoundingClientRect(), px = Math.floor((e.clientX - r.left) / r.width * unbg.cw), py = Math.floor((e.clientY - r.top) / r.height * unbg.ch);
+      if (px < 0 || py < 0 || px >= unbg.cw || py >= unbg.ch) return;
+      const seed = py * unbg.cw + px, d = unbg.orig.data, ref = [d[seed * 4], d[seed * 4 + 1], d[seed * 4 + 2], d[seed * 4 + 3]], before = unbg.gone.slice(); let raf = 0;
+      const take = dist => { unbg.gone = before.slice(); flood(unbg.gone, [seed], ref, Math.min(200, 30 + dist * 0.6)); paintUnbg(); };
+      take(0); busy = true;
+      drag(e, ev => { const dist = Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY); cancelAnimationFrame(raf); raf = requestAnimationFrame(() => take(dist)); }, () => { busy = false; });
+    };
+  }
+  bar.style.cssText = `left:${g.x + g.w / 2}px;top:${g.y + g.h + 14 * k}px;--k:${k}px`;
+  host.append(view, bar);
+}
+function unbgKeys(e) { if (!unbg) return; if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); endUnbg(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); endUnbg(false); } }
+async function endUnbg(keep) {
+  if (!unbg) return; const u = unbg; unbg = null; removeEventListener('keydown', unbgKeys, true);
+  u.img.style.visibility = ''; if (!u.img.getAttribute('style')) u.img.removeAttribute('style');
+  if (!keep || !u.gone.includes(1)) { drawOverlay(); return; }
+  paintUnbg(true, u);
+  let x0 = u.cw, y0 = u.ch, x1 = -1, y1 = -1;   // what's left, to trim the frame to
+  for (let j = 0; j < u.ch; j++) for (let i = 0; i < u.cw; i++) if (!u.gone[j * u.cw + i]) { if (i < x0) x0 = i; if (i > x1) x1 = i; if (j < y0) y0 = j; if (j > y1) y1 = j; }
+  const blob = await new Promise(r => u.cv.toBlob(r, 'image/png'));
+  const { src } = await (await fetch('/api/upload?ext=png', { method: 'POST', body: blob })).json();
+  const b = u.b, g = geo(b), c = cropOf(b), fw = g.w / (1 - c.l - c.r), fh = g.h / (1 - c.t - c.b), X0 = g.x - c.l * fw, Y0 = g.y - c.t * fh;
+  b.dataset.original ||= plainSrc(u.img.getAttribute('src') || ''); u.img.setAttribute('src', src);
+  if (x1 >= 0) { const n = { l: Math.max(c.l, x0 / u.cw), r: Math.max(c.r, 1 - (x1 + 1) / u.cw), t: Math.max(c.t, y0 / u.ch), b: Math.max(c.b, 1 - (y1 + 1) / u.ch) };
+    setCrop(b, n); setGeo(b, { x: X0 + n.l * fw, y: Y0 + n.t * fh, w: (1 - n.l - n.r) * fw, h: (1 - n.t - n.b) * fh }); }
+  commit(); render(); drawOverlay(); setStatus('Background removed');
+}
+
 async function addImage(file, at) {
   setStatus('Uploading image…');
   file = await shrinkPicture(file);

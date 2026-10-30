@@ -58,10 +58,12 @@ const theImage = () => sel.size === 1 && [...sel][0].classList.contains('image')
 const IMAGE_ITEMS = () => [
   { label: 'Crop image', icon: 'crop', run: () => enterCrop(theImage()), off: () => !theImage() },
   { label: 'Replace image', icon: 'image', run: () => $('#ed-replace-file').click(), off: () => !theImage() },
+  { label: 'Remove background', icon: 'auto_fix_high', run: () => removeBackground(theImage()), off: () => !theImage() },
   { label: 'Reset image', icon: 'reset_image', run: () => resetImage(theImage()), off: () => !theImage() },
 ];
 function resetImage(b) {
   if (!b) return;
+  const img0 = b.querySelector('.content > img'); if (b.dataset.original && img0) { img0.setAttribute('src', b.dataset.original); delete b.dataset.original; }   // before Remove background
   delete b.dataset.crop; delete b.dataset.adjust; adjustImage(b); cropBox(b); const img = b.querySelector('.content > img'); if (img) { img.style.opacity = ''; if (!img.getAttribute('style')) img.removeAttribute('style'); }
   resetImageSize(b);
 }
