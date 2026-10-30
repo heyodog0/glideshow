@@ -42,6 +42,32 @@ Rules:
 - Layouts and placeholders: `data-layout` on a `<section>` names its layout (title, section, title-body, two-columns, title-only, one-column,
   main-point, section-description, caption, big-number, blank); a box with `data-placeholder="Click to add title"` (and `data-role` title / sub / body)
   shows that prompt in the editor while empty, survives being left empty, and is hidden in the deck until it has text.
+- **Proposed, not built: real master slides (D5, under review).** Layouts that hold their own objects and background,
+  shown on every slide that uses them and edited in one place (Keynote's master slides, Slides' layouts).
+  - *Where they live:* one `<template id="deck-layouts">` in `<body>`, after `.reveal`. A `<template>` is parsed but never
+    shown, and reveal.js never sees it, so a deck without one, or a browser that ignores it, plays as today. In it, one
+    `<div class="layout" data-layout="title-body" data-name="Title and body">` per layout, with the slide-like attributes
+    `data-background-color` / `-image` / `-size` and its boxes: ordinary boxes (a logo, a footer, a rule) and
+    placeholder boxes (`data-placeholder`, `data-role`) that give a placeholder's place, size and text style.
+  - *How a slide uses one:* by its existing `data-layout`. When the template has that layout, the slide shows the layout's
+    ordinary boxes behind its own, and the layout's background unless the slide sets its own. `data-layout-objects="off"`
+    on a slide hides them there. A name the template doesn't have falls back to the built-in layouts, as today.
+  - *Placeholders stay on the slide:* each slide keeps its own placeholder boxes with inline place and size, exactly as
+    now, so every slide still plays and imports without the template. Changing a layout's placeholder updates the slides'
+    placeholders that still sit where the layout had them (as Edit theme's "Reapply layout" does now).
+  - *Who draws them:* present.js copies a layout's boxes into each slide that uses it as the deck loads (marked
+    `data-from-layout`, not selectable in the editor), so a deck opened on its own shows them, and so do the PDF, images,
+    movie and presenter view. The editor draws them the same way and drops the copies before saving.
+  - *Editing:* Slide → Edit theme becomes the layout editor: a filmstrip of the deck's layouts; add, duplicate, rename,
+    delete; place objects and placeholders on them. The theme JSON's `layouts` entries move into the template the
+    first time a layout is edited.
+  - *Imports and exports:* Google Slides (gslides.py) and PowerPoint imports put each used layout's own shapes (with its
+    master's) and background into the template, and keep materialising placeholders on the slides. PowerPoint export
+    copies a layout's boxes onto each slide at first (later: into slideLayouts); PDF, images and movie get them from
+    present.js.
+  - *Agents:* to put a logo or footer on every slide, add the box to the layout in `#deck-layouts`, not to each slide.
+  - *Open for review:* one level (layouts, as Keynote) rather than Slides' master + layouts; placeholders keeping their own
+    geometry on each slide; the template's name and place.
 - Slide ids: the editor gives each `<section>` a `data-sid` (how edits made in two places merge, slide by slide). Keep it when you change a slide; a slide you add may leave it out (it gets one), but never copy one slide's `data-sid` onto another.
 - Vertical stacks (reveal.js sub-slides): wrap slides in an outer `<section>`: `<section><section>main</section><section>below</section></section>`.
   The first is the main slide, the rest sit below it (presenting: ↓ / ↑). Numbering follows reveal: main slide 3, its sub-slides 3.1, 3.2
