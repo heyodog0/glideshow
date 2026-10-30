@@ -12,7 +12,8 @@ const TRANSITIONS = [['none', 'None'], ['fade', 'Dissolve'], ['fade-in fade-out'
   ['iris', 'Iris', 1], ['reveal-l', 'Reveal', 1], ['fade-black', 'Fade through black', 1], ['fade-move', 'Fade and move', 1], ['drop', 'Drop', 1],
   ['clothesline', 'Clothesline', 1], ['fall', 'Fall', 1], ['pivot', 'Pivot', 1], ['revolving-door', 'Revolving door', 1], ['k-scale', 'Scale', 1], ['swap', 'Swap', 1],
   ['twirl', 'Twirl', 1], ['obj-pop', 'Object pop', 1], ['obj-zoom', 'Object zoom', 1], ['obj-push', 'Object push', 1],
-  ['doorway', 'Doorway', 1], ['flop', 'Flop', 1], ['mosaic', 'Mosaic', 1], ['blinds', 'Blinds', 1], ['obj-flip', 'Object flip', 1], ['obj-revolve', 'Object revolve', 1], ['obj-cube', 'Object cube', 1]];
+  ['doorway', 'Doorway', 1], ['flop', 'Flop', 1], ['mosaic', 'Mosaic', 1], ['blinds', 'Blinds', 1], ['obj-flip', 'Object flip', 1], ['obj-revolve', 'Object revolve', 1], ['obj-cube', 'Object cube', 1],
+  ['switch', 'Switch', 1], ['perspective', 'Perspective', 1], ['page-flip', 'Page flip', 1], ['droplet', 'Droplet', 1], ['swoosh', 'Swoosh', 1], ['swing', 'Swing', 1], ['sparkle', 'Sparkle', 1], ['shimmer', 'Shimmer', 1], ['confetti', 'Confetti', 1]];
 /* A list's options, with its third-column entries under "More effects" (D7). */
 const optionsOf = list => list.filter(x => !x[2]).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')
   + (list.some(x => x[2]) ? `<optgroup label="More effects">${list.filter(x => x[2]).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</optgroup>` : '');
@@ -72,6 +73,7 @@ const EFFECTS = [['appear', 'Appear'], ['fade-in', 'Fade in'], ['fade-right', 'F
   ['drift-in', 'Drift', 1], ['drift-scale', 'Drift and scale', 1], ['fade-move-in', 'Fade and move', 1], ['fade-scale', 'Fade and scale', 1], ['blinds-in', 'Blinds', 1],
   ['cube-in', 'Cube', 1], ['flip-in', 'Flip', 1], ['spin-y', 'Spin', 1], ['pivot-in', 'Pivot', 1], ['twist-scale', 'Twist and scale', 1], ['squish-in', 'Squish', 1],
   ['sparkle-in', 'Sparkle', 1], ['shimmer-in', 'Shimmer', 1], ['confetti-in', 'Confetti', 1], ['flash-in', 'Flash bulbs', 1], ['fireworks-in', 'Fireworks', 1],
+  ['skid-in', 'Skid', 1], ['swoosh-in', 'Swoosh', 1], ['trace-in', 'Trace', 1], ['lens-in', 'Lens flare', 1], ['flame-in', 'Flame', 1],
   ['disappear', 'Disappear', 1], ['blur-out', 'Blur out', 1], ['scale-out', 'Scale out', 1], ['iris-out', 'Iris out', 1]];
 const effectOf = b => EFFECTS.find(([c]) => b.classList.contains(c))?.[0] || 'fade-in';
 const animBoxes = () => boxes().filter(b => b.classList.contains('fragment'))
@@ -283,7 +285,9 @@ async function playAnims() {
     'squish-in': [{ translate: `0 -${H}px`, scale: '1 1' }, { translate: '0 0', scale: '1 1', offset: .35 }, { translate: '0 17.5%', scale: '1.5 .65', offset: .42 }, { translate: '0 -15%', scale: '.8 1.3', offset: .52 }, { translate: '0 -25%', scale: '1 1', offset: .62 }, { translate: '0 12.5%', scale: '1.3 .75', offset: .72 }, { translate: '0 0', scale: '1 1' }],
     'sparkle-in': [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0)' }], 'shimmer-in': [{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1 }],   // (the particles play in the slideshow)
     'confetti-in': [{ opacity: 0 }, { opacity: 0, offset: .85 }, { opacity: 1 }], 'flash-in': [{ opacity: 0, filter: 'brightness(2)' }, { opacity: 1, filter: 'brightness(1.6)', offset: .75 }, { opacity: 1, filter: 'none' }],
-    'fireworks-in': [{ opacity: 0 }, { opacity: 1, offset: .65 }, { opacity: 1 }],
+    'fireworks-in': [{ opacity: 0 }, { opacity: 1, offset: .65 }, { opacity: 1 }], 'skid-in': [{ translate: `-${W}px 0` }, { translate: '0 0', offset: .22 }, { translate: '0 0' }],
+    'swoosh-in': [{ translate: '30% -40%', scale: .05, rotate: '-50deg' }, { translate: '0 0', scale: 1, rotate: '0deg' }], 'trace-in': [{ opacity: 0 }, { opacity: 1 }],
+    'lens-in': [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 100% 0 0)', offset: .5 }, { clipPath: 'inset(0)', offset: .7 }, { clipPath: 'inset(0)' }], 'flame-in': [{ opacity: 0 }, { opacity: 0, offset: .4 }, { opacity: 1, offset: .6 }, { opacity: 1 }],
     'blur-out': [{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(24px)' }], 'scale-out': [{ scale: 1 }, { scale: 0 }], 'iris-out': [{ clipPath: 'circle(75% at 50% 50%)' }, { clipPath: 'circle(0% at 50% 50%)' }], pop: [{ scale: 1 }, { scale: 1.25, offset: .3 }, { scale: .95, offset: .6 }, { scale: 1 }] };
   const spin = b => [{ rotate: '0deg' }, { rotate: (b.dataset.angle ?? 360) + 'deg' }];
   const move = b => { const g = geo(b); return Array.from({ length: 25 }, (_, i) => { const p = movePoint(b, i / 24); return { translate: `${p.x - g.x}px ${p.y - g.y}px`, rotate: p.a + 'deg' }; }); };
@@ -334,7 +338,11 @@ function playTransition() {
     doorway: [{ transform: 'scale(.55)', filter: 'brightness(.5)' }, { transform: 'none', filter: 'none' }], flop: [{ clipPath: 'inset(0 0 50% 0)' }, { clipPath: 'inset(0)' }],
     mosaic: [{ clipPath: 'inset(0 0 0 100%)' }, { clipPath: 'inset(0)' }], blinds: [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0)' }],
     'obj-flip': [{ transform: 'perspective(2000px) rotateY(-90deg)' }, { transform: 'none' }], 'obj-revolve': [{ transform: 'perspective(2000px) rotateY(80deg)', transformOrigin: '0 50%', opacity: .2 }, { transform: 'none', transformOrigin: '0 50%', opacity: 1 }],
-    'obj-cube': [{ transform: 'perspective(2000px) rotateY(90deg)', transformOrigin: '0 50%' }, { transform: 'none', transformOrigin: '0 50%' }] }[k];
+    'obj-cube': [{ transform: 'perspective(2000px) rotateY(90deg)', transformOrigin: '0 50%' }, { transform: 'none', transformOrigin: '0 50%' }],
+    switch: [{ transform: 'translate(-18%, 12%) rotate(-25deg)' }, { transform: 'none' }], perspective: [{ transform: 'perspective(2000px) translate(60%, -45%) rotateY(-50deg) scale(.7)' }, { transform: 'none' }],
+    'page-flip': [{ clipPath: 'inset(0 0 0 100%)' }, { clipPath: 'inset(0)' }], droplet: [{ clipPath: 'circle(0% at 50% 50%)', opacity: .3 }, { clipPath: 'circle(75% at 50% 50%)', opacity: 1 }],
+    swoosh: [{ transform: 'scale(.05) rotate(-10deg)' }, { transform: 'none' }], swing: [{ opacity: 0 }, { opacity: 1 }], sparkle: [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0)' }],
+    shimmer: [{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1 }], confetti: [{ transform: 'scale(.8)' }, { transform: 'none' }] }[k];
   if (frames) s.animate(frames, { duration: ms, easing: 'cubic-bezier(.26,.86,.44,.985)' });
 }
 
