@@ -9,6 +9,7 @@ $('#ed-add-text').onclick = () => { stopEdit(); startEdit(addText()); };
 /* Icon buttons that open a menu, as in Slides' toolbar. */
 const menuButton = (btn, items) => { btn.onclick = () => openAnchor === btn ? closeMenu() : openMenu(btn, items()); };
 menuButton($('#ed-add-shape'), () => shapeItems());
+menuButton($('#ed-mask'), () => shapeItems(maskImage));   // Slides' Crop ▾: Mask image → Shapes / Arrows / Callouts / Equation
 menuButton($('#ed-add-line'), () => lineItems());
 $('#ed-audio-file').onchange = async e => { stopEdit(); for (const f of e.target.files) await addAudio(f); e.target.value = ''; };
 $('#ed-video-file').onchange = async e => { stopEdit(); for (const f of e.target.files) await addVideo(f); e.target.value = ''; };

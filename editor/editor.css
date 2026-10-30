@@ -301,8 +301,8 @@ body.painting #ed-canvas, body.painting #ed-canvas .box { cursor: copy; }   /* p
 .align-btn:hover { background: var(--hover); }
 .align-btn.on { background: var(--selected); color: var(--blue); }
 #ed-toolbar button.dropdown { padding: 0 0 0 4px; }
-#ed-toolbar #ed-new-slide-more { width: 16px; min-width: 0; padding: 0; margin-left: -4px; }   /* the ▾ half of Slides' + ▾ */
-#ed-toolbar #ed-new-slide-more .icon { font-size: 18px; color: var(--muted); }
+#ed-toolbar #ed-new-slide-more, #ed-toolbar #ed-mask { width: 16px; min-width: 0; padding: 0; margin-left: -4px; }   /* the ▾ half of Slides' + ▾ (and Crop ▾) */
+#ed-toolbar #ed-new-slide-more .icon, #ed-toolbar #ed-mask .icon { font-size: 18px; color: var(--muted); }
 
 #ed-toolbar button.dropdown .caret { font-size: 18px; margin-left: -2px; color: var(--muted); }
 .find { position: fixed; top: 120px; right: 24px; z-index: 45; display: flex; flex-direction: column; gap: 10px; width: 360px; padding: 16px; background: var(--surface); border-radius: 8px; box-shadow: var(--menu-shadow); }
@@ -515,6 +515,13 @@ body.drawing #ed-stage, body.drawing #ed-stage * { cursor: crosshair !important;
   display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgb(0 0 0 / .55); color: #fff; font-size: 48px; pointer-events: none; }
 /* Crop marks, as Slides: black L-shaped corners and short bars on the sides */
 .handle.crop { background: none; box-shadow: none; border-radius: 0; border: 0 solid #000; }
+/* crop mode: the whole picture faintly around its frame, dragged to move it; Keynote's mask bar (scale, Done) under it */
+.crop-ghost { position: absolute; pointer-events: auto; cursor: move; } .crop-ghost img { display: block; width: 100%; height: 100%; opacity: .35; }
+.box.crop-pan { pointer-events: auto; cursor: move; }
+.mask-bar { position: absolute; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 12px; translate: -50% 0; scale: calc(var(--k, 1px) / 1px); transform-origin: 50% 0;
+  border-radius: 8px; background: var(--surface); box-shadow: var(--menu-shadow); pointer-events: auto; font: 14px var(--font); white-space: nowrap; }
+.mask-bar .icon { font-size: 20px; color: var(--muted); } .mask-bar input { width: 120px; }
+.mask-bar button { height: 32px; padding: 0 14px; border: 0; border-radius: 16px; background: var(--blue); color: #fff; font-weight: 500; cursor: pointer; }
 .handle.crop.nw { border-width: calc(var(--k) * 4) 0 0 calc(var(--k) * 4); } .handle.crop.ne { border-width: calc(var(--k) * 4) calc(var(--k) * 4) 0 0; }
 .handle.crop.sw { border-width: 0 0 calc(var(--k) * 4) calc(var(--k) * 4); } .handle.crop.se { border-width: 0 calc(var(--k) * 4) calc(var(--k) * 4) 0; }
 .handle.crop.n { border-top-width: calc(var(--k) * 4); } .handle.crop.s { border-bottom-width: calc(var(--k) * 4); }

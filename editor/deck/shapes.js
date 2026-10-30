@@ -408,6 +408,14 @@
   function cropBox(b) {
     const v = (b.dataset.crop || '').trim().split(/\s+/).map(Number);
     ['--ct', '--cr', '--cb', '--cl'].forEach((k, i) => { if (b.dataset.crop && isFinite(v[i])) b.style.setProperty(k, Math.max(0, Math.min(0.95, v[i]))); else b.style.removeProperty(k); });
+    maskBox(b);
+  }
+  /* data-mask="<shape>" (Mask image; Keynote's Mask with Shape): the picture's box clipped to that preset's outline. */
+  function maskBox(b) {
+    const c = b.querySelector(':scope > .content'), pr = PRESETS[PRESET_OF[b.dataset.mask || '']]; if (!c) return;
+    if (!pr || b.dataset.mask === 'rect') { c.style.removeProperty('clip-path'); return; }
+    const w = parseFloat(b.style.width) || 0, h = parseFloat(b.style.height) || 0;
+    c.style.clipPath = `path('${presetPaths(pr, evalPreset(pr, w, h, b), w, h).filter(p => p.fill).map(p => p.d).join(' ')}')`;
   }
   window.cropBox = cropBox;
   window.renderShape = renderShape;
@@ -457,7 +465,7 @@
   attachConnectors(document);   // a deck; the editor attaches each slide as it loads it
   document.querySelectorAll('.box[data-shape]').forEach(renderShape);
   document.querySelectorAll('.box[data-shadow]').forEach(shadeBox);
-  document.querySelectorAll('.box[data-crop]').forEach(cropBox);
+  document.querySelectorAll('.box[data-crop], .box[data-mask]').forEach(cropBox);
   document.querySelectorAll('.box[data-adjust]').forEach(adjustImage);
   document.querySelectorAll('.box:is([data-gradient], [data-fill-image]):not([data-shape]), .box[data-text-gradient]').forEach(gradBox);
   const fitAll = () => { document.querySelectorAll('.box[data-autofit="shrink"]').forEach(fitText); document.querySelectorAll('.reveal .present .box, #ed-canvas .box').forEach(fitTabs); };

@@ -192,6 +192,41 @@ function startCrop(e, dir) {
     setGeo(b, { x: X0 + c.l * fw, y: Y0 + c.t * fh, w: (1 - c.l - c.r) * fw, h: (1 - c.t - c.b) * fh }); cropBox(b); drawOverlay();
   }, () => { busy = false; commit(); });
 }
+/* Mask image (Slides' Crop ▾; Keynote's Mask with Shape): the picture clipped to a shape (data-mask), Rectangle takes it
+   off, then crop mode to fit it. In crop mode the whole picture shows faintly around the frame; dragging the picture moves
+   it inside the frame and the bar's slider scales it about the frame's middle (Keynote's mask bar), Done ends. */
+function maskImage(shape) {
+  const pics = [...sel].filter(b => b.querySelector(':scope > .content > img'));
+  if (!pics.length) return setStatus('Select a picture to mask', 'error');
+  pics.forEach(b => { if (shape === 'rect') delete b.dataset.mask; else b.dataset.mask = shape; cropBox(b); });
+  commit(); render(); if (pics.length === 1) enterCrop(pics[0]);
+}
+const setCrop = (b, c) => { const r3 = v => Math.round(v * 1000) / 1000; if (c.t || c.r || c.b || c.l) b.dataset.crop = [c.t, c.r, c.b, c.l].map(r3).join(' '); else delete b.dataset.crop; cropBox(b); };
+function drawCropExtras(b, g, k, host) {
+  const img = b.querySelector(':scope > .content > img'); if (!img || b.style.transform) return;   // (not on a turned picture)
+  const gh = div('crop-ghost'), pan = /** @type {HTMLElement} */ (b.cloneNode(true)), bar = div('mask-bar'); gh.append(img.cloneNode());   // the frame's part over the faint whole
+  pan.removeAttribute('id'); pan.querySelectorAll('[id]').forEach(e => e.removeAttribute('id')); pan.classList.add('crop-pan'); pan.title = gh.title = 'Drag to move the picture inside its frame';
+  let c = cropOf(b);
+  const show = () => { const fw = g.w / (1 - c.l - c.r), fh = g.h / (1 - c.t - c.b), x0 = g.x - c.l * fw, y0 = g.y - c.t * fh;
+    gh.style.cssText = `left:${x0}px;top:${y0}px;width:${fw}px;height:${fh}px`; if (b.dataset.crop) pan.dataset.crop = b.dataset.crop; else delete pan.dataset.crop; cropBox(pan); return { fw, fh }; };
+  show();
+  gh.onpointerdown = pan.onpointerdown = e => {
+    e.stopPropagation(); const p0 = toCanvas(e), c0 = c, { fw, fh } = show(); busy = true;
+    drag(e, ev => { const p = toCanvas(ev), l = Math.max(0, Math.min(c0.l + c0.r, c0.l - (p.x - p0.x) / fw)), t = Math.max(0, Math.min(c0.t + c0.b, c0.t - (p.y - p0.y) / fh));
+      c = { l, r: c0.l + c0.r - l, t, b: c0.t + c0.b - t }; setCrop(b, c); show(); }, () => { busy = false; commit(); drawOverlay(); });
+  };
+  const vw = 1 - c.l - c.r, vh = 1 - c.t - c.b, k0 = 1 / vw;   // the picture's width over the frame's
+  bar.innerHTML = `<span class="icon" title="Scale the picture">photo_size_select_large</span><input type="range" min="${Math.ceil(k0 * Math.max(vw, vh) * 100)}" max="400" value="${Math.round(k0 * 100)}" aria-label="Scale the picture"><button>Done</button>`;
+  bar.style.cssText = `left:${g.x + g.w / 2}px;top:${g.y + g.h + 14 * k}px;--k:${k}px`;
+  const sl = /** @type {HTMLInputElement} */ (bar.querySelector('input'));
+  sl.oninput = () => { const s = +sl.value / 100 / k0, cx = c.l + (1 - c.l - c.r) / 2, cy = c.t + (1 - c.t - c.b) / 2, nw = vw / s, nh = vh / s;   // about the frame's middle
+    const fit = (mid, n) => { const a = Math.max(0, Math.min(1 - n, mid - n / 2)); return [a, Math.max(0, 1 - n - a)]; };
+    const [l, r] = fit(cx, nw), [t, bt] = fit(cy, nh); c = { l, r, t, b: bt }; setCrop(b, c); show(); };
+  sl.onchange = () => { commit(); drawOverlay(); };
+  bar.querySelector('button').onclick = () => endCrop();
+  bar.onpointerdown = bar.onmousedown = e => e.stopPropagation();
+  host.append(gh, pan, bar);
+}
 
 async function addImage(file, at) {
   setStatus('Uploading image…');

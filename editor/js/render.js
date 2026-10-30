@@ -113,7 +113,7 @@ function thumbView(s) {
   c.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
   c.querySelectorAll('.box[data-shape]').forEach(renderShape);
   c.querySelectorAll('.box[data-shadow]').forEach(shadeBox);
-  c.querySelectorAll('.box[data-crop]').forEach(cropBox);
+  c.querySelectorAll('.box[data-crop], .box[data-mask]').forEach(cropBox);
   c.querySelectorAll('img').forEach(i => { freshSrc(i); stillGif(i); });
   c.querySelectorAll('video').forEach(v => { freshSrc(v); stillVideo(v); });
   c.querySelectorAll('.box.live > .content').forEach(x => { x.innerHTML = '<div class="live-still"><span class="icon">play_circle</span></div>'; });   // a thumbnail doesn't run the demo
@@ -243,7 +243,7 @@ function drawOverlay() {
       h.style.cssText = `left:${hx - (d.includes('w') ? 0 : d.includes('e') ? L : L / 2)}px;top:${hy - (d.includes('n') ? 0 : d.includes('s') ? L : L / 2)}px;width:${L}px;height:${L}px;--k:${k}px;cursor:${resizeCursor(b, d)}`;
       wrap.append(h);
     }
-    frameFor(b).append(wrap); return;
+    drawCropExtras(b, g, k, frameFor(b)); frameFor(b).append(wrap); return;
   }
   if (pointEdit === b) { drawPoints(wrap, b, g, k); frameFor(b).append(wrap); return; }   // Edit points: anchors and handles instead
   addHandles(wrap, g, dirs, d => resizeCursor(b, d), k, isLine(b));

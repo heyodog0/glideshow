@@ -47,7 +47,7 @@ if (PHONE) (() => {
     paintBg(inner, s);
     c.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
     c.querySelectorAll('aside.notes, script, .box.note').forEach(e => e.remove());   // speaker notes and notes for AI stay out of view mode
-    c.querySelectorAll('.box[data-shape]').forEach(renderShape); c.querySelectorAll('.box[data-shadow]').forEach(shadeBox); c.querySelectorAll('.box[data-crop]').forEach(cropBox);
+    c.querySelectorAll('.box[data-shape]').forEach(renderShape); c.querySelectorAll('.box[data-shadow]').forEach(shadeBox); c.querySelectorAll('.box[data-crop], .box[data-mask]').forEach(cropBox);
     inner.append(c); item.replaceChildren(inner); item.classList.add('drawn');
     highlightCode(c); renderMath(c);
   }

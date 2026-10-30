@@ -1150,6 +1150,23 @@ def checks(pg, deck: Path, errors):
     pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
     check("crop: double-click an image for black crop marks; dragging one cuts that side (data-crop) while the picture stays put; ↵ ends",
           marks == 8 and cr[:3] == ["0 0 0 0.25", "600px", "600px"] and abs(cr[3] - round(r0[0])) <= 1 and abs(cr[4] - round(r0[1])) <= 1 and cr[5] == 0, f"{marks} {cr} {r0}")
+    # Mask image (Slides' Crop ▾; Keynote's Mask with Shape, r02): clip to a shape, then move and scale the picture inside
+    mid = pg.evaluate("""(() => { const s = blankSlide(); slides.push(s); go(slides.length - 1);
+      const c = document.createElement('canvas'); c.width = 400; c.height = 300; const x = c.getContext('2d'); x.fillStyle = '#1a73e8'; x.fillRect(0, 0, 400, 300); x.fillStyle = '#fbbc04'; x.fillRect(150, 100, 100, 100);
+      const b = makeBox({x: 600, y: 300, w: 600, h: 450, cls: 'image', html: `<img src="${c.toDataURL()}" alt="">`}); s.append(b); sel = new Set([b]); render(); updateToolbar(); return b.id; })()""")
+    pg.click("#ed-mask"); groups = pg.evaluate("[...document.querySelectorAll('.menu .menu-item .menu-label')].map(e => e.textContent)"); pg.evaluate("closeMenu()")
+    mk = pg.evaluate("""(() => { const t0 = performance.now(); maskImage('ellipse'); const ms = performance.now() - t0, b = boxes()[0];
+      return [b.dataset.mask, b.querySelector('.content').style.clipPath.startsWith('path('), cropping === b, !!document.querySelector('#ed-ui .crop-ghost'), !!document.querySelector('#ed-ui .mask-bar input'), Math.round(ms)]; })()""")
+    pg.evaluate("(() => { const sl = document.querySelector('#ed-ui .mask-bar input'); sl.value = '200'; sl.oninput(); sl.onchange(); })()")
+    scaled = pg.evaluate("boxes()[0].dataset.crop")
+    pc = pg.evaluate("(() => { const r = document.querySelector('#ed-ui .crop-pan').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2, scale]; })()")
+    pg.mouse.move(pc[0], pc[1]); pg.mouse.down(); pg.mouse.move(pc[0] - 100 * pc[2], pc[1], steps=5); pg.mouse.up()
+    panned = pg.evaluate("[boxes()[0].dataset.crop, boxes()[0].style.left, boxes()[0].style.width]"); pg.screenshot(path=str(HERE / "mask-image.png"))
+    pg.click("#ed-ui .mask-bar button"); done = pg.evaluate("cropping === null")
+    pg.evaluate("(() => { slides.pop(); go(slides.length - 1); sel.clear(); render(); commit(); })()")
+    check(f"Mask image (Crop ▾ → Shapes / Arrows / Callouts / Equation): clips the picture to an oval (data-mask) and opens crop mode with the faint whole picture and a Scale / Done bar ({mk[5]} ms); Scale 200% crops about the middle; dragging the picture moves it inside the frame; Done ends",
+          groups[:4] == ["Shapes", "Arrows", "Callouts", "Equation"] and mk[:5] == ["ellipse", True, True, True, True] and mk[5] < 100 and scaled == "0.25 0.25 0.25 0.25"
+          and panned[0] == "0.25 0.167 0.25 0.333" and panned[1:] == ["600px", "600px"] and done, f"{groups} {mk} {scaled} {panned} {done}")
     up = pg.evaluate("""(async () => { const c = document.createElement('canvas'); c.width = 300; c.height = 150; c.getContext('2d').fillRect(0, 0, 300, 150);
       const blob = await new Promise(r => c.toBlob(r, 'image/png')); return (await (await fetch('/api/upload?ext=png', { method: 'POST', body: blob })).json()).src; })()""")
     pu = pg.evaluate("""(async url => { const s = blankSlide(); slides.push(s); go(slides.length - 1); sel.clear(); render();

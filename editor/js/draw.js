@@ -28,7 +28,7 @@ const shapePic = (shape, extra = {}) => {
   if (t.trim()) svg.innerHTML = `<g transform="${t}">${svg.innerHTML}</g>`;
   return svg.outerHTML.replace('class="shape"', 'class="shape-pic"');
 };
-const shapeItems = () => SHAPE_GROUPS.map(([label, icon, list]) => ({ label, icon, items: () => list.map(it => it === '-' ? it : (([v, l, extra]) => ({ label: l, cell: true, svg: shapePic(v, extra), run: () => armShape(v, extra) }))(it)) }));
+const shapeItems = (pick = armShape) => SHAPE_GROUPS.map(([label, icon, list]) => ({ label, icon, items: () => list.map(it => it === '-' ? it : (([v, l, extra]) => ({ label: l, cell: true, svg: shapePic(v, extra), run: () => pick(v, extra) }))(it)) }));
 let drawing = null;   // the shape waiting to be drawn
 function armShape(shape, extra) { stopEdit(); drawing = { shape, extra, pts: POINT_TOOLS.includes(shape) ? [] : null }; document.body.classList.add('drawing'); setStatus('Click or drag on the slide to draw'); }
 function disarmShape() { drawing = null; document.body.classList.remove('drawing'); setStatus(''); }

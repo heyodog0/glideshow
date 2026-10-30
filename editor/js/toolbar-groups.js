@@ -38,7 +38,7 @@ if (GROUPED) {
   // Format options as an icon; Replace image shorter; Animate is Insert → Animation
   const fo = $('#ed-format-options'); fo.classList.remove('text'); fo.innerHTML = '<span class="icon">tune</span>';
   $('#ed-replace-image').textContent = 'Replace';
-  g(5).prepend($('#ed-crop'));
+  g(5).prepend($('#ed-crop')); $('#ed-crop').after($('#ed-mask'));
   FORMAT_MENU.push('-', /** @type {any} */ ({ label: 'Paint format', icon: 'format_paint', run: () => $('#ed-paint-format').click() }));
   addEventListener('pointerdown', e => {
     if (openTray && ![openTray.tray, openTray.btn, openMenuEl, ...subMenus].some(el => el?.contains(e.target))) closeTray();
