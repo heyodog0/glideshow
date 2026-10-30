@@ -74,6 +74,7 @@ const EFFECTS = [['appear', 'Appear'], ['fade-in', 'Fade in'], ['fade-right', 'F
   ['cube-in', 'Cube', 1], ['flip-in', 'Flip', 1], ['spin-y', 'Spin', 1], ['pivot-in', 'Pivot', 1], ['twist-scale', 'Twist and scale', 1], ['squish-in', 'Squish', 1],
   ['sparkle-in', 'Sparkle', 1], ['shimmer-in', 'Shimmer', 1], ['confetti-in', 'Confetti', 1], ['flash-in', 'Flash bulbs', 1], ['fireworks-in', 'Fireworks', 1],
   ['skid-in', 'Skid', 1], ['swoosh-in', 'Swoosh', 1], ['trace-in', 'Trace', 1], ['lens-in', 'Lens flare', 1], ['flame-in', 'Flame', 1],
+  ['anvil-in', 'Anvil', 1], ['blast-in', 'Blast', 1], ['bouncy-in', 'Bouncy', 1], ['comet-in', 'Comet', 1],
   ['disappear', 'Disappear', 1], ['blur-out', 'Blur out', 1], ['scale-out', 'Scale out', 1], ['iris-out', 'Iris out', 1]];
 const effectOf = b => EFFECTS.find(([c]) => b.classList.contains(c))?.[0] || 'fade-in';
 const animBoxes = () => boxes().filter(b => b.classList.contains('fragment'))
@@ -348,6 +349,12 @@ async function playAnims() {
     'fireworks-in': [{ opacity: 0 }, { opacity: 1, offset: .65 }, { opacity: 1 }], 'skid-in': [{ translate: `-${W}px 0` }, { translate: '0 0', offset: .22 }, { translate: '0 0' }],
     'swoosh-in': [{ translate: '30% -40%', scale: .05, rotate: '-50deg' }, { translate: '0 0', scale: 1, rotate: '0deg' }], 'trace-in': [{ opacity: 0 }, { opacity: 1 }],
     'lens-in': [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 100% 0 0)', offset: .5 }, { clipPath: 'inset(0)', offset: .7 }, { clipPath: 'inset(0)' }], 'flame-in': [{ opacity: 0 }, { opacity: 0, offset: .4 }, { opacity: 1, offset: .6 }, { opacity: 1 }],
+    'anvil-in': [{ translate: `0 -${H}px`, easing: 'cubic-bezier(.5, 0, 1, 1)' }, { translate: '0 0', offset: .12 }, { translate: '0 0' }],   // (the dust, Blast's shards and Comet's trail play in the slideshow)
+    'blast-in': [{ opacity: 0, scale: 1.4, filter: 'blur(6px)' }, { opacity: 1, scale: 1, filter: 'blur(0)', offset: .85 }, { opacity: 1, scale: 1, filter: 'blur(0)' }],
+    'bouncy-in': [{ translate: '-60% 160%', transform: 'skewX(35deg) scale(.6, .15)' }, { translate: '-25% 60%', transform: 'skewX(-30deg) scale(1.1, .7)', offset: .25 }, { translate: '0 40%', transform: 'scale(1, .8)', offset: .45 },
+      { translate: '0 -12%', transform: 'scale(.95, 1.08)', offset: .6 }, { translate: '0 6%', transform: 'scale(1.06, .94)', offset: .75 }, { translate: '0 -2%', transform: 'none', offset: .88 }, { translate: '0 0', transform: 'none' }],
+    'comet-in': Array.from({ length: 21 }, (_, i) => { const t = i / 20, [a, b] = t < .3 ? [3.5 - 1.95 * t / .3, 0] : t < .8 ? [1.2 + .35 * Math.cos((t - .3) / .5 * 2 * Math.PI), -.6 * Math.sin((t - .3) / .5 * 2 * Math.PI)] : [1.55 * (1 - (t - .8) / .2) ** 2, 0];
+      return { translate: `${a * 100}% ${b * 100}%`, opacity: t < .95 ? .35 : 1, filter: t < .95 ? 'blur(8px)' : 'none', easing: 'linear' }; }),
     'blur-out': [{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(24px)' }], 'scale-out': [{ scale: 1 }, { scale: 0 }], 'iris-out': [{ clipPath: 'circle(75% at 50% 50%)' }, { clipPath: 'circle(0% at 50% 50%)' }], pop: [{ scale: 1 }, { scale: 1.25, offset: .3 }, { scale: .95, offset: .6 }, { scale: 1 }] };
   const spin = b => [{ rotate: '0deg' }, { rotate: (b.dataset.angle ?? 360) + 'deg' }];
   const move = b => { const g = geo(b); return Array.from({ length: 25 }, (_, i) => { const p = movePoint(b, i / 24); return { translate: `${p.x - g.x}px ${p.y - g.y}px`, rotate: p.a + 'deg' }; }); };
@@ -358,14 +365,14 @@ async function playAnims() {
     if (i && !['after', 'transition'].includes(startOf(step[0]))) await wait(250);   // a click, in the preview
     if (['after', 'transition'].includes(startOf(step[0]))) await wait((+step[0].dataset.delay || 0) * 1000);
     await Promise.all(step.map(b => { b.style.visibility = '';
-      const ln = STROKE_ONLY.includes(effectOf(b)) && b.querySelector('svg.shape path.l[pathLength]');   // Line draw: the stroke draws (or undraws)
+      const lns = STROKE_ONLY.includes(effectOf(b)) ? [...b.querySelectorAll('svg.shape path.l[pathLength]')] : [], ln = lns[0];   // Line draw: the stroke draws (or undraws), and a brush's mask with it
       if (ln) {   // its Direction; the erase from where it started; the arrowheads riding the ends
         const dir = b.dataset.direction, er = effectOf(b) === 'line-erase', ms = (+b.dataset.duration || 0.5) * 1000, off = (dir === 'end') !== er ? -1 : 1;
-        if (dir !== 'middle') ln.style.strokeDasharray = '1 1';
+        if (dir !== 'middle') lns.forEach(l => { l.style.strokeDasharray = '1 1'; });
         const lkf = dir === 'middle' ? (er ? [{ strokeDasharray: '.5 0 .5 1' }, { strokeDasharray: '0 1 0 1' }] : [{ strokeDasharray: '0 .5 0 1' }, { strokeDasharray: '0 0 1 1' }])
           : er ? [{ strokeDashoffset: 0 }, { strokeDashoffset: off }] : [{ strokeDashoffset: off }, { strokeDashoffset: 0 }];
-        const run = ln.animate(lkf, { duration: ms, easing: b.dataset.ease || 'ease' }); rideLineEnds(b, ms);
-        return run.finished.then(() => { ln.style.strokeDasharray = ''; }); }
+        const runs = lns.map(l => l.animate(lkf, { duration: ms, easing: b.dataset.ease || 'ease' })); rideLineEnds(b, ms);
+        return Promise.all(runs.map(r => r.finished)).then(() => lns.forEach(l => { l.style.strokeDasharray = ''; })); }
       return b.animate(effectOf(b) === 'spin' ? spin(b) : effectOf(b) === 'move-to' ? move(b) : kf[effectOf(b)], { duration: (+b.dataset.duration || 0.5) * 1000, delay: startOf(b) === 'with' || startOf(b) === 'click' ? (+b.dataset.delay || 0) * 1000 : 0, easing: b.dataset.ease || 'ease', fill: 'backwards' }).finished; }));
   }
 }

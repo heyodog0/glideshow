@@ -75,7 +75,7 @@ Rules:
   styled with `--fill`, `--stroke`, `--sw`; `data-dash="dot|dash|dashdot|longdash|longdashdot"` dashes the outline (text boxes too). Lines take
   `data-start` / `data-end` = `none | arrow | fill-arrow | circle | square | diamond | open-arrow | open-circle | open-square | open-diamond | barb-arrow | tail-arrow | bar`
   (`barb-arrow` has a notched back, `tail-arrow` is a small arrow pointing back into the line, `bar` a stroke across its end; `arrowline` is a line whose end defaults to `fill-arrow`).
-  `data-brush` on a line or open drawing draws its stroke as a brush: `speckled | rounded | tapered | rough | swelled` (Keynote's five brushes, named by their look; instead of `data-dash`). Ends grow with the line weight as in Slides (an arrow is ~9.4× the weight long).
+  `data-brush` on a line or open drawing draws its stroke as a brush: `speckled | rounded | tapered | rough | swelled` (Keynote's five brushes, named by their look; instead of `data-dash`; Line Draw draws it in and out as its brush). Ends grow with the line weight as in Slides (an arrow is ~9.4× the weight long).
   `elbow` and `curve` are connectors drawn corner to corner like lines,
   leaving and arriving horizontally (a right-angle step, or an S-curve).
   `wordart` draws the box's text as one line of letters stretched to the box (fill `--fill`, outline `--stroke` / `--sw`; font from `.content`).
@@ -156,7 +156,7 @@ Rules:
   (Rotate by `data-angle` degrees, 360 by default, negative counterclockwise; it stays turned), `pulse`, `pop` (Pop emphasis).
   More effects: in `blur-in`, `drop-in` (falls in and bounces), `spin-in` (Twirl: a flat spin), `iris-in`, `scale-big` (from three times its size),
   `drift-in`, `drift-scale`, `fade-move-in`, `fade-scale`, `blinds-in` (seven slats), `cube-in`, `flip-in`, `spin-y` (Spin: a turn about
-  the vertical axis), `pivot-in`, `twist-scale`, `squish-in` (falls and bounces, squashing), and Keynote's special effects `sparkle-in`, `shimmer-in`, `confetti-in`, `flash-in`, `fireworks-in`, `trace-in`, `lens-in`, `flame-in` (present.js draws their particles), `skid-in`, `swoosh-in`;
+  the vertical axis), `pivot-in`, `twist-scale`, `squish-in` (falls and bounces, squashing), and Keynote's special effects `sparkle-in`, `shimmer-in`, `confetti-in`, `flash-in`, `fireworks-in`, `trace-in`, `lens-in`, `flame-in`, `anvil-in` (falls and lands in dust), `blast-in` (shards fly together), `comet-in` (loops in from the right with a trail) (present.js draws their particles and shards), `skid-in`, `swoosh-in`, `bouncy-in` (springs up on a slant, squashes and settles);
   out `disappear`, `blur-out`, `scale-out`, `iris-out`.
   `move-to` (Move): the box moves to `data-to="x,y"` (its top-left there, in slide px; moving the box keeps the end) and
   stays; a straight path, or a curve with `data-via="x,y"` (the box's top-left halfway: the path is the quadratic Bézier

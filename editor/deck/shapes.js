@@ -46,10 +46,12 @@
      their dashes and just appear. */
   /* data-brush (Keynote's brush strokes, k15; it shows them as pictures only, so they're named here by their look):
      "tapered" (pointed at both ends), "swelled" (thicker at both ends) and "rounded" are outlines filled along the line,
-     "rough" frays its edges and "speckled" breaks it into grain (SVG filters). Not with Line Draw, which draws the stroke. */
+     "rough" frays its edges and "speckled" breaks it into grain (SVG filters). With Line Draw the brush draws in: a filtered
+     stroke draws as itself; an outline is shown through a mask holding the stroke (class l, pathLength 1), which base.css
+     draws as it would the line, while the line itself stays as an unpainted stroke for rideLineEnds. */
   const BRUSH_W = { tapered: t => Math.pow(Math.sin(Math.PI * t), 0.6), swelled: t => 0.55 + 0.75 * Math.pow(Math.abs(2 * t - 1), 2), rounded: t => 1.3 * (t < 0.03 ? Math.sqrt(1 - Math.pow(1 - t / 0.03, 2)) : t > 0.85 ? 1 - (t - 0.85) / 0.15 * 0.45 : 1) };
   function brushed(main, b, width) {
-    const kind = b.dataset.brush; if (!kind || b.matches('.line-draw, .line-erase')) return [main];
+    const kind = b.dataset.brush; if (!kind) return [main];
     if (BRUSH_W[kind]) {   // an outline round the line, its width following the profile
       const probe = el('svg', {}); probe.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden'; const pp = el('path', { d: main.getAttribute('d') || '' }); probe.append(pp); document.body.append(probe);
       const L = pp.getTotalLength(), n = 64, pts = Array.from({ length: n + 1 }, (_, i) => pp.getPointAtLength(L * i / n)); probe.remove();
@@ -57,7 +59,12 @@
       const side = s => pts.map((p, i) => { const q = pts[Math.min(n, i + 1)], o = pts[Math.max(0, i - 1)], dx = q.x - o.x, dy = q.y - o.y, m = Math.hypot(dx, dy) || 1, w = width / 2 * BRUSH_W[kind](i / n);
         return `${(p.x - dy / m * w * s).toFixed(1)},${(p.y + dx / m * w * s).toFixed(1)}`; });
       const outline = el('path', { d: `M${side(1).join('L')}L${side(-1).reverse().join('L')}Z` }, 'brush'); outline.style.fill = 'var(--stroke, #333)';
-      return [outline];
+      if (!main.hasAttribute('pathLength')) return [outline];
+      const id = 'bm-' + (b.id || Math.random().toString(36).slice(2)), pad = width * 2 + 8, W0 = parseFloat(b.style.width) || 0, H0 = parseFloat(b.style.height) || 0;
+      const mask = el('mask', { id, maskUnits: 'userSpaceOnUse', x: String(-pad), y: String(-pad), width: String(W0 + 2 * pad), height: String(H0 + 2 * pad) }), mp = el('path', { d: main.getAttribute('d') || '', pathLength: '1' }, 'l');
+      mp.style.cssText = `stroke: #fff; stroke-width: ${width * 1.5}px; stroke-linecap: butt`; mask.append(mp); outline.setAttribute('mask', `url(#${id})`); main.style.stroke = 'transparent';
+      const defs = el('defs', {}); defs.append(mask);
+      return [defs, outline, main];
     }
     const W0 = parseFloat(b.style.width) || 0, H0 = parseFloat(b.style.height) || 0, pad = width * 3 + 8;   // a region in user space: a flat line's box has no height
     const id = 'br-' + (b.id || Math.random().toString(36).slice(2)), f = el('filter', { id, filterUnits: 'userSpaceOnUse', x: String(-pad), y: String(-pad), width: String(W0 + 2 * pad), height: String(H0 + 2 * pad) });

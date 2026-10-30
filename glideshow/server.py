@@ -574,6 +574,8 @@ def main():
             try:
                 deck = Handler.deck
                 for fid, cmd in figures(deck):   # every figure's files are followed from the start; only an approved one acts
+                    if (str(deck), fid) not in PENDING and trust_state(deck, cmd) == "changed":   # its code changed (even before its files' times were first seen)
+                        PENDING[(str(deck), fid)] = code_hash(deck, cmd)
                     for f in watched_files(deck, cmd):
                         key, t = (str(deck), fid, str(f)), f.stat().st_mtime
                         if key in seen and seen[key] != t:

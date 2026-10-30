@@ -110,7 +110,7 @@
     all.forEach(sl => {
       const frags = [...sl.querySelectorAll('.box.fragment[data-build]')].sort((a, b) => (+a.dataset.fragmentIndex || 0) - (+b.dataset.fragmentIndex || 0));
       frags.reverse().forEach(box => {   // from the last, so each one's room doesn't move the ones before it
-        const mode = box.dataset.build, cls = [...box.classList].filter(c => /^(appear|fade-[\w-]+|zoom-in|wipe-[rldu]|move-in-[rldu]|scale-in|pop-in|spin|pulse|pop|line-draw|line-erase|move-to|blur-in|drop-in|spin-in|iris-in|scale-big|disappear|blur-out|scale-out|iris-out|sparkle-in|shimmer-in|confetti-in|flash-in|fireworks-in|skid-in|swoosh-in|trace-in|lens-in|flame-in|drift-in|drift-scale|fade-move-in|fade-scale|blinds-in|cube-in|flip-in|spin-y|pivot-in|twist-scale|squish-in|grow|shrink|strike|semi-fade-out|current-visible|highlight-[\w-]+)$/.test(c));   // its effect
+        const mode = box.dataset.build, cls = [...box.classList].filter(c => /^(appear|fade-[\w-]+|zoom-in|wipe-[rldu]|move-in-[rldu]|scale-in|pop-in|spin|pulse|pop|line-draw|line-erase|move-to|blur-in|drop-in|spin-in|iris-in|scale-big|disappear|blur-out|scale-out|iris-out|sparkle-in|shimmer-in|confetti-in|flash-in|fireworks-in|skid-in|swoosh-in|trace-in|lens-in|flame-in|anvil-in|blast-in|bouncy-in|comet-in|drift-in|drift-scale|fade-move-in|fade-scale|blinds-in|cube-in|flip-in|spin-y|pivot-in|twist-scale|squish-in|grow|shrink|strike|semi-fade-out|current-visible|highlight-[\w-]+)$/.test(c));   // its effect
         if (mode === 'word' || mode === 'character') { wordByWord(box, mode, cls); return; }
         /* a table by row / column / cell, each also "-content" (the grid stays, the cells' contents build) and "-reverse"
            (last first): Keynote's 13; text by paragraph (each bullet, sub-bullets too), "group" (a bullet with its
@@ -417,10 +417,11 @@
     Promise.all(anims.map(a => a.finished)).then(() => layer.remove(), () => layer.remove());
   });
   /* Keynote's special effects (r08b): particles drawn on a canvas over the box (and a margin round it) while it builds in. */
-  const PARTICLES = { 'sparkle-in': 1.4, 'shimmer-in': 1.2, 'confetti-in': 1.5, 'flash-in': 1.2, 'fireworks-in': 2.8, 'trace-in': 1.2, 'lens-in': 1.2, 'flame-in': 2.2, 'confetti-out': 1.75 };
+  const PARTICLES = { 'sparkle-in': 1.4, 'shimmer-in': 1.2, 'confetti-in': 1.5, 'flash-in': 1.2, 'fireworks-in': 2.8, 'trace-in': 1.2, 'lens-in': 1.2, 'flame-in': 2.2, 'confetti-out': 1.75, 'anvil-in': 1.5, 'comet-in': 1.2 };
   const particles = box => {
     const kind = Object.keys(PARTICLES).find(k => box.classList.contains(k)); if (!kind || !box.parentElement) return;
     const st = box.style, x = parseFloat(st.left) || 0, y = parseFloat(st.top) || 0, w = parseFloat(st.width) || 100, h = parseFloat(st.height) || 100;
+    if (kind === 'comet-in') return comet(box, x, y, w, h);
     const m = kind === 'confetti-in' || kind === 'fireworks-in' ? Math.max(w, h) : kind === 'confetti-out' ? Math.max(w, h) * 0.2 : Math.max(w, h) * 0.3, cv = document.createElement('canvas');
     cv.width = Math.round(w + 2 * m); cv.height = Math.round(h + 2 * m); cv.className = 'gs-particles';
     Object.assign(cv.style, { position: 'absolute', left: x - m + 'px', top: y - m + 'px', width: cv.width + 'px', height: cv.height + 'px', pointerEvents: 'none', zIndex: '50' });
@@ -440,6 +441,10 @@
       else if (kind === 'flame-in') P.forEach(p => { const born = p.a * 0.7, life = (t - born) / 0.3; if (life < 0 || life > 1) return;   // flames rising from its bottom edge, then smoke
         const px = m + w * p.x + Math.sin((now / 90) + p.b * 9) * 8, py = m + h - life * h * (0.6 + 0.6 * p.c), r = (1 - life) * (14 + 26 * p.c);
         c.globalAlpha = (1 - life) * (t > 0.75 ? (1 - t) * 4 : 1) * 0.8; c.fillStyle = life < 0.3 ? '#ffd54f' : life < 0.65 ? '#ff7043' : '#9e9e9e'; c.beginPath(); c.arc(px, py, r, 0, 7); c.fill(); });
+      else if (kind === 'anvil-in') P.forEach((p, i) => { const life = (t - 0.1 - p.a * 0.05) / 0.85; if (life < 0 || life > 1) return;   // it lands (12%): dust puffs out along its bottom edge, and specks
+        const out = (p.x - 0.5) * 2, px = m + w * (0.5 + out * (0.5 + 0.25 * life)), py = m + h - h * 0.08 - life * h * 0.25 * p.b, r = (0.2 + 0.25 * p.c) * Math.min(w, h) * (0.7 + 0.6 * life);
+        if (i % 4) { const gr = c.createRadialGradient(px, py, 0, px, py, r); gr.addColorStop(0, 'rgba(255,255,255,.7)'); gr.addColorStop(0.5, 'rgba(255,255,255,.3)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.globalAlpha = (1 - life) * 0.8; c.fillStyle = gr; c.fillRect(px - r, py - r, 2 * r, 2 * r); }
+        else { c.globalAlpha = 1 - life; c.fillStyle = '#fff'; c.fillRect(m + w * p.x, m + h * (1 - p.b * (0.3 + life)), 2, 2); } });
       else if (kind === 'confetti-out') P.forEach(p => { const k = t * (2 - t), sx = m + w * p.x, sy = m + h * p.y, an = p.a * 7, d = (0.3 + p.b) * Math.max(w, h) * 0.7;   // the old slide shattering outward
         c.globalAlpha = 1 - t; c.fillStyle = fill; c.fillRect(sx + Math.cos(an) * d * k, sy + Math.sin(an) * d * k, 5, 5); });
       else if (kind === 'sparkle-in') P.forEach(p => { const fx = m + w * t - p.a * 60, py = m + h * p.y, life = 1 - Math.abs(p.b - 0.5) * 2; star(fx + p.c * 30, py, 6 + 14 * p.c, '#fff', Math.max(0, life * (t < 1 ? 1 : 0))); });
@@ -459,7 +464,40 @@
     };
     requestAnimationFrame(frame);
   };
+  /* Comet (r08e): the box loops in from its right (base.css gs-comet-in); a blurred trail follows it, drawn on a canvas over the
+     slide. COMET is that path, in box widths and heights from where it ends. */
+  const COMET = s => s < 0.3 ? [3.5 - 1.95 * s / 0.3, 0] : s < 0.8 ? [1.2 + 0.35 * Math.cos((s - 0.3) / 0.5 * 2 * Math.PI), -0.6 * Math.sin((s - 0.3) / 0.5 * 2 * Math.PI)] : [1.55 * (1 - (s - 0.8) / 0.2) ** 2, 0];
+  const comet = (box, x, y, w, h) => {
+    const W = Reveal.getConfig().width, H = Reveal.getConfig().height, cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.className = 'gs-particles';
+    Object.assign(cv.style, { position: 'absolute', left: '0px', top: '0px', width: W + 'px', height: H + 'px', pointerEvents: 'none', zIndex: '50' }); box.after(cv);
+    const c = /** @type {CanvasRenderingContext2D} */ (cv.getContext('2d')), fill = getComputedStyle(box).getPropertyValue('--fill').trim() || '#4285f4';
+    const ms = (+box.dataset.duration || 1.2) * 1000, t0 = performance.now(), at = s => { const [a, b] = COMET(Math.max(0, s)); return [x + w / 2 + a * w, y + h / 2 + b * h]; };
+    c.filter = `blur(${Math.max(4, h * 0.08)}px)`; c.strokeStyle = fill; c.lineCap = 'round';
+    const frame = now => {
+      const t = Math.min(1, (now - t0) / ms); c.clearRect(0, 0, W, H);
+      for (let k = 0; k < 24; k++) { const s0 = t - 0.35 * (k + 1) / 24, s1 = t - 0.35 * k / 24; if (s1 <= 0) break;   // the trail: thinner and fainter behind
+        const [ax, ay] = at(s0), [bx, by] = at(s1); c.globalAlpha = 0.6 * (1 - k / 24) * (t > 0.9 ? (1 - t) * 10 : 1); c.lineWidth = h * 0.55 * (1 - k / 30);
+        c.beginPath(); c.moveTo(ax, ay); c.lineTo(bx, by); c.stroke(); }
+      if (t < 1) requestAnimationFrame(frame); else cv.remove();
+    };
+    requestAnimationFrame(frame);
+  };
+  /* Blast (r08e): shards of the box (copies clipped to triangles) fly together from all round and it appears as they meet. */
+  const blast = box => {
+    if (!box.classList.contains('blast-in') || !box.parentElement) return;
+    const ms = (+box.dataset.duration || 1.1) * 1000, rnd = (() => { let s = 11; return () => (s = (s * 16807) % 2147483647) / 2147483647; })(), parts = [];
+    const pts = [[0, 0], [50, 0], [100, 0], [0, 50], [45 + rnd() * 10, 45 + rnd() * 10], [100, 50], [0, 100], [50, 100], [100, 100]];
+    [[0, 1, 4], [1, 2, 4], [2, 5, 4], [5, 8, 4], [8, 7, 4], [7, 6, 4], [6, 3, 4], [3, 0, 4]].forEach(tri => {
+      const p = /** @type {HTMLElement} */ (box.cloneNode(true)); p.removeAttribute('id'); p.classList.remove('fragment', 'visible', 'current-fragment', 'blast-in'); p.removeAttribute('data-fragment-index');
+      p.style.clipPath = `polygon(${tri.map(i => pts[i].map(v => v + '%').join(' ')).join(', ')})`; p.style.pointerEvents = 'none'; box.after(p); parts.push(p);
+      const an = rnd() * Math.PI * 2, d = 1.2 + rnd();
+      p.animate([{ opacity: 0.2, translate: `${Math.cos(an) * d * 100}% ${Math.sin(an) * d * 100}%`, rotate: `${(rnd() - 0.5) * 540}deg`, scale: 1.4 }, { opacity: 1, translate: '0 0', rotate: '0deg', scale: 1 }],
+        { duration: ms * 0.83, easing: 'cubic-bezier(.2, .6, .4, 1)', fill: 'both' });
+    });
+    setTimeout(() => parts.forEach(p => p.remove()), ms * 0.86);
+  };
   Reveal.on('fragmentshown', e => e.fragments?.forEach(particles));
+  Reveal.on('fragmentshown', e => e.fragments?.forEach(blast));
   /* …and the slide transitions Sparkle, Shimmer, Confetti: the same particles over the whole slide, with its own colour */
   Reveal.on('slidechanged', e => {
     const s = e.currentSlide, k = { sparkle: ['sparkle-in', 1.7], shimmer: ['shimmer-in', 1.5], confetti: ['confetti-out', 1.75] }[s?.dataset.transition]; if (!k) return;

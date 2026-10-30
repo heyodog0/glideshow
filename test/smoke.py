@@ -2181,10 +2181,21 @@ def reveal_checks(b, errors, deck_file: Path):
       const out = [g?.label, [...(g?.children || [])].map(o => o.value), [...(t?.children || [])].map(o => o.textContent)]; setTransPanel(false); return out; }""")
     check("Motion panel → More effects (D7): Blur, Drop, Spin, Iris, Scale big in; Disappear, Blur, Scale, Iris out; transitions Iris and Reveal",
           more[0] == "More effects" and more[1] == ["blur-in", "drop-in", "spin-in", "iris-in", "scale-big", "drift-in", "drift-scale", "fade-move-in", "fade-scale", "blinds-in",
-          "cube-in", "flip-in", "spin-y", "pivot-in", "twist-scale", "squish-in", "sparkle-in", "shimmer-in", "confetti-in", "flash-in", "fireworks-in", "skid-in", "swoosh-in", "trace-in", "lens-in", "flame-in", "disappear", "blur-out", "scale-out", "iris-out"] and more[2][:2] == ["Iris", "Reveal"], str(more))
+          "cube-in", "flip-in", "spin-y", "pivot-in", "twist-scale", "squish-in", "sparkle-in", "shimmer-in", "confetti-in", "flash-in", "fireworks-in", "skid-in", "swoosh-in", "trace-in", "lens-in", "flame-in", "anvil-in", "blast-in", "bouncy-in", "comet-in", "disappear", "blur-out", "scale-out", "iris-out"] and more[2][:2] == ["Iris", "Reveal"], str(more))
     pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1); slides[cur].dataset.k9 = '';
       ['sparkle-in', 'shimmer-in', 'confetti-in', 'flash-in', 'fireworks-in', 'skid-in', 'swoosh-in', 'trace-in', 'lens-in', 'flame-in'].forEach((e, i) => { const b = makeBox({ x: 100 + (i % 5) * 350, y: 200 + Math.floor(i / 5) * 400, w: 250, h: 200, html: e }); b.style.setProperty('--fill', '#1a73e8'); slides[cur].append(b); render(); sel = new Set([b]); addAnim(); setEffect(b, e); });
       commit(); render(); }""")
+    # r08e: Anvil, Blast, Bouncy, Comet; and brushed lines with Line Draw (in and out), played in the slideshow below
+    r8e = pg.evaluate("""async () => { slides.push(document.createElement('section')); go(slides.length - 1); slides[cur].dataset.r08e = '';
+      ['anvil-in', 'blast-in', 'bouncy-in', 'comet-in'].forEach((e, i) => { const b = makeBox({ x: 100 + i * 300, y: 300, w: 200, h: 150, html: e }); b.style.setProperty('--fill', '#1a73e8'); slides[cur].append(b); render(); sel = new Set([b]); addAnim(); setEffect(b, e); });
+      const mk = (y, brush, eff) => { const l = makeBox({ x: 200, y, w: 1400, h: 0, shape: 'line' }); l.style.setProperty('--sw', '16px'); l.dataset.brush = brush; slides[cur].append(l); render(); sel = new Set([l]); addAnim(); setEffect(l, eff); l.dataset.duration = '1'; return l; };
+      const t = mk(650, 'tapered', 'line-draw'), r = mk(800, 'rough', 'line-draw'), e = mk(950, 'swelled', 'line-erase'); commit(); render();
+      const svg = t.querySelector('svg.shape'), mp = svg.querySelector('mask path.l[pathLength]'), ok = [EFFECTS.filter(x => /^(anvil|blast|bouncy|comet)-in$/.test(x[0])).map(x => x[1]).join('/'),
+        !!svg.querySelector(':scope > path.brush[mask]'), !!mp, getComputedStyle(svg.querySelector(':scope > path.l')).stroke, !!r.querySelector('svg.shape > path.l[pathLength][filter]')];
+      setTransPanel(true); const t0 = performance.now(); playAnims(); ok.push(Math.round(performance.now() - t0));
+      let drew = false; for (let i = 0; i < 80 && !drew; i++) { await new Promise(r => setTimeout(r, 50)); drew = mp.getAnimations().length > 0; } ok.push(drew); setTransPanel(false); return ok; }""")
+    check(f"r08e builds Anvil, Blast, Bouncy, Comet under More effects; a brushed line with Line Draw keeps its brush (Tapered: its outline shown through a mask that draws as the line; Rough: its filtered stroke draws), and the editor's preview draws the mask ({r8e[5]} ms to start)",
+          r8e[0] == "Anvil/Blast/Bouncy/Comet" and r8e[1] and r8e[2] and r8e[3] in ("transparent", "rgba(0, 0, 0, 0)") and r8e[4] and r8e[5] < 100 and r8e[6], str(r8e))
     # the rest of Keynote's (r08): builds and transitions under More effects
     k8 = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1); slides[cur].dataset.transition = 'fade-black'; slides[cur].dataset.k8 = '';
       const effs = ['drift-in', 'drift-scale', 'fade-move-in', 'fade-scale', 'blinds-in', 'cube-in', 'flip-in', 'spin-y', 'pivot-in', 'twist-scale', 'squish-in'];
@@ -2296,7 +2307,7 @@ def reveal_checks(b, errors, deck_file: Path):
           and b0[0][0] == "inset(0px 100% 0px 0px)" and b0[0][3] == "hidden" and b0[1][1].startswith("1920px") and b0[2][2] == "0" and b0[3][2] == "0" and b0[4][3] == "visible"
           and b1[0][0] in ("inset(0px)", "none") and b1[1][1] == "none" and b1[2][2] in ("none", "1") and b1[3][2] in ("none", "1") and b1[4][3] == "90deg"
           and b1[5][2] in ("none", "1") and float(b1[5][5]) > 1, f"{kb}")
-    lv = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => x.querySelector('.box.line-draw')), h = Reveal.getIndices(s).h, b = s.querySelector('.box.line-draw'),
+    lv = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => !('r08e' in x.dataset) && x.querySelector('.box.line-draw')), h = Reveal.getIndices(s).h, b = s.querySelector('.box.line-draw'),
       p = b.querySelector('path.l'), head = b.querySelector('svg.shape > :not(.l):not(.hit):not(defs)'), cs = e => getComputedStyle(e), wait = ms => new Promise(r => setTimeout(r, ms));
       Reveal.slide(h, 0, -1); await wait(900); const before = [parseFloat(cs(p).strokeDashoffset), +cs(head).opacity];
       Reveal.nextFragment(); await wait(200); const mid = parseFloat(cs(p).strokeDashoffset), ride = [+cs(head).opacity, /^translate/.test(head.getAttribute('transform') || '')]; await wait(900);
@@ -2341,6 +2352,21 @@ def reveal_checks(b, errors, deck_file: Path):
       Reveal.slide(0); return out; }""")
     check("…Keynote's special effects (Sparkle, Shimmer, Confetti, Flash bulbs, Fireworks, Trace, Lens flare, Flame; Skid, Swoosh): each plays, particles drawn over the box and gone after, the box in place",
           len(pt) == 10 and all(x[1] and x[2] and x[3] == 1 and x[4] and x[5] for x in pt), str(pt))
+    sp = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => 'r08e' in x.dataset), h = Reveal.getIndices(s).h, wait = ms => new Promise(r => setTimeout(r, ms)), out = [];
+      Reveal.slide(h, 0, -1); await wait(500); const off = l => parseFloat(getComputedStyle(l.querySelector('mask path.l, svg.shape > path.l')).strokeDashoffset);
+      for (const b of s.querySelectorAll('.box.fragment:not([data-shape])')) { Reveal.nextFragment(); await wait(250);
+        const mid = [getComputedStyle(b).animationName, !!s.querySelector('canvas.gs-particles'), [...b.parentElement.children].filter(x => /polygon/.test(x.style.clipPath)).length];
+        await wait(2000); const cs = getComputedStyle(b); out.push([b.textContent, ...mid, +cs.opacity, !s.querySelector('canvas.gs-particles') && ![...s.children].some(x => /polygon/.test(x.style.clipPath)), ['none', '0px', '0px 0px', '0%', '0% 0%'].includes(cs.translate)]); }
+      const [t, r, e] = s.querySelectorAll('.box[data-shape="line"]'), lines = [off(t), off(r), off(e)];
+      Reveal.nextFragment(); await wait(500); lines.push(off(t), getComputedStyle(t.querySelector('svg.shape > path.brush')).opacity); await wait(800); lines.push(off(t));
+      Reveal.nextFragment(); await wait(1300); lines.push(off(r)); Reveal.nextFragment(); await wait(1300); lines.push(off(e));
+      Reveal.slide(0); return [out, lines]; }""")
+    want = {"anvil-in": [True, 0], "blast-in": [False, 8], "bouncy-in": [False, 0], "comet-in": [True, 0]}
+    check("…in the slideshow: Anvil lands in dust, Blast's eight shards fly together, Bouncy springs in, Comet's trail follows it; each ends in place with the shards and canvases gone",
+          len(sp[0]) == 4 and all(x[1] == "gs-" + x[0] and [x[2], x[3]] == want[x[0]] and x[4] == 1 and x[5] and x[6] for x in sp[0]), str(sp[0]))
+    ln = sp[1]
+    check("…and a brushed line draws in as its brush (Tapered's mask from hidden, halfway, to whole; Rough's stroke) and out (Swelled ends' mask undraws)",
+          ln[0] == 1 and ln[1] == 1 and ln[2] == 0 and 0.05 < ln[3] < 0.95 and ln[4] == "1" and ln[5] == 0 and ln[6] == 0 and ln[7] == -1, str(ln))
     pcs = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => 'k8' in x.dataset), h = Reveal.getIndices(s).h, cs = e => getComputedStyle(e), wait = ms => new Promise(r => setTimeout(r, ms)), out = {};
       for (const t of ['doorway', 'flop', 'mosaic', 'blinds', 'obj-flip', 'obj-revolve', 'obj-cube']) {
         s.dataset.transition = t; Reveal.slide(h - 1, 0, -1); await wait(400); Reveal.slide(h, 0, -1); await wait(150);
