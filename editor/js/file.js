@@ -75,6 +75,32 @@ $('#ed-img-ok').onclick = async () => {
   const el = document.createElement('a'); el.href = URL.createObjectURL(new Blob([zipStore(files)], { type: 'application/zip' })); el.download = name + '.zip'; el.click();
   setTimeout(() => URL.revokeObjectURL(el.href), 2000); setStatus(`${files.length} images in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
 };
+/* File → Download → Movie / Animated GIF (Keynote's Export → Movie and Animated GIF): the server plays the deck as a
+   self-playing show in headless Chrome and records it (glideshow/movie.py); the next slide / build after so many seconds,
+   a size in the deck's shape, a frame rate. Keynote's defaults: 5 s and 2 s for a movie; a GIF is smaller and quicker. */
+const movDlg = $('#ed-moviedlg');
+function showMovieDlg(kind) {
+  closeMenu(); movDlg.dataset.kind = kind; const gif = kind === 'gif', r = H / W;
+  $('#ed-mov-title').textContent = gif ? 'Download an animated GIF' : 'Download a movie';
+  $('#ed-mov-from').value = '1'; $('#ed-mov-to').value = String(slides.length); $('#ed-mov-slide').value = gif ? '2' : '5'; $('#ed-mov-build').value = gif ? '1' : '2';
+  /** @type {[string, number][]} */ const sizes = gif ? [['Small', 320], ['Medium', 480], ['Large', 800]] : [['540p', 960], ['720p', 1280], ['1080p', 1920]];
+  $('#ed-mov-size').innerHTML = sizes.map(([l, w]) => { const h = Math.round(w * r / 2) * 2; return `<option value="${w}x${h}">${l} (${w} × ${h})</option>`; }).join('');
+  $('#ed-mov-size').selectedIndex = 1;
+  $('#ed-mov-fps').innerHTML = (gif ? [10, 15, 24] : [24, 30]).map(f => `<option value="${f}">${f} fps</option>`).join(''); $('#ed-mov-fps').value = gif ? '15' : '30';
+  movDlg.hidden = false; $('#ed-mov-ok').focus();
+}
+$('#ed-mov-cancel').onclick = movDlg.querySelector('.sc-close').onclick = () => { movDlg.hidden = true; };
+['ed-mov-from', 'ed-mov-to'].forEach(id => $('#' + id).addEventListener('focus', () => { movDlg.querySelector('input[value=from]').checked = true; }));
+$('#ed-mov-ok').onclick = async () => {
+  movDlg.hidden = true; await flushSave();
+  const kind = movDlg.dataset.kind, q = new URLSearchParams({ kind, slide: $('#ed-mov-slide').value || '0', build: $('#ed-mov-build').value || '0', size: $('#ed-mov-size').value, fps: $('#ed-mov-fps').value });
+  if (movDlg.querySelector('input[value=from]').checked) { q.set('from', $('#ed-mov-from').value || '1'); q.set('to', $('#ed-mov-to').value || String(slides.length)); }
+  setStatus(kind === 'gif' ? 'Making the GIF: playing the slideshow…' : 'Making the movie: playing the slideshow…');
+  const r = await fetch('/api/movie?' + q);
+  if (!r.ok) return setStatus((await r.json().catch(() => ({}))).error || 'The movie failed', 'error');
+  const el = document.createElement('a'); el.href = URL.createObjectURL(await r.blob()); el.download = `${($('#ed-title').value.trim() || 'slides').replace(/[^\w -]+/g, '')}.${kind}`; el.click();
+  setTimeout(() => URL.revokeObjectURL(el.href), 2000); setStatus(kind === 'gif' ? 'GIF downloaded' : 'Movie downloaded');
+};
 /* A .zip of files stored as they are (images are compressed already): local headers, the central directory, its end. */
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
 function zipStore(files) {

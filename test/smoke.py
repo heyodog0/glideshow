@@ -1390,39 +1390,7 @@ def checks(pg, deck: Path, errors):
           n1 == n0 + 1 and n2 == n0 and pf == "#00ff00" and "<b>bold</b>" in rich and "script" not in rich and plain.count("<b>") == 1
           and compact == "none" and notes_off and saved == "All changes saved" and printed,
           f"{n0} {n1} {n2} {pf} {rich} {plain} {compact} {notes_off} {saved} {printed}")
-    # Download → Images of the slides (Keynote's Export → Images, k13): a range, each stage of builds, JPEG / PNG, one .zip
-    import io, zipfile
-    nimg = pg.evaluate("""(() => { const a = blankSlide(), b = blankSlide(); slides.push(a, b);
-      [0, 1].forEach(i => { const x = makeBox({ x: 100 + i * 600, y: 300, w: 400, h: 300, html: 'step ' + i }); x.style.setProperty('--fill', '#1a73e8'); x.classList.add('fragment', 'fade-in'); x.dataset.fragmentIndex = String(i); a.append(x); });
-      go(slides.length - 1); render(); commit(); return slides.length; })()""")
-    def zip_of(setup):
-        pg.click("#ed-menubar [data-menu=File]"); pg.hover(".menu-item:has(.menu-label:text-is('Download'))"); pg.click(".menu-item:has(.menu-label:text-is('Images of the slides (.zip)…'))")
-        pg.evaluate(setup)
-        with pg.expect_download(timeout=30000) as d: pg.click("#ed-img-ok")
-        return zipfile.ZipFile(io.BytesIO(Path(d.value.path()).read_bytes()))
-    z1 = zip_of(f"(() => {{ document.querySelector('#ed-imgdlg input[value=from]').checked = true; document.querySelector('#ed-img-from').value = '{nimg - 1}'; document.querySelector('#ed-img-builds').checked = true; document.querySelector('#ed-img-format').value = 'png'; }})()")
-    n1 = z1.namelist(); st = [z1.read(n) for n in n1]
-    z2 = zip_of("(() => { document.querySelector('#ed-imgdlg input[value=all]').checked = true; document.querySelector('#ed-img-builds').checked = false; document.querySelector('#ed-img-format').value = 'jpeg-lo'; })()")
-    n2 = z2.namelist()
-    pg.evaluate("(() => { slides.splice(slides.length - 2, 2); go(slides.length - 1); render(); commit(); })()")
-    check("Download → Images of the slides: a range with an image per build stage as PNG (3 stages + 1 slide), or every slide as JPEG, in one .zip (Keynote's Export → Images)",
-          len(n1) == 4 and all(n.endswith(".png") for n in n1) and n1[0].endswith(f"{nimg - 1:03d}-1.png") and st[0][:4] == b"\x89PNG" and len(set(st[:3])) == 3
-          and len(n2) >= nimg - 1 and all(n.endswith(".jpg") for n in n2) and z2.read(n2[0])[:2] == b"\xff\xd8", f"{n1} {n2[:3]} {len(n2)} {nimg}")
-    # Print preview with Keynote's PDF options (k13): 1 slide with notes, each stage of builds, skipped slides, hide background
-    pg.evaluate("""(async () => { const a = blankSlide(), h = blankSlide(); slides.push(a, h); const n = document.createElement('aside'); n.className = 'notes'; n.textContent = 'Say the print line'; a.append(n);
-      const b = makeBox({ x: 100, y: 100, w: 400, h: 200, html: 'built' }); b.classList.add('fragment', 'fade-in'); a.append(b); h.dataset.visibility = 'hidden'; a.dataset.printTest = '';
-      go(slides.length - 1); render(); commit(); await flushSave(); })()""")
-    def pdf_pages(q):
-        w = pg.context.new_page(); w.goto(URL + "deck/deck.html?print-pdf" + q); w.wait_for_function("document.querySelectorAll('.pdf-page').length > 0", timeout=20000); w.wait_for_timeout(400)
-        out = w.evaluate("""(() => { const ps = [...document.querySelectorAll('.pdf-page')], t = ps.find(p => p.querySelector('section[data-print-test]'));
-          return [ps.length, t ? parseFloat(t.style.height) : 0, t?.querySelector('.gs-pdf-notes')?.textContent || '', !!document.querySelector('.gs-print-bar'),
-            [...document.querySelectorAll('.gs-print-bar input:checked')].map(c => c.dataset.k).join(','), document.querySelector('.gs-print-bar select')?.value]; })()""")
-        if q == "": w.select_option(".gs-print-bar select", "notes"); w.wait_for_url("**notes"); out.append(w.url.split("?")[1])
-        w.close(); return out
-    p0, p1 = pdf_pages(""), pdf_pages("&notes&builds&skipped&nobg")
-    pg.evaluate("(async () => { slides.splice(slides.length - 2, 2); go(slides.length - 1); render(); commit(); await flushSave(); })()")
-    check("Print preview, as Slides with Keynote's PDF options: a bar (1 slide with notes, Include each stage of builds, Include skipped slides, Hide background, Download as PDF, Print); with notes each slide's notes print under it; builds add a page per stage; skipped slides come back",
-          p0[3] and p0[6] == "print-pdf&notes" and abs(p0[1] - 1080) <= 1 and p1[0] == p0[0] + 2 and p1[1] == round(1080 * 1.6) and p1[2] == "Say the print line" and p1[4] == "builds,skipped,nobg" and p1[5] == "notes", f"{p0} {p1}")
+    export_checks(pg)
     tb = pg.evaluate("(() => { const b = makeBox({x:100,y:100,w:400,h:100,html:'Plain'}); slides[cur].append(b); render(); sel = new Set([b]); drawOverlay(); return b.id; })()")
     pg.keyboard.press("Meta+b"); pg.keyboard.press("Meta+i"); pg.keyboard.press("Meta+u")
     on = pg.evaluate(f"(() => {{ const c = document.querySelector('#{tb} .content').style; return [c.fontWeight, c.fontStyle, c.textDecoration]; }})()")
@@ -1931,6 +1899,55 @@ def checks(pg, deck: Path, errors):
     pg.click("#ed-menubar [data-menu=View]"); pg.click(".menu-item:has(.menu-label:text-is('Show insert bar'))"); pg.wait_for_timeout(100); pg.evaluate("closeMenu()")
     check("View → Show insert bar hides the bar and remembers it; again shows it", hid == [True, "0"] and pg.evaluate("!document.querySelector('#ed-dock').hidden"), str(hid))
     pg.evaluate("stopEdit(); sel = new Set(boxes().filter(b => !window.__before.has(b))); if (sel.size) deleteSelection(); sel = new Set()"); pg.wait_for_timeout(100)   # what the bar added, gone again
+
+def export_checks(pg):
+    """Keynote's Export (k13) as Slides places it: images of the slides, a movie / GIF, the print preview's PDF options."""
+    # Download → Images of the slides (Keynote's Export → Images, k13): a range, each stage of builds, JPEG / PNG, one .zip
+    import io, zipfile
+    nimg = pg.evaluate("""(() => { const a = blankSlide(), b = blankSlide(); slides.push(a, b);
+      [0, 1].forEach(i => { const x = makeBox({ x: 100 + i * 600, y: 300, w: 400, h: 300, html: 'step ' + i }); x.style.setProperty('--fill', '#1a73e8'); x.classList.add('fragment', 'fade-in'); x.dataset.fragmentIndex = String(i); a.append(x); });
+      go(slides.length - 1); render(); commit(); return slides.length; })()""")
+    def zip_of(setup):
+        pg.click("#ed-menubar [data-menu=File]"); pg.hover(".menu-item:has(.menu-label:text-is('Download'))"); pg.click(".menu-item:has(.menu-label:text-is('Images of the slides (.zip)…'))")
+        pg.evaluate(setup)
+        with pg.expect_download(timeout=30000) as d: pg.click("#ed-img-ok")
+        return zipfile.ZipFile(io.BytesIO(Path(d.value.path()).read_bytes()))
+    z1 = zip_of(f"(() => {{ document.querySelector('#ed-imgdlg input[value=from]').checked = true; document.querySelector('#ed-img-from').value = '{nimg - 1}'; document.querySelector('#ed-img-builds').checked = true; document.querySelector('#ed-img-format').value = 'png'; }})()")
+    n1 = z1.namelist(); st = [z1.read(n) for n in n1]
+    z2 = zip_of("(() => { document.querySelector('#ed-imgdlg input[value=all]').checked = true; document.querySelector('#ed-img-builds').checked = false; document.querySelector('#ed-img-format').value = 'jpeg-lo'; })()")
+    n2 = z2.namelist()
+    pg.evaluate("(() => { slides.splice(slides.length - 2, 2); go(slides.length - 1); render(); commit(); })()")
+    check("Download → Images of the slides: a range with an image per build stage as PNG (3 stages + 1 slide), or every slide as JPEG, in one .zip (Keynote's Export → Images)",
+          len(n1) == 4 and all(n.endswith(".png") for n in n1) and n1[0].endswith(f"{nimg - 1:03d}-1.png") and st[0][:4] == b"\x89PNG" and len(set(st[:3])) == 3
+          and len(n2) >= nimg - 1 and all(n.endswith(".jpg") for n in n2) and z2.read(n2[0])[:2] == b"\xff\xd8", f"{n1} {n2[:3]} {len(n2)} {nimg}")
+    # Download → Movie / Animated GIF (Keynote's Export → Movie / Animated GIF, k13): the dialogs, and the server playing the deck into a file
+    pg.click("#ed-menubar [data-menu=File]"); pg.hover(".menu-item:has(.menu-label:text-is('Download'))"); pg.click(".menu-item:has(.menu-label:text-is('Animated GIF (.gif)…'))")
+    gd = pg.evaluate("[document.querySelector('#ed-mov-title').textContent, document.querySelector('#ed-mov-slide').value, document.querySelector('#ed-mov-size').value, document.querySelector('#ed-mov-fps').value, document.querySelector('#ed-mov-size').options.length]")
+    pg.evaluate("document.querySelector('#ed-mov-cancel').click()")
+    t0 = time.perf_counter()
+    mv = pg.evaluate("""(async () => { await flushSave(); const out = [];
+      for (const q of ['kind=gif&from=1&to=2&slide=0.5&build=0.2&size=320x180&fps=10', 'kind=mp4&from=1&to=1&slide=0.5&build=0.2&size=640x360&fps=24']) {
+        const r = await fetch('/api/movie?' + q), b = new Uint8Array(await r.arrayBuffer()); out.push([r.status, r.headers.get('content-type'), b.length, String.fromCharCode(...b.slice(0, 4)), String.fromCharCode(...b.slice(4, 8))]); }
+      return out; })()""")
+    mv_s = time.perf_counter() - t0
+    check(f"Download → Animated GIF / Movie: Keynote's options (slides, next slide / build after, resolution in the deck's shape, frame rate); the server plays the deck into a .gif and an .mp4 ({mv_s:.1f} s for both)",
+          gd == ["Download an animated GIF", "2", "480x270", "15", 3] and mv[0][:2] == [200, "image/gif"] and mv[0][3] == "GIF8" and mv[0][2] > 1000
+          and mv[1][:2] == [200, "video/mp4"] and mv[1][4] == "ftyp" and mv[1][2] > 1000, f"{gd} {mv}")
+    # Print preview with Keynote's PDF options (k13): 1 slide with notes, each stage of builds, skipped slides, hide background
+    pg.evaluate("""(async () => { const a = blankSlide(), h = blankSlide(); slides.push(a, h); const n = document.createElement('aside'); n.className = 'notes'; n.textContent = 'Say the print line'; a.append(n);
+      const b = makeBox({ x: 100, y: 100, w: 400, h: 200, html: 'built' }); b.classList.add('fragment', 'fade-in'); a.append(b); h.dataset.visibility = 'hidden'; a.dataset.printTest = '';
+      go(slides.length - 1); render(); commit(); await flushSave(); })()""")
+    def pdf_pages(q):
+        w = pg.context.new_page(); w.goto(URL + "deck/deck.html?print-pdf" + q); w.wait_for_function("document.querySelectorAll('.pdf-page').length > 0", timeout=20000); w.wait_for_timeout(400)
+        out = w.evaluate("""(() => { const ps = [...document.querySelectorAll('.pdf-page')], t = ps.find(p => p.querySelector('section[data-print-test]'));
+          return [ps.length, t ? parseFloat(t.style.height) : 0, t?.querySelector('.gs-pdf-notes')?.textContent || '', !!document.querySelector('.gs-print-bar'),
+            [...document.querySelectorAll('.gs-print-bar input:checked')].map(c => c.dataset.k).join(','), document.querySelector('.gs-print-bar select')?.value]; })()""")
+        if q == "": w.select_option(".gs-print-bar select", "notes"); w.wait_for_url("**notes"); out.append(w.url.split("?")[1])
+        w.close(); return out
+    p0, p1 = pdf_pages(""), pdf_pages("&notes&builds&skipped&nobg")
+    pg.evaluate("(async () => { slides.splice(slides.length - 2, 2); go(slides.length - 1); render(); commit(); await flushSave(); })()")
+    check("Print preview, as Slides with Keynote's PDF options: a bar (1 slide with notes, Include each stage of builds, Include skipped slides, Hide background, Download as PDF, Print); with notes each slide's notes print under it; builds add a page per stage; skipped slides come back",
+          p0[3] and p0[6] == "print-pdf&notes" and abs(p0[1] - 1080) <= 1 and p1[0] == p0[0] + 2 and p1[1] == round(1080 * 1.6) and p1[2] == "Say the print line" and p1[4] == "builds,skipped,nobg" and p1[5] == "notes", f"{p0} {p1}")
 
 def reveal_checks(b, errors, deck_file: Path):
     """reveal.js beyond positioned boxes: Morph (Auto-Animate), live boxes, more build effects, video and web-page

@@ -142,6 +142,20 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_response(200); self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
             self.send_header("Content-Disposition", f'attachment; filename="{out.name}"'); self.send_header("Content-Length", str(len(data))); self.end_headers()
             return self.wfile.write(data)
+        if path == "/api/movie":   # File → Download → Movie / Animated GIF: movie.py plays the deck in headless Chrome and records it
+            import subprocess, tempfile
+            q = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
+            kind = q.get("kind", "mp4"); kind = kind if kind in ("mp4", "gif", "webm") else "mp4"
+            out = Path(tempfile.mkdtemp()) / f"{self.deck.name}.{kind}"
+            opts = [x for k in ("from", "to", "slide", "build", "size", "fps") if re.fullmatch(r"[\d.x]+", q.get(k, "")) for x in (f"--{k}", q[k])]
+            try: r = subprocess.run(["uv", "run", "--quiet", str(HERE / "movie.py"), str(self.deck), str(out), *opts], capture_output=True, text=True, timeout=1800)
+            except FileNotFoundError: return self.send_json({"error": "a movie needs uv (https://docs.astral.sh/uv/), which brings Playwright with it"}, 500)
+            if r.returncode or not out.exists():
+                return self.send_json({"error": ((r.stderr or "").strip().splitlines() or ["the movie failed"])[-1]}, 500)
+            data = out.read_bytes()
+            self.send_response(200); self.send_header("Content-Type", {"mp4": "video/mp4", "gif": "image/gif", "webm": "video/webm"}[kind])
+            self.send_header("Content-Disposition", f'attachment; filename="{out.name}"'); self.send_header("Content-Length", str(len(data))); self.end_headers()
+            return self.wfile.write(data)
         if path == "/api/zip":   # the deck folder as a .zip (File → Download → Web page)
             import io, zipfile
             buf = io.BytesIO()

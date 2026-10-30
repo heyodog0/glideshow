@@ -14,6 +14,8 @@
                                       overlaps, small text, inside figures, notes left; --json); --sheet: nine slides to a picture
                                       instead; --morph: each Morph step's pairs and a picture halfway through it
     glideshow check [deck] [N ...]    only the problems, no pictures (exit 1 if any)
+    glideshow movie <deck> OUT        play the deck into OUT (.mp4, .gif or .webm) as a self-playing show: --from N --to M,
+                                      --slide 5 --build 2 (seconds before the next slide / build), --size 1280x720, --fps 30
     glideshow docs [reference]        for an agent: the guide and recipes (reference: the full deck format)
     glideshow layout [NAME]           the layouts' exact placeholder boxes; with NAME, a slide in that layout to paste
     glideshow slides <deck> [N ...]   only the deck's <section>s (no inlined CSS / JS), each with its line in deck.html;
@@ -286,6 +288,10 @@ def main(argv):
     if cmd == "install": return install()
     if cmd == "skill": return link_skill()
     if cmd in ("render", "check"): return render(rest, check=cmd == "check")
+    if cmd == "movie":   # Keynote's Export → Movie / Animated GIF, through glideshow/movie.py (a uv script with Playwright)
+        if len(rest) < 2: raise SystemExit("usage: glideshow movie <deck> OUT.mp4|.gif|.webm [--from N] [--to M] [--slide S] [--build S] [--size WxH] [--fps F]")
+        deck = Path(rest[0]).expanduser() if (Path(rest[0]).expanduser() / "deck.html").exists() else match(rest[0])
+        return subprocess.run(["uv", "run", "--quiet", str(HERE / "movie.py"), str(deck.resolve()), str(Path(rest[1]).expanduser()), *rest[2:]]).returncode
     if cmd == "docs":   # the guide and recipes; `docs reference` the format reference (AGENTS.md beside each deck holds both)
         from .decks import docs_text
         return print(docs_text("reference" if rest[:1] == ["reference"] else "guide"))

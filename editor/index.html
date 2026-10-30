@@ -338,6 +338,18 @@
     <footer><button id="ed-img-cancel" class="outlined">Cancel</button><button id="ed-img-ok" class="done">Download</button></footer>
   </div>
 </div>
+<div id="ed-moviedlg" class="backdrop" hidden>
+  <div class="dialog bg-dialog" role="dialog" aria-label="Download a movie">
+    <header><h2 id="ed-mov-title">Download a movie</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <div class="bg-row"><span>Slides</span><span><label class="chk"><input type="radio" name="ed-mov-range" value="all" checked> All</label>
+      <label class="chk"><input type="radio" name="ed-mov-range" value="from"> From <input type="number" id="ed-mov-from" min="1" class="short"> to <input type="number" id="ed-mov-to" min="1" class="short"></label></span></div>
+    <div class="bg-row"><span>Go to next slide after</span><span class="unit"><input type="number" id="ed-mov-slide" min="0" step="0.5" class="short"> s</span></div>
+    <div class="bg-row"><span>Go to next build after</span><span class="unit"><input type="number" id="ed-mov-build" min="0" step="0.5" class="short"> s</span></div>
+    <div class="bg-row"><span>Resolution</span><select id="ed-mov-size"></select></div>
+    <div class="bg-row"><span>Frame rate</span><select id="ed-mov-fps"></select></div>
+    <footer><button id="ed-mov-cancel" class="outlined">Cancel</button><button id="ed-mov-ok" class="done">Download</button></footer>
+  </div>
+</div>
 <div id="ed-linkdlg" class="backdrop" hidden>
   <div class="dialog bg-dialog" role="dialog" aria-label="Link">
     <header><h2>Link</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
