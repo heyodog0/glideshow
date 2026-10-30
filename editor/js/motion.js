@@ -83,11 +83,15 @@ const openAnims = new Set();
 const START_LABEL = { click: 'On click', with: 'With previous', after: 'After previous', transition: 'After transition' };
 const EASES = [['', 'Acceleration: default'], ['linear', 'None'], ['ease-in', 'Ease in'], ['ease-out', 'Ease out'], ['ease-in-out', 'Ease in and out']];
 $('#ed-t-ease').innerHTML = EASES.map(([v, l]) => `<option value="${v}">${v ? l : 'Default'}</option>`).join('');
-const TIMING = ['start', 'duration', 'delay', 'ease', 'angle', 'to'];   // and Rotate's angle and Move's end, copied and removed with them
+const TIMING = ['start', 'duration', 'delay', 'ease', 'angle', 'to', 'via', 'align', 'direction', 'endpoints', 'textOrder', 'buildFrom', 'buildTo'];   // and Rotate's angle and Move's end, copied and removed with them
 /* Delivery (data-build), as Keynote: a text box by paragraph, by highlighted paragraph (the earlier ones dim), by word
    or by character; a table by row, column or cell. present.js plays them. */
-const DELIVERY_TEXT = [['', 'All at once'], ['paragraph', 'By paragraph'], ['highlight', 'By highlighted paragraph'], ['word', 'By word'], ['character', 'By character']];
-const DELIVERY_TABLE = [['', 'All at once'], ['row', 'By row'], ['column', 'By column'], ['cell', 'By cell']];
+const DELIVERY_TEXT = [['', 'All at once'], ['paragraph', 'By paragraph'], ['group', 'By bullet group'], ['highlight', 'By highlighted paragraph'], ['word', 'By word'], ['character', 'By character']];
+/* Keynote's 13 for a table: by row / column / cell, each with its content only (the grid stays) and in reverse */
+const DELIVERY_TABLE = [['', 'All at once'], ['row', 'By row'], ['column', 'By column'], ['cell', 'By cell'], ['row-content', 'By row content'], ['column-content', 'By column content'],
+  ['cell-content', 'By cell content'], ['row-reverse', 'By row reverse'], ['row-content-reverse', 'By row content reverse'], ['column-reverse', 'By column reverse'],
+  ['column-content-reverse', 'By column content reverse'], ['cell-reverse', 'By cell reverse'], ['cell-content-reverse', 'By cell content reverse']];
+const TEXT_ORDERS = [['', 'Forward'], ['backward', 'Backward'], ['center', 'From center'], ['edges', 'From edges'], ['random', 'Random']];
 const deliveries = b => isMedia(b) || isStroke(b) || isGroup(b) ? [] : content(b)?.querySelector('table') ? DELIVERY_TABLE : content(b)?.textContent.trim() ? DELIVERY_TEXT : [];
 const startOf = b => 'withPrevious' in b.dataset ? 'with' : b.dataset.start || 'click';
 function setStart(b, v) { delete b.dataset.withPrevious; delete b.dataset.start; if (v === 'with') b.dataset.withPrevious = ''; else if (v !== 'click') b.dataset.start = v; }
@@ -152,7 +156,9 @@ function renderAnims() {
       <label class="chk lends"><input type="checkbox"> Include endpoints</label>
       <label class="ang">Angle (°)<input type="number" min="-3600" max="3600" step="15" placeholder="360"></label>
       <select class="ease">${EASES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
-      <select class="dl"></select></div>`;
+      <select class="dl"></select>
+      <select class="tord" title="Order">${TEXT_ORDERS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+      <div class="timing brange"><label>Build from<input class="bf" type="number" min="1" step="1" placeholder="First"></label><label>to<input class="bt" type="number" min="1" step="1" placeholder="Last"></label></div></div>`;
     const when = start === 'with' ? `With build ${step}` : start === 'after' && i ? `After build ${step - 1}` : START_LABEL[start] || 'On click';   // Keynote names the build it follows
     const dl = deliveries(b), how = dl.find(([v]) => v && v === b.dataset.build)?.[1];
     r.querySelector('.eff').textContent = `${EFFECTS.find(e => e[0] === effectOf(b))[1]}${how ? ' ' + how.toLowerCase() : ''}  (${when})`;
@@ -182,6 +188,11 @@ function renderAnims() {
     const ds = /** @type {HTMLSelectElement} */ (r.querySelector('select.dl'));
     ds.hidden = !dl.length; ds.innerHTML = dl.map(([v, l]) => `<option value="${v}">${l}</option>`).join(''); ds.value = b.dataset.build || '';
     ds.onchange = () => { each(x => { if (ds.value && deliveries(x).some(([v]) => v === ds.value)) x.dataset.build = ds.value; else delete x.dataset.build; }); commit(); renderAnims(); };
+    const to = /** @type {HTMLSelectElement} */ (r.querySelector('select.tord')), br = /** @type {HTMLElement} */ (r.querySelector('.brange')), [bf, bt] = /** @type {HTMLInputElement[]} */ ([...br.querySelectorAll('input')]);
+    to.hidden = !/^(word|character)$/.test(b.dataset.build || ''); to.value = b.dataset.textOrder || '';   // Keynote's text order; Build from … to …
+    br.hidden = !/^(paragraph|group|highlight)$/.test(b.dataset.build || ''); bf.value = b.dataset.buildFrom || ''; bt.value = b.dataset.buildTo || '';
+    to.onchange = () => { each(x => { if (to.value) x.dataset.textOrder = to.value; else delete x.dataset.textOrder; }); commit(); renderAnims(); };
+    bf.onchange = bt.onchange = () => { each(x => { for (const [f, k] of /** @type {[HTMLInputElement, string][]} */ ([[bf, 'buildFrom'], [bt, 'buildTo']])) { const v = Math.round(+f.value); if (v >= 1) x.dataset[k] = String(v); else delete x.dataset[k]; } }); commit(); renderAnims(); };
     r.querySelector('.anim-head button').onclick = () => removeAnim(b);
     r.querySelector('.anim-head').onclick = e => {
       if (e.target.closest('button')) return;

@@ -2014,9 +2014,19 @@ def reveal_checks(b, errors, deck_file: Path):
       slides[cur].append(w, h, tb); render(); for (const b of [w, h, tb]) { sel = new Set([b]); addAnim(); }
       w.dataset.build = 'word'; h.dataset.build = 'highlight'; tb.dataset.build = 'column'; commit(); render(); sel = new Set([tb]); renderAnims();
       return [deliveries(w).map(d => d[1]), deliveries(tb).map(d => d[1]), [...document.querySelectorAll('.anim-row .eff')].map(e => e.textContent.split('  ')[0])]; }""")
-    check("Motion panel → Delivery: text All at once / By paragraph / By highlighted paragraph / By word / By character; a table By row / column / cell",
-          dl[0] == ["All at once", "By paragraph", "By highlighted paragraph", "By word", "By character"] and dl[1] == ["All at once", "By row", "By column", "By cell"]
-          and dl[2] == ["Fade in by word", "Fade in by highlighted paragraph", "Fade in by column"], str(dl))
+    check("Motion panel → Delivery: text All at once / By paragraph / By bullet group / By highlighted paragraph / By word / By character; a table Keynote's 13 (by row / column / cell, content, reverse)",
+          dl[0] == ["All at once", "By paragraph", "By bullet group", "By highlighted paragraph", "By word", "By character"] and dl[1][:4] == ["All at once", "By row", "By column", "By cell"] and len(dl[1]) == 13
+          and dl[1][-1] == "By cell content reverse" and dl[2] == ["Fade in by word", "Fade in by highlighted paragraph", "Fade in by column"], str(dl))
+    # r05 / k06: sub-bullets build too; By bullet group; Build from … to …; a word order; a table by row content, in reverse
+    dx = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1); slides[cur].dataset.r05 = '';
+      const mk = (y, html, cls) => { const b = makeBox({ x: 100, y, w: 800, h: 160, html, cls }); slides[cur].append(b); render(); sel = new Set([b]); addAnim(); return b; };
+      const nest = '<ul><li>one</li><ul><li>one a</li><li>one b</li></ul><li>two</li></ul>';
+      const p = mk(50, nest), g = mk(250, nest), r = mk(450, '<p>p1</p><p>p2</p><p>p3</p><p>p4</p>'), w = mk(650, 'w1 w2 w3 w4');
+      const t = makeBox({ x: 1000, y: 50, w: 600, h: 200, cls: 'table', html: '<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>' }); slides[cur].append(t); render(); sel = new Set([t]); addAnim();
+      p.dataset.build = 'paragraph'; g.dataset.build = 'group'; r.dataset.build = 'paragraph'; r.dataset.buildFrom = '2'; r.dataset.buildTo = '3'; w.dataset.build = 'word'; w.dataset.textOrder = 'backward'; t.dataset.build = 'row-content-reverse';
+      commit(); render(); setTransPanel(true); sel = new Set([w]); openAnims.add(w); renderAnims(); const row = document.querySelector('.anim-row.open');
+      const ui = [!row.querySelector('select.tord').hidden, row.querySelector('select.tord').value, row.querySelector('.brange').hidden]; openAnims.delete(w); setTransPanel(false); return ui; }""")
+    check("…word and character builds have Keynote's order (Forward, Backward, From center, From edges, Random); paragraph builds Build from … to …", dx == [True, "backward", True], str(dx))
     # Keynote's effects: Wipe / Move In (transitions and builds), Push up and down, Scale, Pop; Rotate (with its angle), Pulse, Pop
     kn = pg.evaluate("""() => { slides.push(document.createElement('section')); go(slides.length - 1); slides[cur].dataset.transition = 'wipe-r';
       const mk = (x, eff) => { const b = makeBox({ x, y: 100, w: 200, h: 200, html: eff }); slides[cur].append(b); render(); sel = new Set([b]); addAnim(); setEffect(b, eff); return b; };
@@ -2115,6 +2125,12 @@ def reveal_checks(b, errors, deck_file: Path):
     v.evaluate("Reveal.slide(0)")
     check("…in the slideshow: by word, the words arrive one after another in one step; by highlighted paragraph each bullet is a step; a table by column builds column by column",
           dv[:2] == [3, True] and dv[2] == ["3", "4", "5", "3", "4", "5"] and dv[3] == [True, True] and mid[0] > .05 and mid[2] == 0 and all(end), f"{dv} {mid} {end}")
+    rv5 = v.evaluate("""() => { const s = Reveal.getSlides().find(x => 'r05' in x.dataset), bx = [...s.querySelectorAll(':scope > .box')], ix = el => el.dataset.fragmentIndex;
+      const [p, g, r, w, t] = bx, steps = b => new Set([...b.querySelectorAll('.fragment')].map(ix)).size;
+      const wi = [...w.querySelectorAll('.gs-w')].map(e => e.style.getPropertyValue('--i')), cc = [...t.querySelectorAll('.gs-cc')];
+      return [steps(p), p.querySelectorAll('li.fragment').length, steps(g), steps(r), wi, cc.length, cc.map(ix), !!t.querySelector('td.fragment')]; }""")
+    check("…in the slideshow: by paragraph each bullet and sub-bullet is a step; by bullet group a bullet comes with its sub-bullets; Build from 2 to 3 makes two steps; Backward brings the last word first; by row content reverse builds the last row's contents first, the grid staying",
+          rv5[:4] == [4, 4, 2, 2] and rv5[4] == ["3", "2", "1", "0"] and rv5[5] == 4 and rv5[6][2] == rv5[6][3] and int(rv5[6][2]) < int(rv5[6][0]) and not rv5[7], str(rv5))
     kh = v.evaluate("Reveal.getIndices(Reveal.getSlides().find(x => x.dataset.transition === 'wipe-r')).h")
     v.evaluate(f"Reveal.slide({kh - 1}, 0, -1)"); v.wait_for_timeout(1000); v.evaluate(f"Reveal.slide({kh}, 0, -1)"); v.wait_for_timeout(250)
     tmid = v.evaluate("(() => { const s = Reveal.getCurrentSlide(); return [getComputedStyle(s).clipPath, +getComputedStyle(s.previousElementSibling).opacity]; })()")

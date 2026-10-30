@@ -18,19 +18,22 @@
     const eff = cls.find(c => c in FROM); if (!eff || cls.length > 1) return;
     const texts = [], tw = document.createTreeWalker(box.querySelector(':scope > .content') || box, NodeFilter.SHOW_TEXT);
     for (let n; (n = tw.nextNode());) if (n.data.trim()) texts.push(n);
-    let i = 0;
+    let i = 0; const spans = [];
     for (const t of texts) {
       const frag = document.createDocumentFragment();
       for (const piece of t.data.split(/(\s+)/)) {
         if (!piece) continue;
         if (/^\s+$/.test(piece)) { frag.append(piece); continue; }
         const word = document.createElement('span');
-        if (mode === 'word') { word.className = 'gs-w'; word.style.setProperty('--i', String(i++)); word.textContent = piece; }
-        else { word.className = 'gs-word'; for (const ch of piece) { const c = document.createElement('span'); c.className = 'gs-w'; c.style.setProperty('--i', String(i++)); c.textContent = ch; word.append(c); } }
+        if (mode === 'word') { word.className = 'gs-w'; spans.push(word); i++; word.textContent = piece; }
+        else { word.className = 'gs-word'; for (const ch of piece) { const c = document.createElement('span'); c.className = 'gs-w'; spans.push(c); i++; c.textContent = ch; word.append(c); } }
         frag.append(word);
       }
       t.replaceWith(frag);
     }
+    /* data-text-order (Keynote's Forward / Backward / From Center / From Edges / Random): the order the words or letters come in */
+    const mid = (spans.length - 1) / 2, order = box.dataset.textOrder, key = k => order === 'backward' ? -k : order === 'center' ? Math.abs(k - mid) : order === 'edges' ? -Math.abs(k - mid) : order === 'random' ? ((k * 2654435761) % 1013) : k;
+    spans.map((s, k) => [s, key(k), k]).sort((a, b) => a[1] - b[1] || a[2] - b[2]).forEach(([s], r) => s.style.setProperty('--i', String(r)));
     const total = (+box.dataset.duration || 1) * 1000, step = total / Math.max(1, i);
     box.classList.add('gs-seq');
     box.style.cssText += `;--gs-step:${step}ms;--gs-d:${eff === 'appear' ? 0 : Math.min(total, Math.max(200, step * 3))}ms;--gs-from:${FROM[eff]};--gs-ease:${box.dataset.ease || 'ease'};transition-duration:${total}ms`;
@@ -81,10 +84,22 @@
       frags.reverse().forEach(box => {   // from the last, so each one's room doesn't move the ones before it
         const mode = box.dataset.build, cls = [...box.classList].filter(c => /^(appear|fade-[\w-]+|zoom-in|wipe-[rldu]|move-in-[rldu]|scale-in|pop-in|spin|pulse|pop|line-draw|line-erase|move-to|blur-in|drop-in|spin-in|iris-in|scale-big|disappear|blur-out|scale-out|iris-out|drift-in|drift-scale|fade-move-in|fade-scale|blinds-in|cube-in|flip-in|spin-y|pivot-in|twist-scale|squish-in|grow|shrink|strike|semi-fade-out|current-visible|highlight-[\w-]+)$/.test(c));   // its effect
         if (mode === 'word' || mode === 'character') { wordByWord(box, mode, cls); return; }
+        /* a table by row / column / cell, each also "-content" (the grid stays, the cells' contents build) and "-reverse"
+           (last first): Keynote's 13; text by paragraph (each bullet, sub-bullets too), "group" (a bullet with its
+           sub-bullets) or "highlight", from paragraph data-build-from to data-build-to (the rest come with the first / last) */
         const table = box.querySelector(':scope > .content table'), cells = table ? [...table.querySelectorAll('td, th')] : [];
-        const groups = mode === 'row' ? [...(table?.rows || [])].map(r => [r]) : mode === 'cell' ? cells.map(c => [c])
-          : mode === 'column' ? [...new Set(cells.map(c => /** @type {HTMLTableCellElement} */ (c).cellIndex))].sort((a, b) => a - b).map(n => cells.filter(c => /** @type {HTMLTableCellElement} */ (c).cellIndex === n))
-          : [...box.querySelectorAll(':scope > .content > :is(p, div, h1, h2, h3, h4, h5, h6), :scope > .content > :is(ul, ol) > li')].map(p => [p]);
+        const base = (mode || '').replace(/-content|-reverse/g, ''), inner = /-content/.test(mode || ''), back = /-reverse/.test(mode || '');
+        const cellPart = c => { if (!inner) return c; const w = document.createElement('div'); w.className = 'gs-cc'; w.append(...c.childNodes); c.append(w); return w; };
+        const top = ':scope > .content > :is(p, div, h1, h2, h3, h4, h5, h6)', lists = [...box.querySelectorAll(':scope > .content > :is(ul, ol)')];
+        let groups = base === 'row' ? [...(table?.rows || [])].map(r => inner ? [...r.cells].map(cellPart) : [r]) : base === 'cell' ? cells.map(c => [cellPart(c)])
+          : base === 'column' ? [...new Set(cells.map(c => /** @type {HTMLTableCellElement} */ (c).cellIndex))].sort((a, b) => a - b).map(n => cells.filter(c => /** @type {HTMLTableCellElement} */ (c).cellIndex === n).map(cellPart))
+          : base === 'group' ? [...box.querySelectorAll(top + ', :scope > .content > :is(ul, ol) > :is(li, ul, ol)')].reduce((gs, el) => { if (/^(UL|OL)$/.test(el.tagName) && gs.length) gs[gs.length - 1].push(el); else gs.push([el]); return gs; }, /** @type {HTMLElement[][]} */ ([]))
+          : [...box.querySelectorAll(top), ...lists.flatMap(l => [...l.querySelectorAll('li')])].sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1).map(p => [p]);
+        if (back) groups.reverse();
+        if (!table && groups.length > 1) {   // Build from … to …
+          const from = Math.min(groups.length, Math.max(1, +box.dataset.buildFrom || 1)), to = Math.min(groups.length, Math.max(from, +box.dataset.buildTo || groups.length));
+          groups = to > from ? [groups.slice(0, from).flat(), ...groups.slice(from, to - 1), groups.slice(to - 1).flat()] : [groups.flat()];
+        }
         if (groups.length < 2) return;
         const at = +box.dataset.fragmentIndex || 0;
         sl.querySelectorAll('.fragment').forEach(f => { if (f !== box && +f.dataset.fragmentIndex > at) f.dataset.fragmentIndex = String(+f.dataset.fragmentIndex + groups.length - 1); });
@@ -349,6 +364,7 @@
     .reveal .gs-seq.visible .gs-w { opacity: 1; transform: none; }
     .reveal .gs-word { white-space: nowrap; }
     .reveal .gs-mw { display: inline-block; }
+    .reveal .gs-cc { display: block; }   /* a table cell's contents, built by themselves (by row content …) */
     .reveal .slides .fragment.gs-hl.visible:not(.current-fragment) { opacity: .35; }
     .reveal .backgrounds { display: none; }
     .sl-bar { position: fixed; left: 20px; bottom: 20px; z-index: 102; display: flex; align-items: center; height: 36px; padding: 0 4px;
