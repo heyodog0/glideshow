@@ -353,7 +353,8 @@ def checks(pg, deck: Path, errors):
     check("Import from Google Slides: a presentations.get response becomes sections (placeholder text inherits the layout's 28 pt and the theme's black, bullets, "
           "dashed rounded rectangle, an arrow attached to both shapes, a rotated box, a cropped picture with alt text, a group, a table, notes) and is inserted after the current slide",
           gsl == ["", 2, True, True, True, True, True, True, True, True, True, True], str(gsl))
-    pg.evaluate("slides.splice(cur, 2); go(cur - 1); commit()")   # the two imported slides out again
+    layout_import_checks(pg)
+    pg.evaluate("""(() => { slides.splice(cur, 2); go(cur - 1); tplLayouts().filter(l => /^g-/.test(l.dataset.layout)).forEach(l => l.remove()); if (!tplLayouts().length) layoutTpl()?.remove(); commit(); })()""")   # the two imported slides (and their layout) out again
     check("File → Download → PowerPoint: /api/pptx runs pptx_export.py (python-pptx via uv) and returns a .pptx", px == [200, True, True, True], str(px))
     check("File → Open lists recent decks (~/.glideshow/recent.json); Download → Web page folder is a .zip of the deck", fm == [True, "application/zip", True] and opened >= 2, f"{fm} {opened}")
     ps = pg.evaluate("""(() => { setPageSize(1920, 1440); const r = [deckDoc.querySelector('.slides').dataset.size, W, H, getComputedStyle(document.querySelector('#ed-canvas > section')).height,
@@ -1931,6 +1932,33 @@ def stroke_checks(pg):
           and out[:5] == ["tapered", "bar", True, True, True] and 8 <= out[5] <= 14 and out[6] and out[7], f"{dash_labels} {end_labels} {out}")
 
 
+def layout_import_checks(pg):
+    """Layouts' own objects in imports and exports (D5): Google Slides and PowerPoint imports put a layout's shapes and its
+    master's (not placeholders) into #deck-layouts; PowerPoint export draws them on each slide of the layout."""
+    import base64, io, zipfile
+    gl = pg.evaluate("""(async () => { const [a, b] = [slides[cur], slides[cur + 1]], L = tplLayouts().find(l => /^g-/.test(l.dataset.layout)), cp = s => [...s.querySelectorAll(':scope > [data-from-layout]')];
+      const out = [L?.dataset.name, L ? L.querySelectorAll(':scope > .box').length : 0, !!L && a.dataset.layout === L.dataset.layout && b.dataset.layout === L.dataset.layout,
+        cp(a).length, cp(b).length, cp(a).map(c => c.dataset.shape).sort().join(), new Set([...cp(a), ...cp(b)].map(c => c.id)).size, cp(a)[0] === a.firstElementChild, cur];
+      await flushSave(); return out; })()""")
+    b64 = pg.evaluate("(async () => { const b = new Uint8Array(await (await fetch('/api/pptx')).arrayBuffer()); let s = ''; for (let i = 0; i < b.length; i += 32768) s += String.fromCharCode(...b.subarray(i, i + 32768)); return btoa(s); })()")   # (the server answers only its editor)
+    z = zipfile.ZipFile(io.BytesIO(base64.b64decode(b64)))
+    xs = [z.read(f"ppt/slides/slide{gl[8] + k}.xml").decode() for k in (1, 2)]
+    first = re.search(r'name="!!([^"]+)"', xs[0])
+    ex = [all('name="!!gL1-1"' in x and 'name="!!gL1-2"' in x for x in xs), bool(first) and first.group(1).startswith("gL1-")]   # drawn first: behind the slide's own
+    mk = ("import sys\nfrom pptx import Presentation\nfrom pptx.util import Emu\nfrom pptx.enum.shapes import MSO_SHAPE\n"
+          "p = Presentation(); lay = p.slide_layouts[6]; s = p.slides.add_slide(lay)\n"
+          "sh = s.shapes.add_shape(MSO_SHAPE.OVAL, Emu(100000), Emu(100000), Emu(400000), Emu(400000)); lay.shapes._spTree.append(sh._element)\n"
+          "p.slides.add_slide(lay); p.save(sys.argv[1])\n")
+    src = Path(tempfile.mkdtemp()) / "layout.pptx"
+    subprocess.run(["uv", "run", "--quiet", "--with", "python-pptx", "python", "-c", mk, str(src)], env=TEST_ENV, check=True, capture_output=True, timeout=180)
+    pj = pg.evaluate("async b64 => (await fetch('/api/importpptx', { method: 'POST', body: Uint8Array.from(atob(b64), c => c.charCodeAt(0)) })).json()", base64.b64encode(src.read_bytes()).decode())
+    keys = [re.search(r'data-layout="([^"]+)"', s).group(1) if 'data-layout="' in s else None for s in pj.get("slides", [])]
+    pl = [len(pj.get("layouts", [])), len(set(keys)) == 1 and bool(keys[0]) and keys[0].startswith("p-"), bool(pj.get("layouts")) and 'data-shape="ellipse"' in pj["layouts"][0] and f'id="{keys[0]}-1"' in pj["layouts"][0], len(keys)]
+    check("layouts in imports and exports (D5): a Google Slides layout's own shape and its master's go into #deck-layouts (named as in Google, \"Title and body\"); both imported slides use it and show copies behind their own, ids unique; "
+          "PowerPoint export draws them on each slide first, named alike so Morph keeps them still; a .pptx layout's own shape comes in as a layout its slides name",
+          gl[:8] == ["Title and body", 2, True, 2, 2, "ellipse,rect", 4, True] and ex == [True, True] and pl == [1, True, True, 2], f"{gl} {ex} {pl}")
+
+
 def layout_checks(pg, deck_file: Path):
     """Real master slides (D5): objects and a background on a layout, Add to all layouts, the deck's own layouts; copies
     on the slides with ids of their own (lines re-pointed), no builds or links; saved as <template id="deck-layouts">."""
@@ -2745,7 +2773,8 @@ def cli_checks(b):
         gs_html = (gs_dir / "deck.html").read_text() if gs_dir else ""
         check("glideshow import-google <saved .json>: a new deck in the library from the API response, offline (pictures into assets/, the response kept under source/, title set)",
               gs_dir is not None and "<title>Fixture deck</title>" in gs_html and 'data-shape="arrow"' in gs_html and (gs_dir / "assets").is_dir() and any((gs_dir / "assets").iterdir())
-              and (gs_dir / "source" / "gslides-api-FIXTURE.json").exists() and "2 slides" in gs, gs[-300:])
+              and (gs_dir / "source" / "gslides-api-FIXTURE.json").exists() and "2 slides" in gs
+              and bool(re.search(r'\n</div></div>\n<template id="deck-layouts">\n<div class="layout" data-layout="g-', gs_html)) and gs_html.count('<section data-background-color="#ffffff" data-layout="g-') == 1, gs[-300:])
         names = sorted(d.name for d in home.iterdir() if d.is_dir() and not d.name.startswith("fixture-deck"))
         cur = [d["title"] for d in json.load(urllib.request.urlopen(f"http://localhost:{PORT + 2}/api/recent", timeout=5)) if d["current"]]
         servers = subprocess.run(["pgrep", "-f", f"glideshow.server.*{home}"], capture_output=True, text=True).stdout.split()

@@ -61,6 +61,10 @@ Rules:
     view have them), and the editor on its slides, which drops the copies (and borrowed backgrounds) when saving.
   - *Editing:* Slide → Edit theme: put objects and a background on any layout; **Add to all layouts** copies the
     selected objects onto every layout; New layout, Duplicate, Rename and Delete (the deck's own layouts).
+  - *Imports and exports:* Google Slides and PowerPoint imports put each used layout's own shapes and its master's (not
+    placeholders) into the template, keyed `g-…` / `p-…` (the same layout imported again reuses its key), and the
+    slides name it; a layout with nothing of its own isn't written. PowerPoint export draws a layout's objects on each of
+    its slides, behind the slide's own, named alike so Morph keeps them still.
   - *Agents:* to put a logo or footer on every slide of a layout, add the box to that layout in `#deck-layouts`, not to
     each slide.
 - Slide ids: the editor gives each `<section>` a `data-sid` (how edits made in two places merge, slide by slide). Keep it when you change a slide; a slide you add may leave it out (it gets one), but never copy one slide's `data-sid` onto another.

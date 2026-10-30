@@ -211,6 +211,49 @@
        ]
       }
      }
+    },
+    {
+     "objectId": "m1-bar",
+     "size": {
+      "width": {
+       "magnitude": 9144000,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 200000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 0,
+      "translateY": 4943500,
+      "unit": "EMU"
+     },
+     "shape": {
+      "shapeType": "RECTANGLE",
+      "shapeProperties": {
+       "shapeBackgroundFill": {
+        "propertyState": "RENDERED",
+        "solidFill": {
+         "color": {
+          "rgbColor": {
+           "red": 0.1,
+           "green": 0.45,
+           "blue": 0.91
+          }
+         },
+         "alpha": 1
+        }
+       },
+       "outline": {
+        "propertyState": "NOT_RENDERED"
+       }
+      }
+     }
     }
    ]
   }
@@ -221,7 +264,8 @@
    "pageType": "LAYOUT",
    "layoutProperties": {
     "masterObjectId": "m1",
-    "name": "TITLE_AND_BODY"
+    "name": "TITLE_AND_BODY",
+    "displayName": "Title and body"
    },
    "pageProperties": {
     "pageBackgroundFill": {
@@ -342,6 +386,49 @@
          }
         }
        ]
+      }
+     }
+    },
+    {
+     "objectId": "l1-logo",
+     "size": {
+      "width": {
+       "magnitude": 500000,
+       "unit": "EMU"
+      },
+      "height": {
+       "magnitude": 500000,
+       "unit": "EMU"
+      }
+     },
+     "transform": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "shearX": 0,
+      "shearY": 0,
+      "translateX": 8400000,
+      "translateY": 150000,
+      "unit": "EMU"
+     },
+     "shape": {
+      "shapeType": "ELLIPSE",
+      "shapeProperties": {
+       "shapeBackgroundFill": {
+        "propertyState": "RENDERED",
+        "solidFill": {
+         "color": {
+          "rgbColor": {
+           "red": 0.91,
+           "green": 0.44,
+           "blue": 0.04
+          }
+         },
+         "alpha": 1
+        }
+       },
+       "outline": {
+        "propertyState": "NOT_RENDERED"
+       }
       }
      }
     }

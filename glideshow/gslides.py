@@ -322,7 +322,7 @@ class Converter:
         with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=60) as r: return r.read()
 
     def nid(self) -> str:
-        self.n += 1; return f"g{self.slide}-{self.n}"
+        self.n += 1; return f"g{getattr(self, 'idp', None) or self.slide}-{self.n}"
 
     # ---- inheritance: a placeholder's parent on the layout, then the master
     def parents(self, el: dict) -> list:
@@ -716,6 +716,8 @@ class Converter:
             out = [(g, self.line(h[1], h[2]) if isinstance(h, tuple) else h) for g, h in out]   # the deferred lines, shapes now have ids
             pg = self.resolve_page(page)
             attrs = f' data-background-color="{pg["background"]["color"]}"'
+            key = self.layout_of(page)
+            if key: attrs += f' data-layout="{key}"'
             if pg["background"]["image"]:
                 src = self.save(pg["background"]["image"], key="bg:" + page.get("objectId", str(n)))
                 if src: attrs += f' data-background-image="{src}"'
@@ -725,6 +727,34 @@ class Converter:
             sections.append(f"<section{attrs}>\n" + "\n".join(lines) + "\n</section>")
         return sections
 
+
+    def layout_of(self, page: dict) -> str | None:
+        """The key of the slide's layout in #deck-layouts, converting it the first time: the shapes of its own and its
+        master's that aren't placeholders (a logo, a footer, a rule), drawn behind the slide's own as Google does. None
+        when the layout has none (the slide then names no layout)."""
+        if not hasattr(self, "layouts"): self.layouts: dict = {}
+        lid = page.get("slideProperties", {}).get("layoutObjectId")
+        if lid not in self.pages: return None
+        if lid in self.layouts: return self.layouts[lid][0]
+        L = self.pages[lid]; m = self.pages.get(L.get("layoutProperties", {}).get("masterObjectId"), {})
+        els = [e for p in (m, L) for e in p.get("pageElements", []) if not e.get("shape", {}).get("placeholder")]
+        if not els: self.layouts[lid] = (None, ""); return None
+        n = sum(1 for k, _ in self.layouts.values() if k) + 1
+        key = "g-" + hashlib.sha1(f"{self.pres.get('presentationId', '')}/{lid}".encode()).hexdigest()[:8]   # one per presentation's layout: a second import reuses it
+        name = L.get("layoutProperties", {}).get("displayName") or f"Layout {n}"   # (Google's names: "Title and body" …)
+        keep = self.slide, self.n, self.ids, getattr(self, "idp", None)
+        self.slide, self.n, self.ids, self.idp = 0, 0, {}, f"L{n}"
+        out: list = []
+        for e in els: self.convert_element(e, (1, 0, 0, 1, 0, 0), out)
+        out = [(g, self.line(h[1], h[2]) if isinstance(h, tuple) else h) for g, h in out]
+        self.slide, self.n, self.ids, self.idp = keep
+        bg, _ = self.background(L)
+        self.layouts[lid] = (key, f'<div class="layout" data-layout="{key}" data-name="{html.escape(name, quote=True)}" data-background-color="{bg}">\n' + "\n".join(h for _, h in out) + "\n</div>")
+        return key
+
+    def layout_divs(self) -> list:
+        """The layouts the converted slides use that have objects of their own, as <div class="layout"> for #deck-layouts."""
+        return [h for k, h in getattr(self, "layouts", {}).values() if k]
 
     def ir(self) -> dict:
         """The whole IR as plain data: pages and shapes resolved; images, lines, tables, videos and
@@ -865,7 +895,7 @@ class Converter:
 
 # ---------------------------------------------------------------- the deck file
 
-def write_deck(deck: Path, sections: list, title: str, height: int, fonts: set, keep=False, glyphs: str = "") -> Path:
+def write_deck(deck: Path, sections: list, title: str, height: int, fonts: set, keep=False, glyphs: str = "", layouts: list | None = None) -> Path:
     path = deck / "deck.html"
     deck.mkdir(parents=True, exist_ok=True)
     if not path.exists(): new_deck(path, title)
@@ -874,6 +904,12 @@ def write_deck(deck: Path, sections: list, title: str, height: int, fonts: set, 
     if keep: text = text.replace("\n</div></div>\n<script", "\n" + joined + "\n</div></div>\n<script", 1)
     else: text = re.sub(r'(<div class="slides"[^>]*>\n).*?(\n</div></div>)', lambda m: m.group(1) + joined + m.group(2), text, count=1, flags=re.S)
     if height != 1080: text = re.sub(r'<div class="slides"[^>]*>', f'<div class="slides" data-size="1920x{height}">', text, count=1)
+    if layouts:   # the layouts' own objects (D5): into #deck-layouts, after .reveal; one already there by the same key is kept
+        have = set(re.findall(r'<div class="layout" data-layout="([^"]+)"', text))
+        new = "\n".join(d for d in layouts if re.search(r'data-layout="([^"]+)"', d).group(1) not in have)
+        end = text.index("\n</div></div>\n") + len("\n</div></div>\n")   # .reveal's end (the scripts after it mention the template too)
+        m = re.match(r'\s*<template id="deck-layouts">', text[end:])
+        text = text[:end + m.end()] + "\n" + new + text[end + m.end():] if m else text[:end] + f'<template id="deck-layouts">\n{new}\n</template>\n' + text[end:]
     google = sorted(f for f in fonts if f in Converter._google_fonts())
     if google:
         link = ('<link id="deck-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?' +
@@ -919,7 +955,7 @@ def import_deck(pres: dict, deck: Path, pptx: Path | None = None, get=None) -> d
     sections = conv.convert()
     if pptx:
         sections = apply_pptx(sections, pptx, pres)
-    write_deck(deck, sections, pres.get("title", ""), conv.height, conv.fonts, glyphs="".join(conv.glyphs))
+    write_deck(deck, sections, pres.get("title", ""), conv.height, conv.fonts, glyphs="".join(conv.glyphs), layouts=conv.layout_divs())
     if conv.images:
         conv.images_file.parent.mkdir(parents=True, exist_ok=True); conv.images_file.write_text(json.dumps(conv.images, indent=1))
     log = deck / "source" / "import-log.txt"

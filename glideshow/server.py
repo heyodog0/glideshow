@@ -317,7 +317,7 @@ class Handler(SimpleHTTPRequestHandler):
                 conv = gslides.Converter(pres, self.deck)
                 sections = conv.convert()
                 conv.fonts = {f for f in conv.fonts if f in gslides.Converter._google_fonts()}
-                return self.send_json({"slides": sections, "title": pres.get("title", ""), "fonts": sorted(conv.fonts), "log": conv.log})
+                return self.send_json({"slides": sections, "layouts": conv.layout_divs(), "title": pres.get("title", ""), "fonts": sorted(conv.fonts), "log": conv.log})
             except SystemExit as e:   # not signed in / no client / API errors come this way, with the steps to take
                 return self.send_json({"error": str(e)})
             except (OSError, ValueError, KeyError) as e:

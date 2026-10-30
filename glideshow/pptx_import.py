@@ -4,7 +4,9 @@
 # ///
 """A .pptx → deck sections, best effort: slide backgrounds, text boxes and placeholders (paragraphs with size, bold /
 italic, colour, alignment), pictures (saved into the deck's assets/), tables, shapes PowerPoint and shapes.js share
-(by OOXML preset name), straight lines and speaker notes. Groups are flattened. Prints JSON: {"slides": [html, …]}.
+(by OOXML preset name), straight lines and speaker notes. Groups are flattened. A layout's own shapes and its master's
+(not placeholders: a logo, a footer) become a layout in #deck-layouts that its slides name (D5). Prints JSON:
+{"slides": [html, …], "layouts": [html, …], "size": [w, h]}.
 
     uv run glideshow/pptx_import.py IN.pptx DECK/assets
 """
@@ -97,8 +99,23 @@ def convert(src: Path, assets: Path):
     prs = Presentation(src)
     assets.mkdir(parents=True, exist_ok=True)
     k = 1920 / prs.slide_width   # px per EMU
-    slides = []
+    slides, layouts = [], {}   # layout part → (key or None, its <div class="layout">)
     for s in prs.slides:
+        lay = s.slide_layout; part = str(lay.part.partname)
+        if part not in layouts:
+            lo: list = []
+            walk([sh for sh in [*lay.slide_master.shapes, *lay.shapes] if not sh.is_placeholder], k, assets, lo)
+            if lo:
+                key = "p-" + hashlib.sha1(lay.part.blob + lay.slide_master.part.blob).hexdigest()[:8]   # the same layout imported again: the same key
+                lo = [b.replace('<div class="box', f'<div id="{key}-{i}" class="box', 1) for i, b in enumerate(lo, 1)]
+                lbg = ""
+                try:
+                    if lay.background.fill.type is not None: lbg = hexcolor(lay.background.fill.fore_color) or ""
+                except (TypeError, AttributeError): pass
+                bga = f' data-background-color="{lbg}"' if lbg else ""
+                layouts[part] = (key, f'<div class="layout" data-layout="{key}" data-name="{html.escape(lay.name or key, quote=True)}"{bga}>\n  ' + "\n  ".join(lo) + "\n</div>")
+            else: layouts[part] = (None, "")
+        named = f' data-layout="{layouts[part][0]}"' if layouts[part][0] else ""
         bg = ""
         try:
             if s.background.fill.type is not None: bg = hexcolor(s.background.fill.fore_color) or ""
@@ -107,8 +124,8 @@ def convert(src: Path, assets: Path):
         walk(s.shapes, k, assets, out)
         if s.has_notes_slide and s.notes_slide.notes_text_frame.text.strip():
             out.append(f'<aside class="notes">{html.escape(s.notes_slide.notes_text_frame.text.strip())}</aside>')
-        slides.append(f'<section data-background-color="{bg or "#ffffff"}">\n  ' + "\n  ".join(out) + "\n</section>")
-    return {"slides": slides, "size": [1920, round(prs.slide_height * k)]}
+        slides.append(f'<section data-background-color="{bg or "#ffffff"}"{named}>\n  ' + "\n  ".join(out) + "\n</section>")
+    return {"slides": slides, "layouts": [h for key, h in layouts.values() if key], "size": [1920, round(prs.slide_height * k)]}
 
 
 if __name__ == "__main__":

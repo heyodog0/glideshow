@@ -219,6 +219,9 @@ try:
     paras = re.findall(r'<(div|li)\b[^>]*style="([^"]*font-size: ([\d.]+)px[^"]*)"[^>]*>(.*?)</\1>', imported, re.S)
     repeats = [(size, inner[:80]) for _, _, size, inner in paras if re.search(rf'<span style="[^"]*font-size: {re.escape(size)}px', inner)]
     check("an imported paragraph's runs don't repeat its font size (one place to change it)", paras and not repeats, repeats[:3])
+    lays = conv.layout_divs()
+    check("a Google Slides import keeps its layout's own shapes (and its master's) as one layout in #deck-layouts, which its slides name",
+          len(lays) == 1 and lays[0].count('class="box') == 2 and imported.count(re.search(r'data-layout="([^"]+)"', lays[0]).group(0)) == 2, lays)
 
     # ---------- render and check ----------
     deck_c = TMP / "decks" / "problems"; gs("new", "Problems", "--no-open"); next((TMP / "decks").glob("problems-*")).rename(deck_c)

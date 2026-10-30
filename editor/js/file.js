@@ -268,7 +268,12 @@ function insertImported(j, label) {
   const t = document.createElement('template'); t.innerHTML = j.slides.join('');
   const added = [...t.content.children].filter(e => e.tagName === 'SECTION');
   added.forEach(s => s.querySelectorAll('.box').forEach(b => { b.id ||= uid(); }));
-  slides.splice(cur + 1, 0, ...added); go(cur + 1); commit();
+  if (j.layouts?.length) {   // their layouts' own objects (D5), into the deck's #deck-layouts; one it already has stays
+    let tpl = layoutTpl(); if (!tpl) { tpl = deckDoc.createElement('template'); tpl.id = 'deck-layouts'; (deckDoc.querySelector('.reveal') || deckDoc.body.firstElementChild)?.after(tpl); }
+    const have = new Set(tplLayouts().map(l => l.dataset.layout)), t2 = document.createElement('template'); t2.innerHTML = j.layouts.join('');
+    for (const L of /** @type {HTMLElement[]} */ ([...t2.content.children])) if (!have.has(L.dataset.layout)) tpl.content.append(tpl.content.ownerDocument.importNode(L, true));
+  }
+  slides.splice(cur + 1, 0, ...added); ensureSids(); editorLayouts(added); go(cur + 1); commit();
   setStatus(`Imported ${added.length} slide${added.length === 1 ? '' : 's'} from ${label}` + (j.log?.length ? ` (${j.log.length} to check: see the terminal)` : ''));
   if (j.log?.length) console.warn('Google Slides import:\n' + j.log.join('\n'));
 }

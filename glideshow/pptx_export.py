@@ -6,7 +6,8 @@
 pictures, tables, the common shapes with their fill and outline, straight lines, speaker notes, slide transitions
 (PowerPoint's nearest: fade, push, wipe, cover, pull, circle, zoom; Morph as PowerPoint's Morph, shapes named "!!<id>"
 so they pair) and builds (appear, fade, wipe in; fade out; on click, with or after the previous one, with their
-duration and delay; other effects become a fade). Videos and web embeds are left out.
+duration and delay; other effects become a fade), a layout's own objects (#deck-layouts) on each of its slides. Videos
+and web embeds are left out.
 
     uv run glideshow/pptx_export.py DECK/deck.html OUT.pptx
 
@@ -142,9 +143,15 @@ def export(deck: Path, out: Path):
     blank = prs.slide_layouts[6]
     sections = [s for top in slides_el.kids if isinstance(top, Node) and top.tag == "section"
                 for s in ([k for k in top.kids if isinstance(k, Node) and k.tag == "section"] or [top])]
+    tpl = next(root.find_all(lambda n: n.tag == "template" and n.attrs.get("id") == "deck-layouts"), None)   # layouts with their own objects (D5)
+    layouts = {L.attrs.get("data-layout"): L for L in (tpl.kids if tpl else []) if isinstance(L, Node) and "layout" in L.cls()}
     for sec in sections:
         slide = prs.slides.add_slide(blank)
-        bg = rgb(sec.attrs.get("data-background-color"))
+        L = layouts.get(sec.attrs.get("data-layout", ""))
+        bg = rgb(sec.attrs.get("data-background-color") or (L.attrs.get("data-background-color") if L else None))
+        if L and sec.attrs.get("data-layout-objects") != "off":   # the layout's objects, behind the slide's own, as the deck shows them
+            for box in [k for k in L.kids if isinstance(k, Node) and "box" in k.cls() and "data-placeholder" not in k.attrs]:
+                for sh in add_box(slide, box, deck.parent, 0, 0) or []: sh.name = "!!" + (box.attrs.get("id") or sh.name)   # the same name on each slide: Morph keeps it still
         if bg: slide.background.fill.solid(); slide.background.fill.fore_color.rgb = bg
         built = []
         for box in [k for k in sec.kids if isinstance(k, Node) and "box" in k.cls()]:
