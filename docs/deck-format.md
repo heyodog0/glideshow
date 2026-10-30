@@ -183,7 +183,9 @@ Rules:
   editor and the slideshow scope it to its slide (Slide → Slide style).
 - Any deck reads as a scrolling page with `?view=scroll` (reveal's scroll view; narrow phone screens get it by themselves).
 - Figures: a `.box.image` may carry `data-source` (the command that makes its picture; `{out}` is the picture's path, run in the
-  deck's folder by `glideshow figure refresh`) and `data-made` (when it was last made, ISO time). Both are optional.
+  deck's folder by `glideshow figure refresh`) and `data-made` (when it was last made, ISO time). Both are optional. In the
+  editor, Format options → Figure edits the command and Refresh runs it; once you've trusted a deck's command on your
+  machine (asked once), the server also runs it again whenever a file it names (its script, its data) changes.
 - Give every box a unique `id`. Ids starting with `ed-` are reserved for the editor's own interface. Put deck-specific CSS in `<style id="deck-theme">`.
 - Don't edit `#deck-base`, `#deck-shapes` or `#deck-present`. The editor overwrites them from `editor/` on every save.
 

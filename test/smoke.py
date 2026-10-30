@@ -618,6 +618,7 @@ def checks(pg, deck: Path, errors):
     fo = pg.evaluate("(() => { const b = [...document.querySelectorAll('#ed-canvas .box[data-shape]')].pop(); return [b.style.width, b.style.height, b.style.transform, b.dataset.flip, 'shadow' in b.dataset, parseFloat(b.style.left) + parseFloat(b.style.width) / 2, getComputedStyle(b).scale]; })()")
     check("Format options (inches, as Slides): size, lock aspect, rotate, flip, shadow, position from centre", fo == ["240px", "200px", "rotate(30deg)", "h", True, 960, "-1 1"], str(fo))
     design_answer_checks(pg)
+    figure_checks(pg, deck.parent)
     pg.fill("#ed-f-rot", "90"); pg.press("#ed-f-rot", "Enter")
     # map the local shadow offset through the box's actual rendered matrix (flip · rotate) and expect "straight down"
     sh = pg.evaluate("""(() => { const b = [...document.querySelectorAll('#ed-canvas .box[data-shape]')].pop();
@@ -1178,7 +1179,7 @@ def checks(pg, deck: Path, errors):
     ub = pg.evaluate("[unbg.gone.reduce((a, v) => a + v, 0), document.querySelector('#ed-ui .unbg-bar span').textContent, getComputedStyle(boxes()[0].querySelector('img')).visibility, IMAGE_ITEMS().map(i => i.label).includes('Remove background')]")
     r = pg.evaluate("(() => { const r = document.querySelector('#ed-ui .unbg canvas').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()")
     pg.mouse.click(r[0], r[1]); sq = pg.evaluate("unbg.gone.reduce((a, v) => a + v, 0)"); pg.screenshot(path=str(HERE / "remove-background.png"))
-    pg.click("#ed-ui .unbg-bar .done"); pg.wait_for_function("!unbg && boxes()[0].querySelector('img').getAttribute('src').endsWith('.png') && !boxes()[0].querySelector('img').getAttribute('src').startsWith('data:')", timeout=10000)
+    pg.click("#ed-ui .unbg-bar .done"); pg.wait_for_function("!unbg && plainSrc(boxes()[0].querySelector('img').getAttribute('src')).endsWith('.png') && !boxes()[0].querySelector('img').getAttribute('src').startsWith('data:')", timeout=10000)
     fin = pg.evaluate("""(async () => { const b = boxes()[0], img = b.querySelector('img'), p = new Image(); p.src = img.src; await p.decode();
       const c = document.createElement('canvas'); c.width = p.naturalWidth; c.height = p.naturalHeight; const x = c.getContext('2d'); x.drawImage(p, 0, 0); const a = (i, j) => x.getImageData(i, j, 1, 1).data[3];
       const out = [a(2, 2), a(200, 150), a(110, 150), !!b.dataset.original, b.dataset.crop, b.style.width, b.style.height];
@@ -1901,6 +1902,44 @@ def checks(pg, deck: Path, errors):
     pg.click("#ed-menubar [data-menu=View]"); pg.click(".menu-item:has(.menu-label:text-is('Show insert bar'))"); pg.wait_for_timeout(100); pg.evaluate("closeMenu()")
     check("View → Show insert bar hides the bar and remembers it; again shows it", hid == [True, "0"] and pg.evaluate("!document.querySelector('#ed-dock').hidden"), str(hid))
     pg.evaluate("stopEdit(); sel = new Set(boxes().filter(b => !window.__before.has(b))); if (sel.size) deleteSelection(); sel = new Set()"); pg.wait_for_timeout(100)   # what the bar added, gone again
+
+FIG_SCRIPT = """import struct, sys, zlib
+COLOR = (%s)
+w = h = 8
+raw = b"".join(b"\\x00" + bytes(COLOR) * w for _ in range(h))
+chunk = lambda k, d: struct.pack(">I", len(d)) + k + d + struct.pack(">I", zlib.crc32(k + d) & 0xffffffff)
+open(sys.argv[1], "wb").write(b"\\x89PNG\\r\\n\\x1a\\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+"""
+
+
+def figure_checks(pg, folder: Path):
+    """Figures made by a script (script figures first, D4): Format options → Figure, Refresh after a one-time Run? prompt,
+    and the figure made again when its script changes."""
+    (folder / "assets").mkdir(exist_ok=True); (folder / "make_fig.py").write_text(FIG_SCRIPT % "220, 40, 40")
+    (folder / "start_fig.py").write_text(FIG_SCRIPT % "120, 120, 120"); subprocess.run([sys.executable, str(folder / "start_fig.py"), str(folder / "assets" / "fig-test.png")], check=True)   # its first picture, grey (as `figure add` leaves one)
+    grey = (folder / "assets" / "fig-test.png").read_bytes()
+    cmd = f"{sys.executable} make_fig.py {{out}}"
+    pg.evaluate(f"""(async () => {{ window.__figWas = [cur, [...sel].map(b => b.id)]; const s = blankSlide(); slides.push(s); go(slides.length - 1);
+      const b = makeBox({{ x: 400, y: 200, w: 400, h: 400, cls: 'image', html: '<img src="assets/fig-test.png" alt="A test figure">' }}); b.id = 'fig-test'; b.dataset.source = {json.dumps(cmd)}; s.append(b);
+      sel = new Set([b]); render(); fmt.hidden = false; updatePanel(); commit(); await flushSave(); }})()""")
+    shown = pg.evaluate("[document.querySelector('#ed-f-fig-src').value, IMAGE_ITEMS().some(i => i.label === 'Refresh figure')]")
+    pg.click("#ed-fmt summary:has-text('Figure')"); pg.click("#ed-f-fig-refresh"); pg.wait_for_selector("#ed-rundlg:not([hidden])", timeout=10000)
+    asked = pg.evaluate("document.querySelector('#ed-run-cmd').textContent"); pg.click("#ed-run-ok")
+    for _ in range(240):   # the command runs on the server: wait for its picture
+        if (folder / "assets" / "fig-test.png").read_bytes() != grey: break
+        time.sleep(0.25)
+    red = (folder / "assets" / "fig-test.png").read_bytes()
+    made1 = pg.evaluate("""(async () => { for (let k = 0; k < 40 && !boxes().at(-1)?.dataset.made; k++) await new Promise(r => setTimeout(r, 250)); return boxes().at(-1)?.dataset.made || ''; })()""")
+    time.sleep(1.1); (folder / "make_fig.py").write_text(FIG_SCRIPT % "40, 80, 220")   # the script changes: made again by itself
+    for _ in range(60):
+        time.sleep(0.25)
+        if (folder / "assets" / "fig-test.png").read_bytes() != red: break
+    redrawn = (folder / "assets" / "fig-test.png").read_bytes() != red
+    pg.wait_for_timeout(1500)   # (the redrawn figure comes back as an outside change: the slides are read again)
+    pg.evaluate("(async () => { const w = window.__figWas; slides.pop(); go(w[0]); sel = new Set(w[1].map(id => document.getElementById(id)).filter(Boolean)); render(); commit(); await flushSave(); drawOverlay(); updateToolbar(); })()")
+    check("Format options → Figure (script figures first, D4): the picture's command; Refresh asks once before running it, then makes the picture; it's made again when its script changes",
+          shown == [cmd, True] and asked == cmd and red[:4] == b"\x89PNG" and bool(made1) and redrawn, f"{shown} {asked} {red[:4]} {made1} {redrawn}")
+
 
 def design_answer_checks(pg):
     """The user's design answers of 2026-10-29: paragraph styles (D11), slide groups (D6), the outline view (D9)."""

@@ -12,6 +12,7 @@ function updatePanel() {
   fmt.querySelectorAll('input, select, button:not(#ed-fmt-close)').forEach(e => { e.disabled = !b; });
   if (!b) return;
   const g = geo(b), c = content(b), cs = getComputedStyle(c), centre = F('from').value === 'c';
+  if (b.classList.contains('image')) { F('fig-src').value = b.dataset.source || ''; figureInfo(b); }
   const pt = pstyleTargets()[0]; F('pstyle').value = pt ? PSTYLES.find(([k]) => pt.classList.contains(k))?.[0] || '' : '';
   F('w').value = toIn(g.w); F('h').value = toIn(g.h);
   F('lock').checked = b.dataset.lock === 'aspect' || isMedia(b);
@@ -199,3 +200,26 @@ F('pstyle-update').onclick = () => {
     { for (const k of ['font-size', 'font-weight', 'font-style', 'color', 'font-family']) e.style.removeProperty(k); if (!e.getAttribute('style')) e.removeAttribute('style'); })));
   render(); commit(); scheduleSave(); setStatus(`${PSTYLES.find(x => x[0] === cls)[1]} updated to match`);
 };
+
+/* Figures made by a script (data-source, as `glideshow figure`): Format options → Figure shows the command (editable) and
+   its watched files, Refresh (also in the picture's right-click menu) runs it again through the server and the new picture
+   comes back as an outside change. A command runs only once it's trusted on this machine (the dialog asks, once). */
+const runDlg = $('#ed-rundlg');
+const askRun = cmd => new Promise(ok => { $('#ed-run-cmd').textContent = cmd; runDlg.hidden = false; $('#ed-run-cancel').focus();
+  const done = v => { runDlg.hidden = true; ok(v); }; $('#ed-run-ok').onclick = () => done(true); $('#ed-run-cancel').onclick = runDlg.querySelector('.sc-close').onclick = () => done(false); });
+async function refreshFigure(b) {
+  if (!b?.dataset.source) return setStatus('This picture has no command to make it (Format options → Figure)', 'error');
+  await flushSave(); setStatus('Making the figure…');
+  const post = url => fetch(url, { method: 'POST', headers: { 'X-Glideshow': '1' }, body: JSON.stringify({ id: b.id }) });
+  let r = await post('/api/figure/refresh'), first = await r.clone().json().catch(() => ({}));
+  if (first.untrusted) { if (!(await askRun(first.cmd))) return setStatus(''); await post('/api/figure/trust'); r = await post('/api/figure/refresh'); }
+  const j = await r.json().catch(() => ({})); setStatus(r.ok ? 'Figure made again' : (j.error || (j.log || 'The command failed').split('\n').pop()), r.ok ? '' : 'error');
+}
+F('fig-src').onchange = one(b => { const v = F('fig-src').value.trim(); if (v) b.dataset.source = v; else delete b.dataset.source; updatePanel(); });
+F('fig-refresh').onclick = () => refreshFigure([...sel][0]);
+async function figureInfo(b) {
+  const info = F('fig-info'); info.textContent = b.dataset.made ? `Made ${new Date(b.dataset.made).toLocaleString()}` : '';
+  if (!b.dataset.source) return;
+  const f = (await (await fetch('/api/figures')).json().catch(() => ({ figures: [] }))).figures?.find(x => x.id === b.id);
+  if (f && sel.has(b)) info.textContent += (info.textContent ? ' · ' : '') + (f.trusted ? (f.watch.length ? `made again when ${f.watch.join(', ')} change${f.watch.length > 1 ? '' : 's'}` : 'trusted here') : 'not run here yet');
+}

@@ -229,6 +229,11 @@
       <div class="row"><label>Top<span class="unit"><input type="number" id="ed-f-pt" min="0" step="0.01"> in</span></label><label>Bottom<span class="unit"><input type="number" id="ed-f-pb" min="0" step="0.01"> in</span></label></div>
       <div class="row"><label>Left<span class="unit"><input type="number" id="ed-f-pl" min="0" step="0.01"> in</span></label><label>Right<span class="unit"><input type="number" id="ed-f-pr" min="0" step="0.01"> in</span></label></div>
     </details>
+    <details class="img-only"><summary>Figure</summary>
+      <label>Made by (a command; {out} is the picture)<textarea id="ed-f-fig-src" rows="2" placeholder="python plot.py {out}"></textarea></label>
+      <p class="hint" id="ed-f-fig-info"></p>
+      <div class="row"><button id="ed-f-fig-refresh" class="outlined">Refresh</button></div>
+    </details>
     <details class="img-only"><summary>Adjustments</summary>
       <label>Opacity<span class="unit slider"><input type="range" id="ed-f-opacity" min="0" max="100" step="1"><input type="number" id="ed-f-opacity-n" min="0" max="100" class="short"> %</span></label>
       <label>Exposure<span class="unit slider"><input type="range" id="ed-f-adj-exposure" min="-100" max="100" step="1"><input type="number" id="ed-f-adj-exposure-n" min="-100" max="100" class="short"></span></label>
@@ -352,6 +357,14 @@
     <div class="bg-row"><span>Resolution</span><select id="ed-mov-size"></select></div>
     <div class="bg-row"><span>Frame rate</span><select id="ed-mov-fps"></select></div>
     <footer><button id="ed-mov-cancel" class="outlined">Cancel</button><button id="ed-mov-ok" class="done">Download</button></footer>
+  </div>
+</div>
+<div id="ed-rundlg" class="backdrop" hidden>
+  <div class="dialog bg-dialog" role="dialog" aria-label="Run this command?">
+    <header><h2>Run this command?</h2><button class="sc-close" title="Close"><span class="icon">close</span></button></header>
+    <div class="bg-row run-cmd"><code id="ed-run-cmd"></code></div>
+    <p class="hint run-why">This figure is made by running a command on this computer. Run it only if you trust where this deck came from; Glideshow remembers your answer for this deck and command, and runs it again when its files change.</p>
+    <footer><button id="ed-run-cancel" class="outlined">Cancel</button><button id="ed-run-ok" class="done">Run</button></footer>
   </div>
 </div>
 <div id="ed-linkdlg" class="backdrop" hidden>

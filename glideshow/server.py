@@ -21,9 +21,45 @@ from .decks import deck_id, EDITOR, HOME, add_image, all_decks, deck_title, forg
 from .fonts import FONT_EXTS, font_catalogue, local_fonts
 from .history import GIT, commit_library, commit_now, commit_outside, commit_outside_library, git, history, init_repo, schedule_commit, sync
 from .osutil import reveal, trash
-from .service import DEFAULT_PORT, code_version, forget_me, live, post, record, same_install
+from .service import CACHE, DEFAULT_PORT, code_version, forget_me, live, post, record, same_install
 
 
+
+
+# Figures made by a script (data-source on a picture, `glideshow figure`): the editor's Refresh and redrawing when a file
+# the command names changes. A deck can come from anyone, so a command runs only once you've trusted it on this machine:
+# CACHE/figure-trust.json keeps a hash of each trusted deck + command.
+TRUST = CACHE / "figure-trust.json"
+def _trust_key(deck: Path, cmd: str) -> str: return hashlib.sha256(f"{deck.resolve()}\0{cmd}".encode()).hexdigest()
+def trusted(deck: Path, cmd: str) -> bool:
+    try: return _trust_key(deck, cmd) in json.loads(TRUST.read_text())
+    except Exception: return False
+def trust(deck: Path, cmd: str):
+    try: keys = set(json.loads(TRUST.read_text()))
+    except Exception: keys = set()
+    keys.add(_trust_key(deck, cmd)); TRUST.parent.mkdir(parents=True, exist_ok=True); TRUST.write_text(json.dumps(sorted(keys)))
+def figures(deck: Path) -> list:
+    """(id, command) of each picture with a data-source."""
+    from .agent import _attrs, _boxes
+    out = []
+    for m in _boxes((deck / "deck.html").read_text()):
+        a = _attrs(m.group())
+        if "image" in a.get("class", "").split() and a.get("id") and a.get("data-source"): out.append((a["id"], a["data-source"]))
+    return out
+def refresh_figure(deck: Path, fid: str):
+    """`glideshow figure refresh DECK ID`: the command run again in the deck's folder, the new picture put in place."""
+    import subprocess
+    return subprocess.run([sys.executable, "-m", "glideshow", "figure", "refresh", str(deck), fid], capture_output=True, text=True, timeout=600)
+def watched_files(deck: Path, cmd: str) -> list:
+    """The files a figure's command names (its script, its data): any word of it that is a file, in the deck's folder or absolute."""
+    import shlex
+    try: words = shlex.split(cmd.replace("{out}", ""))
+    except ValueError: words = cmd.split()
+    files = []
+    for w in words:
+        for cand in (Path(w).expanduser(), deck / w):
+            if cand.is_file() and cand.suffix.lower() not in (".png", ".jpg", ".jpeg", ".svg", ".gif") and cand not in files: files.append(cand); break
+    return files
 
 
 def pptx_cmd(script: str) -> list:
@@ -142,6 +178,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_response(200); self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
             self.send_header("Content-Disposition", f'attachment; filename="{out.name}"'); self.send_header("Content-Length", str(len(data))); self.end_headers()
             return self.wfile.write(data)
+        if path == "/api/figures":   # Format options → Figure: each figure, whether its command is trusted here, the files it watches
+            return self.send_json({"figures": [{"id": i, "trusted": trusted(self.deck, c), "watch": [str(f.relative_to(self.deck)) if f.is_relative_to(self.deck) else str(f) for f in watched_files(self.deck, c)]} for i, c in figures(self.deck)]})
         if path == "/api/movie":   # File → Download → Movie / Animated GIF: movie.py plays the deck in headless Chrome and records it
             import subprocess, tempfile
             q = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
@@ -212,6 +250,13 @@ class Handler(SimpleHTTPRequestHandler):
         url = urlparse(self.path)
 
         body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        if url.path in ("/api/figure/refresh", "/api/figure/trust"):   # Refresh (a figure's command run again), Trust (its command, on this machine)
+            req = json.loads(body or b"{}"); fid = req.get("id", ""); cmd = dict(figures(self.deck)).get(fid)
+            if not cmd: return self.send_json({"error": "no figure with a command by that id"}, 404)
+            if url.path == "/api/figure/trust": trust(self.deck, cmd); return self.send_json({"ok": True})
+            if not trusted(self.deck, cmd): return self.send_json({"untrusted": True, "cmd": cmd})   # the editor asks, then trusts it
+            r = refresh_figure(self.deck, fid)
+            return self.send_json({"ok": r.returncode == 0, "log": (r.stdout + r.stderr).strip()[-1200:]}, 200 if r.returncode == 0 else 500)
         if url.path == "/api/save":
             req = json.loads(body)
             tmp = self.deck_file.with_suffix(".tmp")
@@ -505,6 +550,19 @@ def main():
             if code_version() != version:
                 restart.set(); server.shutdown()
     threading.Thread(target=watch, daemon=True).start()
+    def figure_watch():   # a trusted figure is made again when a file its command names changes (its script, its data)
+        seen: dict = {}
+        while not restart.wait(2):
+            try:
+                deck = Handler.deck
+                for fid, cmd in figures(deck):
+                    if not trusted(deck, cmd): continue
+                    for f in watched_files(deck, cmd):
+                        key, t = (str(deck), fid, str(f)), f.stat().st_mtime
+                        if key in seen and seen[key] != t: seen[key] = t; refresh_figure(deck, fid); break
+                        seen[key] = t
+            except Exception: pass
+    threading.Thread(target=figure_watch, daemon=True).start()
     def outside():   # deck.html changed on disk, not by this server (an agent, a text editor): its own version in git
         while not restart.wait(1):
             with Handler.writing:

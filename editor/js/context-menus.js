@@ -60,6 +60,7 @@ const theImage = () => sel.size === 1 && [...sel][0].classList.contains('image')
 const IMAGE_ITEMS = () => [
   { label: 'Crop image', icon: 'crop', run: () => enterCrop(theImage()), off: () => !theImage() },
   { label: 'Replace image', icon: 'image', run: () => $('#ed-replace-file').click(), off: () => !theImage() },
+  { label: 'Refresh figure', icon: 'refresh', run: () => refreshFigure(theImage()), off: () => !theImage()?.dataset.source },   // a figure made by a script
   { label: 'Remove background', icon: 'auto_fix_high', run: () => removeBackground(theImage()), off: () => !theImage() },
   { label: 'Reset image', icon: 'reset_image', run: () => resetImage(theImage()), off: () => !theImage() },
 ];

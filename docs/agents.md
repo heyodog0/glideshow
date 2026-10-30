@@ -170,6 +170,8 @@ the slide's pixels and, beside it, where each piece of its text is (`curves.png.
 `--at x,y,w,h`), and records `data-source` (`{out}` stands for the picture's path) and `data-made`. `figure refresh` says
 when a picture came out the same (and leaves the deck alone) and when its font lacks a character. In matplotlib, a
 figure 1 in wide fills 192 px of slide, so a point in the figure is a point on the slide: labels at 12–16 pt read well.
+In the editor the user can press Refresh (Format options → Figure) and, once they trust the command, the figure is
+made again whenever its script or a data file named in the command changes, so keep the data file's path in the command.
 
 **An equation.** Any box: `<div class="content" style="font-size: 48px; text-align: center;">$$\mathcal{L} = -\sum_t \log \pi_\theta(a_t \mid h_{<t})$$</div>`.
 The deck keeps the LaTeX; KaTeX typesets it.

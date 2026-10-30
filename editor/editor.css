@@ -536,6 +536,8 @@ body.drawing #ed-stage, body.drawing #ed-stage * { cursor: crosshair !important;
 .mask-bar { position: absolute; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 12px; translate: -50% 0; scale: calc(var(--k, 1px) / 1px); transform-origin: 50% 0;
   border-radius: 8px; background: var(--surface); box-shadow: var(--menu-shadow); pointer-events: auto; font: 14px var(--font); white-space: nowrap; }
 .mask-bar .icon { font-size: 20px; color: var(--muted); } .mask-bar input { width: 120px; }
+.run-cmd code { display: block; padding: 8px 10px; border-radius: 6px; background: var(--hover); font: 13px ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; } .run-why { margin: 0 24px 8px; }   /* Run this command? (a figure's) */
+#ed-f-fig-src { width: 100%; box-sizing: border-box; font: 12px ui-monospace, Menlo, monospace; }
 .unbg { position: absolute; overflow: hidden; pointer-events: auto; cursor: crosshair; } .unbg canvas { position: absolute; }   /* Remove background: the picture as it will be */
 .unbg-bar span { margin-right: 8px; color: var(--ink); } .mask-bar button.reset { background: none; color: var(--blue); }
 .mask-bar button { height: 32px; padding: 0 14px; border: 0; border-radius: 16px; background: var(--blue); color: #fff; font-weight: 500; cursor: pointer; }
