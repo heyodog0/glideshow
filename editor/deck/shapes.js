@@ -28,6 +28,10 @@
       case 'circle': return { els: [el('circle', { cx: x, cy: y, r }, cls)], back: open ? r : 0 };
       case 'square': return { els: [poly([at(-r, -r), at(r, -r), at(r, r), at(-r, r)], cls)], back: open ? r : 0 };
       case 'diamond': return { els: [poly([at(-r * 1.3, 0), at(0, r * 1.3), at(r * 1.3, 0), at(0, -r * 1.3)], cls)], back: open ? r * 1.3 : 0 };
+      // Keynote's other ends (k15; it gives them no names): an arrow with a notched back, a small one pointing back into the line, a bar across
+      case 'barb-arrow': return { els: [poly([at(0, 0), at(-a, half), at(-a * 0.7, 0), at(-a, -half)], 'h')], back: a * 0.6 };
+      case 'tail-arrow': return { els: [poly([at(0, half * 0.7), at(-a * 0.7, 0), at(0, -half * 0.7)], 'h')], back: 0 };
+      case 'bar': return { els: [el('polyline', { points: [at(0, half), at(0, -half)].join(' ') }, 'l')], back: 0 };
       default: return { els: [], back: 0 };
     }
   }
@@ -40,6 +44,30 @@
   }
   /* Line Draw (class line-draw / line-erase, base.css): the stroke measured as 1, so its dash can draw it. Dashed lines keep
      their dashes and just appear. */
+  /* data-brush (Keynote's brush strokes, k15; it shows them as pictures only, so they're named here by their look):
+     "tapered" (pointed at both ends), "swelled" (thicker at both ends) and "rounded" are outlines filled along the line,
+     "rough" frays its edges and "speckled" breaks it into grain (SVG filters). Not with Line Draw, which draws the stroke. */
+  const BRUSH_W = { tapered: t => Math.pow(Math.sin(Math.PI * t), 0.6), swelled: t => 0.55 + 0.75 * Math.pow(Math.abs(2 * t - 1), 2), rounded: t => 1.3 * (t < 0.03 ? Math.sqrt(1 - Math.pow(1 - t / 0.03, 2)) : t > 0.85 ? 1 - (t - 0.85) / 0.15 * 0.45 : 1) };
+  function brushed(main, b, width) {
+    const kind = b.dataset.brush; if (!kind || b.matches('.line-draw, .line-erase')) return [main];
+    if (BRUSH_W[kind]) {   // an outline round the line, its width following the profile
+      const probe = el('svg', {}); probe.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden'; const pp = el('path', { d: main.getAttribute('d') || '' }); probe.append(pp); document.body.append(probe);
+      const L = pp.getTotalLength(), n = 64, pts = Array.from({ length: n + 1 }, (_, i) => pp.getPointAtLength(L * i / n)); probe.remove();
+      if (!(L > 0)) return [main];
+      const side = s => pts.map((p, i) => { const q = pts[Math.min(n, i + 1)], o = pts[Math.max(0, i - 1)], dx = q.x - o.x, dy = q.y - o.y, m = Math.hypot(dx, dy) || 1, w = width / 2 * BRUSH_W[kind](i / n);
+        return `${(p.x - dy / m * w * s).toFixed(1)},${(p.y + dx / m * w * s).toFixed(1)}`; });
+      const outline = el('path', { d: `M${side(1).join('L')}L${side(-1).reverse().join('L')}Z` }, 'brush'); outline.style.fill = 'var(--stroke, #333)';
+      return [outline];
+    }
+    const W0 = parseFloat(b.style.width) || 0, H0 = parseFloat(b.style.height) || 0, pad = width * 3 + 8;   // a region in user space: a flat line's box has no height
+    const id = 'br-' + (b.id || Math.random().toString(36).slice(2)), f = el('filter', { id, filterUnits: 'userSpaceOnUse', x: String(-pad), y: String(-pad), width: String(W0 + 2 * pad), height: String(H0 + 2 * pad) });
+    if (kind === 'rough') { f.append(el('feTurbulence', { type: 'fractalNoise', baseFrequency: '0.25', numOctaves: '2', result: 'n' }), el('feDisplacementMap', { in: 'SourceGraphic', in2: 'n', scale: String(Math.max(3, width * 0.9)) })); main.style.strokeWidth = width * 1.2 + 'px'; }
+    else if (kind === 'speckled') { f.append(el('feTurbulence', { type: 'fractalNoise', baseFrequency: '0.9', numOctaves: '1', result: 'n' }), el('feColorMatrix', { in: 'n', type: 'matrix', values: '0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 1.6', result: 'm' }), el('feComposite', { in: 'SourceGraphic', in2: 'm', operator: 'in' })); main.style.strokeWidth = width * 1.3 + 'px'; main.style.strokeLinecap = 'butt'; }
+    else return [main];
+    main.setAttribute('filter', `url(#${id})`);
+    const defs = el('defs', {}); defs.append(f);
+    return [defs, main];
+  }
   function drawable(e, b) { if (b.matches('.line-draw, .line-erase') && !DASH[b.dataset.dash]) e.setAttribute('pathLength', '1'); }
   /* Line Draw's Include endpoints (on unless data-endpoints="off"): while the stroke draws or erases, its arrowheads ride
      the drawn stretch's ends, turned with the line there. Each frame reads the stretch from the stroke's dash as its
@@ -228,7 +256,7 @@
       case 'path': {   // a freehand curve, polyline or scribble: data-path in 0..1 units of the box, scaled with it
         const d = b.dataset.path || 'M0,0 L1,1', width = isNaN(sw) ? 4 : sw, main = unitPath(d, 0, 0, w, h, /z\s*$/i.test(d) ? 'f' : 'l');   // closed (… Z): filled, as a shape
         if ((d.match(/M/g) || []).length > 1) main.style.fillRule = 'evenodd';   // several outlines (Combine shapes): holes stay holes
-        dash(main, b, width); drawable(main, b); out = [unitPath(d, 0, 0, w, h, 'hit'), main]; break;
+        dash(main, b, width); drawable(main, b); out = [unitPath(d, 0, 0, w, h, 'hit'), ...(main.classList.contains('l') ? brushed(main, b, width) : [main])]; break;
       }
       case 'line': case 'arrowline': case 'elbow': case 'curve': {
         const [ax, ay, bx, by] = b.dataset.dir === 'up' ? [0, h, w, 0] : [0, 0, w, h];
@@ -246,7 +274,7 @@
         const main = el('path', { d }, 'l');
         dash(main, b, width); drawable(main, b);
         A.els.forEach(e => e.classList.add('m0')); B.els.forEach(e => e.classList.add('m1'));   // the line's start and end (Line Draw moves them)
-        out = [el('path', { d: d.replace(/^M[^ ]+/, `M${ax},${ay}`) }, 'hit'), main, ...A.els, ...B.els];
+        out = [el('path', { d: d.replace(/^M[^ ]+/, `M${ax},${ay}`) }, 'hit'), ...brushed(main, b, width), ...A.els, ...B.els];
         break;
       }
       default:

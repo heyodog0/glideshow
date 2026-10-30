@@ -620,6 +620,7 @@ def checks(pg, deck: Path, errors):
     design_answer_checks(pg)
     figure_checks(pg, deck.parent)
     layout_checks(pg, deck)
+    stroke_checks(pg)
     pg.fill("#ed-f-rot", "90"); pg.press("#ed-f-rot", "Enter")
     # map the local shadow offset through the box's actual rendered matrix (flip · rotate) and expect "straight down"
     sh = pg.evaluate("""(() => { const b = [...document.querySelectorAll('#ed-canvas .box[data-shape]')].pop();
@@ -1911,6 +1912,23 @@ raw = b"".join(b"\\x00" + bytes(COLOR) * w for _ in range(h))
 chunk = lambda k, d: struct.pack(">I", len(d)) + k + d + struct.pack(">I", zlib.crc32(k + d) & 0xffffffff)
 open(sys.argv[1], "wb").write(b"\\x89PNG\\r\\n\\x1a\\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
 """
+
+
+def stroke_checks(pg):
+    """Keynote's line endpoints and brush strokes (k15): three more ends; five brushes under the dashes, named by their look."""
+    st = pg.evaluate("""(() => { window.__stWas = [cur, [...sel].map(b => b.id)]; const s = blankSlide(); slides.push(s); go(slides.length - 1);
+      const l = makeBox({ x: 200, y: 400, w: 1200, h: 0, shape: 'line' }); l.style.setProperty('--sw', '12px'); s.append(l); sel = new Set([l]); render(); updateToolbar(); return l.id; })()""")
+    pg.evaluate("document.querySelector('#ed-dash').click()"); pg.wait_for_timeout(150); dash_labels = pg.evaluate("[...document.querySelectorAll('.menu .menu-item')].map(e => e.getAttribute('aria-label'))")
+    pg.click(".menu .menu-item[aria-label='Tapered']")
+    pg.evaluate("document.querySelector('#ed-lend').click()"); pg.wait_for_timeout(150); end_labels = pg.evaluate("[...document.querySelectorAll('.menu .menu-item')].map(e => e.getAttribute('aria-label'))")
+    pg.click(".menu .menu-item[aria-label='Bar']")
+    out = pg.evaluate(f"""(() => {{ const l = document.getElementById('{st}'), svg = l.querySelector('svg.shape'), br = svg.querySelector('path.brush');
+      const r = br?.getBBox(); const res = [l.dataset.brush, l.dataset.end, !!br, !svg.querySelector('path.l'), !!svg.querySelector('polyline.m1'), r ? Math.round(r.height) : 0];
+      l.dataset.brush = 'rough'; renderShape(l); res.push(!!svg.querySelector('filter feDisplacementMap'), l.querySelector('svg.shape path.l')?.getAttribute('filter')?.startsWith('url(#br-'));
+      const w = window.__stWas; slides.pop(); go(w[0]); sel = new Set(w[1].map(id => document.getElementById(id)).filter(Boolean)); render(); commit(); drawOverlay(); updateToolbar(); return res; }})()""")
+    check("line endpoints and brush strokes as k15: the dash menu's five brushes (Speckled, Rounded, Tapered, Rough, Swelled ends: Keynote shows only pictures, so named by their look); Tapered draws a filled outline pointed at both ends; Rough frays it with a filter; three more ends (Barbed arrow, Reverse arrow, Bar)",
+          dash_labels[-5:] == ["Speckled", "Rounded", "Tapered", "Rough", "Swelled ends"] and end_labels[-3:] == ["Barbed arrow", "Reverse arrow", "Bar"]
+          and out[:5] == ["tapered", "bar", True, True, True] and 8 <= out[5] <= 14 and out[6] and out[7], f"{dash_labels} {end_labels} {out}")
 
 
 def layout_checks(pg, deck_file: Path):

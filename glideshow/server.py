@@ -573,14 +573,13 @@ def main():
         while not restart.wait(2):
             try:
                 deck = Handler.deck
-                for fid, cmd in figures(deck):
-                    if trust_state(deck, cmd) == "new": continue
+                for fid, cmd in figures(deck):   # every figure's files are followed from the start; only an approved one acts
                     for f in watched_files(deck, cmd):
                         key, t = (str(deck), fid, str(f)), f.stat().st_mtime
                         if key in seen and seen[key] != t:
-                            seen[key] = t
-                            if trusted(deck, cmd): refresh_figure(deck, fid)
-                            else: PENDING[(str(deck), fid)] = code_hash(deck, cmd)
+                            seen[key] = t; st = trust_state(deck, cmd)
+                            if st == "trusted": refresh_figure(deck, fid)
+                            elif st == "changed": PENDING[(str(deck), fid)] = code_hash(deck, cmd)
                             break
                         seen[key] = t
             except Exception: pass

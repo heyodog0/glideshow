@@ -173,7 +173,13 @@ const curSw = () => parseFloat([...sel][0]?.style.getPropertyValue('--sw')) || 0
 /* Border dash and line ends, as Slides: pictures of each style, the current one ticked. */
 const DASHES = [['', 'Solid'], ['dot', 'Dot'], ['dash', 'Dash'], ['dashdot', 'Dash-dot'], ['longdash', 'Long dash'], ['longdashdot', 'Long dash-dot']];
 const ENDS = [['none', 'None'], ['arrow', 'Arrow'], ['fill-arrow', 'Filled arrow'], ['circle', 'Circle'], ['square', 'Square'], ['diamond', 'Diamond'],
-  ['open-arrow', 'Open arrow'], ['open-circle', 'Open circle'], ['open-square', 'Open square'], ['open-diamond', 'Open diamond']];
+  ['open-arrow', 'Open arrow'], ['open-circle', 'Open circle'], ['open-square', 'Open square'], ['open-diamond', 'Open diamond'],
+  ['barb-arrow', 'Barbed arrow'], ['tail-arrow', 'Reverse arrow'], ['bar', 'Bar']];   // Keynote's last three (k15), described: it doesn't name them
+/* Keynote's brush strokes (k15), under the dashes as in its pattern menu, for lines and open drawings; named by their look
+   (Keynote shows only pictures of them). */
+const BRUSHES = [['speckled', 'Speckled'], ['rounded', 'Rounded'], ['tapered', 'Tapered'], ['rough', 'Rough'], ['swelled', 'Swelled ends']];
+const brushPreview = v => { const b = div('box'); b.dataset.shape = 'line'; b.dataset.brush = v; b.id = 'bp-' + v; b.style.cssText = 'width:56px;height:0;--sw:6px;--stroke:#1f1f1f'; renderShape(b);
+  const svg = b.querySelector('svg'); svg.setAttribute('viewBox', '-4 -8 64 16'); svg.setAttribute('width', '64'); svg.setAttribute('height', '16'); svg.style.cssText = 'overflow:visible'; return svg.outerHTML.replace('class="shape"', 'class="end-pic"'); };
 const DASH_PREVIEW = { '': '', dot: '2 4', dash: '8 6', dashdot: '8 4 2 4', longdash: '14 6', longdashdot: '14 4 2 4' };
 const endPreview = (v, side) => {   // a short line with the end drawn the way shapes.js draws it
   const b = div('box'); b.dataset.shape = 'line'; b.style.cssText = 'width:44px;height:0;--sw:2px;--stroke:#1f1f1f';
@@ -183,8 +189,9 @@ const endPreview = (v, side) => {   // a short line with the end drawn the way s
 };
 const DASH_CSS = { '': 'solid', dot: 'dotted', dash: 'dashed', dashdot: 'dashed', longdash: 'dashed', longdashdot: 'dashed' };
 const setData = (k, v) => { if (k === 'dash' && cellBorder('style', DASH_CSS[v] || 'solid')) return commit(); for (const b of sel) { if (v) b.dataset[k] = v; else delete b.dataset[k]; if (b.dataset.shape) renderShape(b); } commit(); };
-menuButton($('#ed-dash'), () => DASHES.map(([v, label]) => ({ label, on: () => ([...sel][0]?.dataset.dash || '') === v, run: () => setData('dash', v),
-  svg: `<svg width="64" height="8"><line x1="2" y1="4" x2="62" y2="4" stroke="#1f1f1f" stroke-width="2" stroke-dasharray="${DASH_PREVIEW[v]}"/></svg>` })));
+menuButton($('#ed-dash'), () => [...DASHES.map(([v, label]) => ({ label, on: () => ([...sel][0]?.dataset.dash || '') === v && ![...sel][0]?.dataset.brush, run: () => { sel.forEach(b => { delete b.dataset.brush; }); setData('dash', v); },
+  svg: `<svg width="64" height="8"><line x1="2" y1="4" x2="62" y2="4" stroke="#1f1f1f" stroke-width="2" stroke-dasharray="${DASH_PREVIEW[v]}"/></svg>` })),
+  ...([...sel].some(isStroke) ? ['-', ...BRUSHES.map(([v, label]) => ({ label, svg: brushPreview(v), on: () => [...sel][0]?.dataset.brush === v, run: () => { sel.forEach(b => { if (isStroke(b)) delete b.dataset.dash; }); setData('brush', v); } }))] : [])]);
 const lineEnd = side => () => ENDS.map(([v, label]) => ({ label, svg: endPreview(v, side), run: () => setData(side, v === 'none' && side === 'start' ? '' : v),
   on: () => { const b = [...sel][0]; return (b?.dataset[side] || (side === 'end' && b?.dataset.shape === 'arrowline' ? 'fill-arrow' : 'none')) === v; } }));
 menuButton($('#ed-lstart'), lineEnd('start'));
