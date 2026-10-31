@@ -204,6 +204,34 @@
     addEventListener('message', e => { const m = e.data; if (m && m.gsView) Reveal.slide(m.h, m.v, m.f); });
     return;
   }
+  /* One transition between two slides, as in Keynote and Slides: the later slide's data-transition (and speed), played by
+     both. Reveal.js otherwise lets the slide leaving play its own way out at the same time (a cube out under a dissolve
+     in). The earlier slide borrows the later one's (its own kept in data-gs-own until it is left alone); in a Dissolve
+     the earlier slide stays solid underneath while the later one fades over it (reveal fades both, through black). */
+  const ownOf = s => s.dataset.gsOwn ? JSON.parse(s.dataset.gsOwn) : [s.getAttribute('data-transition'), s.getAttribute('data-transition-speed')];
+  const setT = (s, [t, sp]) => { for (const [k, v] of [['data-transition', t], ['data-transition-speed', sp]]) v ? s.setAttribute(k, v) : s.removeAttribute(k); };
+  const restore = s => { setT(s, ownOf(s)); delete s.dataset.gsOwn; };
+  Reveal.on('beforeslidechange', e => {
+    const a = Reveal.getCurrentSlide(), b = Reveal.getSlide(e.indexh ?? 0, e.indexv ?? 0);
+    document.querySelectorAll('.reveal .slides section.gs-under').forEach(s => s.classList.remove('gs-under'));
+    document.querySelectorAll('.reveal .slides section[data-gs-own]').forEach(s => { if (s !== a && s !== b) restore(s); });
+    if (!a || !b || a === b || a.querySelector(':scope > section') || b.querySelector(':scope > section')) return;
+    if (a.hasAttribute('data-auto-animate') && b.hasAttribute('data-auto-animate')) { [a, b].forEach(s => s.dataset.gsOwn && restore(s)); return; }   // a Morph (the slide before one has it too)
+    const all = Reveal.getSlides(), ia = all.indexOf(a), ib = all.indexOf(b), [early, late] = ia < ib ? [a, b] : [b, a], t = ownOf(late);
+    if (late.dataset.gsOwn) restore(late);
+    if (Math.abs(ia - ib) !== 1) { if (early.dataset.gsOwn) restore(early); return; }   // a jump (Go to slide, a link): as reveal.js plays it
+    if (!early.dataset.gsOwn) early.dataset.gsOwn = JSON.stringify(ownOf(early));
+    setT(early, t);
+    clearTimeout(early._gsBack);
+    if (early === a) early._gsBack = setTimeout(() => {   // the slide left behind gets its own back once the change has played, quietly
+      if (!early.dataset.gsOwn || early.classList.contains('present')) return;
+      early.style.transition = 'none'; restore(early); void early.offsetWidth; early.style.transition = '';
+    }, 3000 * ({ fast: 0.5, slow: 1.5 }[t[1]] || 1));
+    if (t[0] === 'fade') {
+      early.classList.add('gs-under');
+      clearTimeout(early._gsUnder); early._gsUnder = setTimeout(() => early.classList.remove('gs-under'), ({ fast: 400, slow: 1200 }[t[1]] || 800) + 100);
+    }
+  });
   const embedded = new URLSearchParams(location.search).has('embedded');
   let rehearsal = null;   // Rehearse slideshow's presenter view over the show (below)
   let typed = '', screen = null, laser = null;
@@ -430,7 +458,7 @@
       go(s, [{ transform: 'scale(.55)', filter: 'brightness(.5)' }, { transform: 'none', filter: 'none' }], { fill: 'none', easing: 'ease-out' });
     } else if (kind === 'page-flip') {   // the old page turns over from its right edge, hinged on the left
       const pg = copy(old, [0, 0, 0, 0]); pg.style.backfaceVisibility = 'hidden';
-      go(pg, [{ transformOrigin: '0 50%', transform: 'perspective(2400px) rotateY(0)', filter: 'brightness(1)' }, { transformOrigin: '0 50%', transform: 'perspective(2400px) rotateY(-180deg)', filter: 'brightness(.6)' }], { easing: 'ease-in-out' });
+      go(pg, [{ transformOrigin: '0 50%', transform: 'perspective(7000px) rotateY(0)', filter: 'brightness(1)' }, { transformOrigin: '0 50%', transform: 'perspective(7000px) rotateY(-180deg)', filter: 'brightness(.6)' }], { easing: 'ease-in-out' });   // (a shorter perspective swells the lifted page over the whole screen)
     } else if (kind === 'flop') {
       const under = copy(old, [H / 2, 0, 0, 0]), top = copy(old, [0, 0, H / 2, 0]), flap = copy(s, [H / 2, 0, 0, 0]);
       go(top, [{ transform: 'perspective(2000px) rotateX(0)', filter: 'brightness(1)' }, { transform: 'perspective(2000px) rotateX(-90deg)', filter: 'brightness(.5)', offset: 0.5 }, { transform: 'perspective(2000px) rotateX(-90deg)', filter: 'brightness(.5)' }], { easing: 'ease-in' });
@@ -570,6 +598,7 @@
   css.textContent = `
     html, body, .reveal { background: #000 !important; }
     .sl-instant .reveal .slides section, .sl-instant .reveal .slides .fragment { transition: none !important; }
+    .reveal .slides > section.gs-under { display: block !important; opacity: 1 !important; visibility: visible !important; transform: none !important; transition: none !important; animation: none !important; z-index: 9 !important; }
     .reveal .box[data-link], .reveal .box.audio { cursor: pointer; }
     .reveal .box.audio[data-hide-icon] { opacity: 0; }
     .reveal .slides .box.fragment.gs-seq { opacity: 1 !important; visibility: inherit !important; transform: none !important; scale: none !important; animation: none !important; }

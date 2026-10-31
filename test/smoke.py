@@ -2481,6 +2481,14 @@ def reveal_checks(b, errors, deck_file: Path):
       s.dataset.transition = 'fade-black'; Reveal.slide(0); return out; }""")
     bad_m = {k: x for k, x in mt.items() if not (x[0] and x[2] and (x[1] or k not in ("sparkle", "shimmer", "confetti")))}
     check("…Switch, Perspective, Page flip, Droplet, Swoosh, Swing move the slides; Sparkle, Shimmer, Confetti bring their particles; each ends with the new slide in place", not bad_m, str(mt))
+    one = v.evaluate("""async () => { const s = Reveal.getSlides().find(x => 'k8' in x.dataset), p = s.previousElementSibling, h = Reveal.getIndices(s).h, cs = e => getComputedStyle(e), wait = ms => new Promise(r => setTimeout(r, ms));
+      const was = p.getAttribute('data-transition'); p.dataset.transition = 'concave'; s.dataset.transition = 'fade';
+      Reveal.slide(h - 1, 0, -1); await wait(400); Reveal.slide(h, 0, -1); await wait(300);
+      const mid = [p.dataset.transition, +cs(p).opacity, cs(p).transform, +cs(s).opacity];
+      await wait(1000); Reveal.slide(h + 1, 0, -1); await wait(50); const back = p.getAttribute('data-transition');
+      was ? p.setAttribute('data-transition', was) : p.removeAttribute('data-transition'); s.dataset.transition = 'fade-black'; Reveal.slide(0); return [...mid, back]; }""")
+    check("…one transition between two slides: leaving a Cube slide for a Dissolve one, the old slide dissolves too and stays solid under the new one fading in (no cube, no dip to black), then gets its own back",
+          one[0] == "fade" and one[1] == 1 and one[2] == "none" and 0 < one[3] < 1 and one[4] == "concave", str(one))
     shown = lambda x: x[0] == 1 and x[1] == "visible"
     check("…in the slideshow Iris opens the new slide from a circle over the old one; More effects build in and out", t[0].startswith("circle(") and t[1] == 1 and t[2].startswith("circle(75%")
           and not any(shown(x) for x in b0[:5]) and all(shown(x) for x in b0[5:]) and b0[0][2].startswith("blur") and b0[2][5] == "-360deg" and b0[4][3] == "3"
