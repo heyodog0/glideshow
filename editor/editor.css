@@ -528,16 +528,19 @@ body.drawing #ed-stage, body.drawing #ed-stage * { cursor: crosshair !important;
 #ed-fmt .cpal button.on { border-color: var(--accent, #0b57d0); } #ed-fmt .cpal i { width: 10px; height: 18px; }
 #ed-f-cdata { align-self: flex-start; height: 32px; padding: 0 16px; border: 0; border-radius: 16px; background: var(--selected); color: #041e49; cursor: pointer; }
 .chart-ed { z-index: 29; width: auto; max-width: min(720px, calc(100vw - 48px)); }
+.find.chart-ed { top: auto; bottom: 24px; left: 50%; right: auto; transform: translateX(-50%); width: auto; gap: 8px; padding: 12px 16px 16px; border-radius: 16px; }   /* small and low, as Keynote's Chart Data window: the chart stays in view */
+.find.chart-ed h2 { font-size: 16px; font-weight: 500; }
 .chart-ed header { display: flex; align-items: center; gap: 8px; } .chart-ed h2 { flex: 1; margin: 0; font-size: 16px; font-weight: 500; }
 .chart-ed header button { display: flex; padding: 4px; border: 0; border-radius: 50%; background: none; color: inherit; cursor: pointer; }
 .chart-ed .ced-plot { display: flex; gap: 2px; } .chart-ed .ced-plot button.on { background: var(--selected); color: #041e49; border-radius: 6px; }
 .chart-ed .ced-wrap { overflow: auto; max-height: 50vh; }
 .ced-grid { border-collapse: collapse; font-size: 13px; }
 .ced-grid td { padding: 0; border: 1px solid var(--line, #dadce0); } .ced-grid tr.ced-bars td, .ced-grid td.ced-rowbar { border: 0; }
-.ced-grid input { width: 84px; height: 26px; box-sizing: border-box; padding: 0 6px; border: 0; background: transparent; color: inherit; font: inherit; text-align: right; }
-.ced-grid .ced-head input { font-weight: 600; text-align: left; } .ced-grid tr > td:nth-child(2) input { width: 120px; } .ced-grid .ced-head { background: var(--hover, #f1f3f4); }
+.chart-ed .ced-grid input:not([type=checkbox]) { flex: none; width: 84px; height: 26px; box-sizing: border-box; padding: 0 6px; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; font-size: 13px; text-align: right; }
+.chart-ed .ced-grid .ced-head input { font-weight: 600; text-align: left; } .chart-ed .ced-grid tr > td:nth-child(2) input { width: 120px; } .ced-grid .ced-head { background: var(--hover, #f1f3f4); }
 .ced-grid input:focus { outline: 2px solid var(--accent, #0b57d0); outline-offset: -2px; }
 .ced-bar { display: block; width: 100%; height: 8px; padding: 0; border: 0; border-radius: 3px; background: var(--line, #dadce0); cursor: pointer; } .ced-bar.row { width: 8px; height: 26px; }
+.chart-ed .ced-bar { min-width: 0; } .chart-ed .ced-bar.row { width: 12px; }
 .ced-bar:hover, .ced-bar.open { background: var(--accent, #0b57d0); }
 #ed-fmt.is-video .text-only { display: none; }
 /* In the editor a video is its poster with a play badge, as Slides; it plays when presenting. */

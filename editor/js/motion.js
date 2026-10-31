@@ -106,7 +106,18 @@ const startOf = b => 'withPrevious' in b.dataset ? 'with' : b.dataset.start || '
 function setStart(b, v) { delete b.dataset.withPrevious; delete b.dataset.start; if (v === 'with') b.dataset.withPrevious = ''; else if (v !== 'click') b.dataset.start = v; }
 function setEffect(b, eff) { b.classList.remove(...EFFECTS.map(e => e[0])); b.classList.add('fragment', eff); if (b.dataset.shape) renderShape(b); if (eff === 'move-to' && !b.dataset.to) b.dataset.to = defaultTo(b); }   // (Line draw measures the stroke)
 /* Keynote offers Line Draw only on drawings: here lines and open freehand paths. */
-const STROKE_ONLY = ['line-draw', 'line-erase'], effectsFor = b => EFFECTS.filter(([v]) => isStroke(b) || !STROKE_ONLY.includes(v));
+const STROKE_ONLY = ['line-draw', 'line-erase'];
+/* A chart's build-in list is Keynote's for charts (k06-chart-build-in-list), in its order (Move In and Wipe from each side;
+   the capture is cut off after Sparkle); its out and emphasis effects stay. An effect a chart already has stays listed. */
+const CHART_IN = ['appear', 'blur-in', 'fade-in', 'drift-in', 'drift-scale', 'drop-in', 'fade-move-in', 'fade-scale', 'iris-in', 'move-in-r', 'move-in-l', 'move-in-d', 'move-in-u',
+  'wipe-r', 'wipe-l', 'wipe-d', 'wipe-u', 'blinds-in', 'cube-in', 'flip-in', 'pivot-in', 'pop-in', 'scale-in', 'scale-big', 'spin-y', 'swoosh-in', 'spin-in',
+  'anvil-in', 'comet-in', 'confetti-in', 'fireworks-in', 'flame-in', 'flash-in', 'lens-in', 'shimmer-in', 'skid-in', 'sparkle-in'];
+const NOT_IN = ['fade-out', 'line-erase', 'semi-fade-out', 'fade-in-then-out', 'fade-in-then-semi-out', 'highlight-current-blue', 'grow', 'shrink', 'strike', 'spin', 'pulse', 'pop', 'move-to', 'disappear', 'blur-out', 'scale-out', 'iris-out'];
+function effectsFor(b) {
+  if (!isChart(b)) return EFFECTS.filter(([v]) => isStroke(b) || !STROKE_ONLY.includes(v));
+  const cur = effectOf(b), keep = v => CHART_IN.includes(v) || v === cur;
+  return [...CHART_IN.map(v => EFFECTS.find(e => e[0] === v)).map(([v, l]) => [v, l]), ...EFFECTS.filter(([v]) => !CHART_IN.includes(v) && (NOT_IN.includes(v) ? v !== 'line-erase' : keep(v)))];
+}
 function addAnim() {   // boxes animated together (several selected) share one click: the first on click, the rest with previous
   const list = animBoxes();
   [...sel].filter(b => !b.classList.contains('fragment')).forEach((b, i) => { setEffect(b, 'fade-in'); if (i) b.dataset.withPrevious = ''; list.push(b); });

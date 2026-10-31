@@ -513,7 +513,7 @@
     const w = parseFloat(b.style.width) || 0, h = parseFloat(b.style.height) || 0;
     svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.replaceChildren();
     const { cats, series } = chartData(b), pal = CHART_COLORS[+b.dataset.palette || 0] || CHART_COLORS[0], color = i => pal[i % pal.length];
-    const fs = parseFloat(b.style.getPropertyValue('--chart-fs')) || Math.max(14, Math.min(32, Math.min(w, h) * 0.055)), tw = s => String(s).length * fs * 0.56;
+    const fs = parseFloat(b.style.getPropertyValue('--chart-fs')) || Math.max(14, Math.min(40, Math.min(w, h) * 0.045)), tw = s => String(s).length * fs * 0.56;
     const text = (x, y, s, anchor = 'middle', cls = 'ct') => { const e = el('text', { x, y, 'text-anchor': anchor, 'dominant-baseline': 'middle', 'font-size': fs }, cls); e.textContent = s; return e; };
     const pad = fs * 0.6, labels = 'labels' in b.dataset, grid = b.dataset.grid !== 'off';
     let top = pad;
@@ -564,11 +564,11 @@
     cats.forEach((c, i) => ax.append(horiz ? text(L - fs * 0.4, mid(i), c, 'end') : text(mid(i), B + fs * 0.8, c)));
     const z = vpos(Math.max(lo, Math.min(0, hi)));
     if (kind === 'column' || kind === 'bar') {
-      const bw = band * 0.75 / Math.max(1, series.length);
+      const bw = band * 0.84 / Math.max(1, series.length);   // Keynote's gaps (k10): bars 95 % of their slot, 16 % of a set between sets
       series.forEach((s, si) => s.vals.forEach((v, i) => { if (v === null) return;
-        const o = mid(i) - band * 0.375 + bw * si, p = vpos(v);
-        groups[si].append(el('rect', horiz ? { x: Math.min(z, p), y: o, width: Math.abs(p - z), height: bw * 0.9, 'data-i': i } : { x: o, y: Math.min(z, p), width: bw * 0.9, height: Math.abs(p - z), 'data-i': i }, 'el bar'));
-        const l = horiz ? lab(p + (v < 0 ? -1 : 1) * fs * 0.3, o + bw * 0.45, v, v < 0 ? 'end' : 'start') : lab(o + bw * 0.45, p + (v < 0 ? 1 : -1) * fs * 0.6, v); if (l) { l.setAttribute('data-i', i); groups[si].append(l); }; }));
+        const o = mid(i) - band * 0.42 + bw * si, p = vpos(v);
+        groups[si].append(el('rect', horiz ? { x: Math.min(z, p), y: o, width: Math.abs(p - z), height: bw * 0.95, 'data-i': i } : { x: o, y: Math.min(z, p), width: bw * 0.95, height: Math.abs(p - z), 'data-i': i }, 'el bar'));
+        const l = horiz ? lab(p + (v < 0 ? -1 : 1) * fs * 0.3, o + bw * 0.475, v, v < 0 ? 'end' : 'start') : lab(o + bw * 0.475, p + (v < 0 ? 1 : -1) * fs * 0.6, v); if (l) { l.setAttribute('data-i', i); groups[si].append(l); }; }));
     } else series.forEach((s, si) => {   // line, area: a point per category
       const pts = s.vals.map((v, i) => v === null ? null : [mid(i), vpos(v)]).filter(Boolean);
       if (!pts.length) return;

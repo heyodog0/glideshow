@@ -19,7 +19,7 @@ function chartTable(rows) {
 const chartRows = b => { const t = b.querySelector(':scope > table.chart-data'); return t ? [...t.rows].map(r => [...r.cells].map(c => c.textContent.trim())) : [['']]; };
 function setChartRows(b, rows) { const t = b.querySelector(':scope > table.chart-data'), n = chartTable(rows); if (t) t.replaceWith(n); else b.append(n); renderChart(b); }
 function addChart(kind) {
-  const w = 1200, h = 720, b = makeBox({ x: (W - w) / 2, y: (H - h) / 2, w, h, cls: 'chart' });
+  const w = 1600, h = 800, b = makeBox({ x: (W - w) / 2, y: (H - h) / 2, w, h, cls: 'chart' });
   b.dataset.chart = kind; content(b).style.padding = '0'; if (kind !== 'pie') b.dataset.legend = 'off';   // Keynote's new chart has no legend or title
   b.append(chartTable(CHART_SAMPLE[kind] || CHART_SAMPLE.other));
   insert(b); renderChart(b);

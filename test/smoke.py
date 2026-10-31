@@ -1943,6 +1943,7 @@ def chart_checks(pg, deck_file: Path):
     ms = pg.evaluate(f"performance.now() - {t0}")
     made = pg.evaluate("""(() => { const b = slides[cur].querySelector('.box.chart'), svg = b?.querySelector('svg.chart');
       return [b?.dataset.chart, svg?.querySelectorAll('.series').length, svg?.querySelectorAll('.el.bar').length, svg?.querySelectorAll('.legend text').length, sel.has(b)]; })()""")
+    pg.wait_for_timeout(150); pg.screenshot(path=str(HERE / "chart.png"))   # beside keynote/reference/k10-chart-data.png
     check(f"Insert → Chart lists Keynote's six 2D kinds kept (D4) and adds a column chart drawn from its data table with Keynote's default data (April–July, Region 1 / 2: 2 series, 8 bars, no legend) ({ms:.0f} ms)",
           types == ["Column", "Bar", "Line", "Area", "Pie", "Scatter"] and made == ["column", 2, 8, 0, True] and ms < 300, f"{types} {made}")
     pg.evaluate("setPanel(true); document.querySelector('#ed-fmt .chart-f').open = true"); pg.wait_for_timeout(100)
@@ -1956,6 +1957,7 @@ def chart_checks(pg, deck_file: Path):
     pg.evaluate("document.activeElement.blur(); sel = new Set([slides[cur].querySelector('.box.chart')]); drawOverlay()"); pg.keyboard.press("Meta+Shift+D"); pg.wait_for_timeout(150)
     opened = pg.evaluate("!document.querySelector('#ed-chart-ed').hidden && document.querySelectorAll('#ed-chart-ed .ced-grid input').length")
     swatch = pg.evaluate("[...document.querySelectorAll('#ed-chart-ed .ced-bar.row')].map(x => x.style.background)")
+    pg.screenshot(path=str(HERE / "chart-data.png"))
     pg.click("#ed-chart-ed input[data-r='3'][data-c='0']"); pg.keyboard.type("Series 3"); pg.keyboard.press("Tab"); pg.keyboard.type("40")
     grown = pg.evaluate("(() => { const svg = slides[cur].querySelector('svg.chart'); return [svg.querySelectorAll('.series').length, document.querySelectorAll('#ed-chart-ed .ced-grid tr').length]; })()")
     pg.click("#ed-chart-ed .ced-plot button[data-plot=columns]")
@@ -1970,9 +1972,12 @@ def chart_checks(pg, deck_file: Path):
     dl = pg.evaluate("""(() => { const b = slides[cur].querySelector('.box.chart'); sel = new Set([b]); setTransPanel(true); addAnim(); b.dataset.build = 'element-series';
       const c = cleanBox(b); c.id = uid(); c.style.top = '600px'; c.style.height = '400px'; c.dataset.build = 'background'; b.after(c); renderChart(c); sel = new Set([c]); addAnim(); c.dataset.build = 'background';
       const pie = cleanBox(b); pie.dataset.chart = 'pie'; render(); renderAnims(); commit();
-      return [[...document.querySelectorAll('#ed-anim-list .anim-row select.dl')][0]?.options.length, deliveries(b).map(d => d[1]), deliveries(pie).map(d => d[1])]; })()""")
-    check("Animate a chart: Keynote's Delivery for charts (All at once, Background first, By series, By set, By element in series, By element in set); a pie's All at once / By wedge",
-          dl[0] == 6 and dl[1] == ["All at once", "Background first", "By series", "By set", "By element in series", "By element in set"] and dl[2] == ["All at once", "By wedge"], str(dl))
+      const opts = [...document.querySelectorAll('#ed-anim-list .anim-row select.e')][0], vals = opts ? [...opts.options].map(o => o.value) : [];
+      const old = cleanBox(b); old.classList.replace('fade-in', 'fade-up');
+      return [[...document.querySelectorAll('#ed-anim-list .anim-row select.dl')][0]?.options.length, deliveries(b).map(d => d[1]), deliveries(pie).map(d => d[1]),
+        vals.slice(0, 5), vals.includes('fade-up') || vals.includes('typewriter') || vals.includes('blast-in'), vals.includes('fade-out'), effectsFor(old).some(e => e[0] === 'fade-up')]; })()""")
+    check("Animate a chart: Keynote's Delivery for charts (All at once, Background first, By series, By set, By element in series, By element in set); a pie's All at once / By wedge; the build-in effects are Keynote's list for charts in its order (k06-chart-build-in-list), its out effects kept, an effect a chart already has still listed",
+          dl[3] == ["appear", "blur-in", "fade-in", "drift-in", "drift-scale"] and not dl[4] and dl[5] and dl[6] and dl[0] == 6 and dl[1] == ["All at once", "Background first", "By series", "By set", "By element in series", "By element in set"] and dl[2] == ["All at once", "By wedge"], str(dl))
     pg.evaluate("commit(); saveNow()"); pg.wait_for_function("document.querySelector('#ed-status').innerText.includes('saved')", timeout=20000); pg.wait_for_timeout(300)
     html = deck_file.read_text(); i = html.rfind('class="box chart'); box = html[i:html.find("</table>", i)]
     check("the saved chart is plain deck.html: data-chart and the data table, no drawn SVG", 'data-chart="column"' in box and 'class="chart-data"' in box and "<th>Series 3</th>" in box and "svg" not in box, box[:300])
