@@ -189,21 +189,126 @@ def outline_line(text: str, s: dict) -> str:
     a, z = s["a"], s["z"]; body = text[a:z]
     lay = re.search(r'\bdata-layout="([^"]+)"', body.split(">", 1)[0])
     boxes, lines, notes, title, bare = [], 0, [], "", 0
+    effects = _editor_list("motion.js", "EFFECTS")
     for m in _boxes(body):
         at = _attrs(m.group()); bid = at.get("id", "(no id)"); cls = at.get("class", "").split()
-        inner = body[m.start():_close_box(body, m.start())]
+        inner = body[m.start():_close_box(body, m.start())]; bl = _builds_of(at, cls, effects)
         if "note" in cls: notes.append(f"  NOTE #{bid}: {_words(inner, 400)}"); continue
-        if re.match(r"(line|arrowline|elbow|curve|path)$", at.get("data-shape", "")): lines += 1; continue
+        if "chart" in cls:
+            rows = _chart_rows(inner) or [[]]; cats, ser = max(0, len(rows[0]) - 1), max(0, len(rows) - 1)
+            if at.get("data-plot") == "columns": cats, ser = ser, cats
+            boxes.append(f"#{bid} [{at.get('data-chart', '?')} chart: {ser} series × {cats} categories]{bl}"); continue
+        if re.match(r"(line|arrowline|elbow|curve|path)$", at.get("data-shape", "")):
+            if bl: boxes.append(f"#{bid} (line){bl}")
+            else: lines += 1
+            continue
         if "image" in cls:
-            alt = re.search(r'\balt="([^"]*)"', inner); boxes.append(f"#{bid} [picture: {_words(alt.group(1) if alt else '', 30)}]"); continue
+            alt = re.search(r'\balt="([^"]*)"', inner); boxes.append(f"#{bid} [picture: {_words(alt.group(1) if alt else '', 30)}]{bl}"); continue
         words = _words(inner)
-        if at.get("data-role") == "title" and not title: title = _words(inner, 60); continue
-        if not words and at.get("data-role"): boxes.append(f"#{bid} (empty placeholder)"); continue
-        if not words: bare += 1; continue   # a shape with no words (a dot, a bar): counted, not listed
-        boxes.append(f'#{bid} "{words}"')
+        if at.get("data-role") == "title" and not title and not bl: title = _words(inner, 60); continue
+        if not words and at.get("data-role"): boxes.append(f"#{bid} (empty placeholder){bl}"); continue
+        if not words and not bl: bare += 1; continue   # a shape with no words (a dot, a bar): counted, not listed
+        boxes.append(f'#{bid} "{words}"{bl}' if words else f"#{bid} ({at.get('data-shape') or 'box'}){bl}")
     extra = ([f"{bare} shape{'s' if bare > 1 else ''} without text"] if bare else []) + ([f"{lines} line{'s' if lines > 1 else ''}"] if lines else []) + (["notes"] if "<aside" in body else [])
     head = f"{_name(s)}  {lay.group(1) if lay else '-'}" + (f'  "{title}"' if title else "")
+    objs = _layout_objects(text, lay.group(1)) if lay and 'data-layout-objects="off"' not in body.split(">", 1)[0] else ""
+    if objs: extra.append(f"from the layout: {objs}")
     return "\n".join([head + "\n   " + " · ".join(boxes + extra) if boxes or extra else head] + notes)
+
+
+def _editor_list(file: str, name: str) -> list:
+    """The values of an editor table (`const NAME = [['value', 'Label'], …];` in editor/js/FILE), so checks follow the editor."""
+    m = re.search(rf"const {name} = \[(.*?)\];", (EDITOR / "js" / file).read_text(), re.S)
+    return re.findall(r"\[\s*'([\w-]*)'", m.group(1)) if m else []
+
+
+CHART_KINDS = ("column", "bar", "line", "area", "pie", "scatter")
+BUILDS_KEYS = ("start", "duration", "delay", "ease", "angle", "to")
+
+
+def _kind(cls: list, at: dict, inner: str) -> str:
+    if "chart" in cls: return "pie chart" if at.get("data-chart") == "pie" else "chart"
+    return "table" if "<table" in inner else "text box"
+
+
+def _chart_rows(inner: str) -> list | None:
+    t = re.search(r'<table\b[^>]*class="chart-data"[^>]*>(.*?)</table>', inner, re.S)
+    return [[_words(c, 999) for c in re.findall(r"<t[hd]\b[^>]*>(.*?)</t[hd]>", r, re.S)] for r in re.findall(r"<tr\b[^>]*>(.*?)</tr>", t.group(1), re.S)] if t else None
+
+
+def _num(s: str):
+    try: return float(re.sub(r"[,\s$%€£]", "", s))
+    except ValueError: return None
+
+
+def lint(text: str, deck: Path | None = None, only: set | None = None) -> list:
+    """What is wrong with the attributes the editor writes and present.js plays (builds, deliveries, charts, layouts, slide
+    links, paragraph styles), one line each: what is wrong, then what is allowed."""
+    found = scan(text)[0]
+    effects, xb = _editor_list("motion.js", "EFFECTS"), _editor_list("motion.js", "XB_EFFECTS")
+    deliver = {"text box": _editor_list("motion.js", "DELIVERY_TEXT"), "table": _editor_list("motion.js", "DELIVERY_TABLE"),
+               "chart": _editor_list("motion.js", "DELIVERY_CHART"), "pie chart": _editor_list("motion.js", "DELIVERY_PIE")}
+    tpl = re.search(r'<template id="deck-layouts">(.*?)</template>', text, re.S)
+    names = {n for n, _, _ in layouts(deck)} | set(re.findall(r'<div\b[^>]*\bclass="layout"[^>]*\bdata-layout="([^"]+)"', tpl.group(1) if tpl else ""))
+    names |= set(re.findall(r'<div\b[^>]*\bdata-layout="([^"]+)"[^>]*\bclass="layout"', tpl.group(1) if tpl else ""))
+    sids = set(re.findall(r'<section\b[^>]*\bdata-sid="([^"]+)"', text))
+    styles = set(_editor_list("format-panel.js", "PSTYLES")) | set(re.findall(r"\.slides \.(ps-[\w-]+) \{", text))
+    out = []
+    for s in found:
+        if only and s["n"] not in only: continue
+        body, at0 = text[s["a"]:s["z"]], f"slide {_name(s)}"
+        lay = re.search(r'\bdata-layout="([^"]+)"', body.split(">", 1)[0])
+        if lay and lay.group(1) not in names: out.append(f'{at0}: data-layout="{lay.group(1)}" names no layout; allowed: {", ".join(sorted(names))}')
+        for m in re.finditer(r'\b(?:href|data-link)="#slide=([^"]*)"', body):
+            if m.group(1) not in sids: out.append(f'{at0}: a link to #slide={m.group(1)}, but no slide has data-sid="{m.group(1)}"; link to a slide\'s data-sid (`glideshow slides DECK N` shows it)')
+        for c in sorted({c for m in re.finditer(r'\bclass="([^"]*)"', body) for c in m.group(1).split() if c.startswith("ps-")} - styles):
+            out.append(f'{at0}: paragraph style "{c}" doesn\'t exist; allowed: {", ".join(sorted(styles))}')
+        for m in _boxes(body):
+            at = _attrs(m.group()); bid = f"#{at.get('id', '?')}"; cls = at.get("class", "").split()
+            inner = body[m.start():_close_box(body, m.start())]
+            for part in [x.strip() for x in at.get("data-builds", "").split(";") if x.strip()]:
+                eff, *kv = part.split()
+                if eff not in effects: out.append(f'{at0} {bid}: data-builds effect "{eff}" is unknown; allowed: {", ".join(xb)} (Add action\'s) or any build effect in docs/deck-format.md')
+                for k in kv:
+                    key, _, val = k.partition("=")
+                    if key not in BUILDS_KEYS or not val: out.append(f'{at0} {bid}: data-builds "{k}" in "{part}" isn\'t a setting; allowed: {", ".join(f"{x}=…" for x in BUILDS_KEYS)} (start=after or with)')
+                    elif key == "start" and val not in ("after", "with"): out.append(f'{at0} {bid}: data-builds start={val}; allowed: start=after, start=with (leave it out for on click)')
+            kind = _kind(cls, at, inner)
+            if at.get("data-build") and at["data-build"] not in deliver[kind]:
+                ok = [v for v in deliver[kind] if v] or ["none (this box has no text)"]
+                out.append(f'{at0} {bid}: data-build="{at["data-build"]}" isn\'t a delivery for a {kind}; allowed: {", ".join(ok)}')
+            if "chart" not in cls: continue
+            if at.get("data-chart") not in CHART_KINDS: out.append(f'{at0} {bid}: data-chart="{at.get("data-chart", "")}" is not a chart kind; allowed: {", ".join(CHART_KINDS)}')
+            rows = _chart_rows(inner)
+            if rows is None: out.append(f'{at0} {bid}: a chart without <table class="chart-data"> (its data: first row the categories, each later row a series name and its values)'); continue
+            widths = sorted({len(r) for r in rows})
+            if len(widths) > 1: out.append(f'{at0} {bid}: the chart-data rows have {" / ".join(map(str, widths))} cells; every row needs the same number (the header row\'s, {len(rows[0]) if rows else 0}), blank cells allowed')
+            bad = [v for r in rows[1:] for v in r[1:] if v and _num(v) is None]
+            if bad: out.append(f'{at0} {bid}: chart values that aren\'t numbers: {", ".join(repr(v) for v in bad[:5])}; allowed: numbers (1,200 · 12.5 · 40% · $3), or blank for a gap')
+            if at.get("data-chart") == "scatter" and rows and any(_num(c) is None for c in rows[0][1:] if c): out.append(f'{at0} {bid}: a scatter chart\'s categories (the header row) are its x values; allowed: numbers')
+    return out
+
+
+def _builds_of(at: dict, cls: list, effects: list) -> str:
+    """A box's builds in a few words: its effect and delivery, then each extra build (data-builds)."""
+    eff = next((c for c in cls if c in effects), "") if "fragment" in cls else ""
+    parts = ([eff + (f" by {at['data-build']}" if at.get("data-build") else "") + (" (with previous)" if "data-with-previous" in at else "")] if eff else [])
+    parts += ["then " + x.strip() for x in at.get("data-builds", "").split(";") if x.strip()]
+    return " {" + "; ".join(parts) + "}" if parts else ""
+
+
+def _layout_objects(text: str, key: str) -> str:
+    """The objects a slide gets from its layout (#deck-layouts, D5), by id and first words."""
+    tpl = re.search(r'<template id="deck-layouts">(.*?)</template>', text, re.S)
+    if not tpl: return ""
+    m = next((m for m in re.finditer(r"<div\b[^>]*>", tpl.group(1)) if "layout" in _attrs(m.group()).get("class", "").split() and _attrs(m.group()).get("data-layout") == key), None)
+    if not m: return ""
+    lay = tpl.group(1)[m.start():_close_box(tpl.group(1), m.start())]
+    items = []
+    for b in _boxes(lay):
+        at = _attrs(b.group()); words = _words(lay[b.start():_close_box(lay, b.start())], 30)
+        items.append(f"#{at.get('id', '?')}" + (f' "{words}"' if words else f" ({at.get('data-shape') or 'box'})"))
+    return ", ".join(items)
 
 
 def slides_cmd(args: list[str]):
@@ -218,7 +323,8 @@ def slides_cmd(args: list[str]):
     for s in found:
         if want and s["n"] not in want: continue
         if "--outline" in args: print(outline_line(text, s)); continue
-        print(f"<!-- slide {_name(s)}: deck.html line {text.count(chr(10), 0, s['a']) + 1} -->\n{text[s['a']:s['z']]}\n")
+        summary = outline_line(text, s).replace("--", "‐‐")   # what is there (charts, builds, layout objects), above the HTML
+        print(f"<!-- slide {_name(s)}: deck.html line {text.count(chr(10), 0, s['a']) + 1}\n{summary}\n-->\n{text[s['a']:s['z']]}\n")
     if not found: print(f"{deck / 'deck.html'} has no slides")
     for p in problems: print(f"problem: {p}", file=sys.stderr)
 
@@ -354,10 +460,13 @@ def put_cmd(args: list[str]):
     if sids: raise SystemExit(f"put: data-sid {', '.join(sids)} belongs to another slide; leave data-sid out of new slides")
     pre = "" if text[:a].endswith("\n") else "\n"
     text = text[:a] + pre + new + ("\n" if a == z and not text[z:].startswith("\n") else "") + text[z:]
-    _write(deck, text)
     now = scan(text)[0]
     mine = now[first - 1:first - 1 + len(made)]
+    wrong = lint(text, deck, {s["n"] for s in mine})   # a link to a slide not there yet is only reported: it may come next
+    if [w for w in wrong if "#slide=" not in w]: raise SystemExit("put: nothing written:\n  " + "\n  ".join(wrong))
+    _write(deck, text)
     for s in mine: print(outline_line(text, s))
+    for w in wrong: print(f"problem: {w}", file=sys.stderr)
     print(f"{'inserted' if '--after' in args else 'replaced every slide' if '--all' in args else 'replaced'}; `glideshow check {args[0]} {' '.join(str(s['n']) for s in mine)}` checks {'them' if len(mine) > 1 else 'it'}")
 
 

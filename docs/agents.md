@@ -20,7 +20,7 @@ outline and `check` show both where they differ (`9 = 8.1`).
 |---|---|
 | `glideshow new "Title" --no-open` | makes `~/decks/<slug>-<date>/` from the template and prints the folder; the user's editor is left alone |
 | `glideshow find <words>` | prints the folder of the deck that best matches; nothing is opened |
-| `glideshow slides <deck> --outline` | one line per slide: its number, layout, title, each box's id and first words, notes for you in full |
+| `glideshow slides <deck> --outline` | one line per slide: its number, layout, title, each box's id and first words (a chart as kind and series × categories, builds in `{…}`), the layout's own objects, notes for you in full |
 | `glideshow slides <deck> [N …]` | those slides' HTML (numbered, with their line in `deck.html`) |
 | `glideshow put <deck> N` | replaces slide N with the `<section>`s on stdin; `--after N` inserts (0: first), `--delete N …` removes, `--all` replaces every slide |
 | `glideshow layout [NAME]` | the layouts' exact placeholder boxes; with a name, a slide in that layout to fill in |
@@ -118,7 +118,9 @@ EOF
 ```
 `put` prints the new slide's outline line and the `check` to run. To change a slide, `glideshow slides <deck> N`, edit
 that, and `glideshow put <deck> N` it back (its `data-sid` is kept). It refuses, writing nothing, when a `<div>` isn't
-closed, an id is already used elsewhere in the deck, or a slide carries another slide's `data-sid`. A script that builds
+closed, an id is already used elsewhere in the deck, a slide carries another slide's `data-sid`, or a build, delivery,
+chart table, layout or paragraph style is wrong (one line each, with what is allowed; a link to a missing slide is only
+reported, and `check` says all of these of the whole deck). A script that builds
 the whole deck prints its `<section>`s and pipes them into `glideshow put <deck> --all`; don't let it rewrite `deck.html`
 (a pattern that cuts the file at the wrong `</div>` leaves slides outside the deck).
 

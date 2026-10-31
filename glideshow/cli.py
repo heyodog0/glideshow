@@ -186,11 +186,11 @@ def render(args: list[str], check: bool = False):
         s = live()
         if not s: raise SystemExit("Name a deck (glideshow render <deck> [N ...]); no editor is open to take it from.")
         deck = Path(s["deck"])
-    from .agent import ensure_server, scan, slide_number
+    from .agent import ensure_server, lint, scan, slide_number
     ensure_server(deck)   # the edits being checked are kept as versions by it
     text = (deck / "deck.html").read_text()
     nums = [str(slide_number(text, a)) for a in nums]   # the deck's own numbers (8.1) as the file's
-    os.environ["GLIDESHOW_STRUCTURE"] = json.dumps(scan(text)[1])   # what render.py can't see: the file's own structure
+    os.environ["GLIDESHOW_STRUCTURE"] = json.dumps(scan(text)[1] + lint(text, deck, {int(n) for n in nums}))   # what render.py can't see: the file's own structure, attributes the browser ignores
     out = out or CACHE / "renders" / deck.name
     try: r = subprocess.run(["uv", "run", "--quiet", str(HERE / "render.py"), str(deck.resolve()), str(out), *nums, *flags])
     except FileNotFoundError: raise SystemExit("glideshow render needs uv (https://docs.astral.sh/uv/), which brings Playwright with it")

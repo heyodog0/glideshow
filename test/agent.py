@@ -122,7 +122,7 @@ try:
           'id="res-title"' in sl and 'id="res-body"' in sl and 'data-layout="title-body"' in sl and 'id="res-title-2"' in sl2, sl2[:200])
     code, out, _ = gs("slides", str(deck_b))
     lines = (deck_b / "deck.html").read_text().splitlines()
-    heads = re.findall(r"<!-- slide (\d+): deck.html line (\d+) -->", out)
+    heads = re.findall(r"<!-- slide (\d+): deck.html line (\d+)\n", out)
     check("slides prints only the slides (no inlined CSS / JS), each with its true line in deck.html",
           code == 0 and [h[0] for h in heads] == ["1", "2"] and all(lines[int(n) - 1].lstrip().startswith("<section") for _, n in heads)
           and "deck-base" not in out and len(out) < 6000, (heads, len(out)))
@@ -164,6 +164,37 @@ try:
     check("put --all replaces every slide, and running it again (a deck-building script re-run) leaves exactly one copy",
           code == 0 and code2 == 0 and t.count('id="all1"') == 1 and t.count("<section") == 4 and 'id="r1"' not in t and 'id="title"' not in t
           and gs("check", str(deck_p))[1].endswith("no problems found"), (out2, err2))
+    # the attributes the editor writes and present.js plays, checked (wrong ones refused by put, flagged by check)
+    before = (deck_p / "deck.html").read_text()
+    code, out, err = gs("put", str(deck_p), "--after", "1", input='<section data-layout="nope">'
+        '<div class="box chart fragment fade-in" id="bad1" data-chart="column" data-build="wedge" data-builds="wobble; spin speed=2; fade-out start=later" style="left: 100px; top: 100px; width: 800px; height: 500px;">'
+        '<div class="content"></div><table class="chart-data"><tr><th></th><th>Q1</th><th>Q2</th></tr><tr><th>A</th><td>1</td><td>lots</td></tr><tr><th>B</th><td>3</td></tr></table></div>'
+        '<div class="box" id="bad2" data-build="row" style="left: 1000px; top: 100px; width: 800px; height: 200px;"><div class="content"><p class="ps-fancy">Hi</p></div></div></section>')
+    want = ['data-layout="nope" names no layout; allowed: big-number', 'data-builds effect "wobble" is unknown; allowed: move-to, spin', '"speed=2" in "spin speed=2" isn\'t a setting; allowed: start=…',
+            "start=later; allowed: start=after, start=with", 'data-build="wedge" isn\'t a delivery for a chart; allowed: background, series, set, element-series, element-set',
+            "chart-data rows have 2 / 3 cells", "values that aren't numbers: 'lots'; allowed: numbers", 'paragraph style "ps-fancy" doesn\'t exist; allowed: ps-body',
+            'data-build="row" isn\'t a delivery for a text box; allowed: paragraph']
+    check("put refuses, writing nothing, wrong builds (unknown effects or settings in data-builds, a delivery the box's kind lacks), a ragged or non-numeric chart table, an unknown layout or paragraph style: one line each, saying what is allowed",
+          code == 1 and (deck_p / "deck.html").read_text() == before and all(w in err for w in want) and all("allowed" in l or "rows have" in l for l in err.splitlines()[1:]), err)
+    code, out, err = gs("put", str(deck_p), "--after", "1", input='<section><div class="box" id="lnk" style="left: 100px; top: 100px; width: 800px; height: 100px;"><div class="content"><a href="#slide=nowhere">Back</a></div></div></section>')
+    t = (deck_p / "deck.html").read_text(); (deck_p / "deck.html").write_text(t.replace('<div class="box" id="all1"', '<div class="box fragment fade-in" data-build="series" id="all1"'))
+    ccode, cout, _ = gs("check", str(deck_p))
+    check("…a link to a slide that isn't there is written but reported (the slide may come next); check flags it, and a delivery edited in by hand",
+          code == 0 and 'id="lnk"' in t and "no slide has data-sid=\"nowhere\"" in err and ccode == 1 and "no slide has data-sid=\"nowhere\"" in cout
+          and 'data-build="series" isn\'t a delivery for a text box' in cout, (err, cout[-600:]))
+    gs("put", str(deck_p), "--delete", "2"); (deck_p / "deck.html").write_text((deck_p / "deck.html").read_text().replace('<div class="box fragment fade-in" data-build="series" id="all1"', '<div class="box" id="all1"'))
+    t = (deck_p / "deck.html").read_text(); end = t.index("\n</div></div>\n") + len("\n</div></div>\n")
+    (deck_p / "deck.html").write_text(t[:end] + '<template id="deck-layouts">\n<div class="layout" data-layout="g-logo" data-name="Logo"><div class="box" id="gL-1" data-shape="ellipse" style="left: 10px; top: 10px; width: 50px; height: 50px;"><div class="content"></div></div>'
+                                       '<div class="box" id="gL-2" style="left: 10px; top: 1000px; width: 500px; height: 50px;"><div class="content">Lab meeting</div></div></div>\n</template>\n' + t[end:])
+    code, out, err = gs("put", str(deck_p), "--after", "1", input='<section data-layout="g-logo">'
+        '<div class="box chart fragment fade-in" id="ch" data-chart="line" data-build="element-series" data-builds="spin angle=90 start=after" style="left: 100px; top: 100px; width: 800px; height: 500px;">'
+        '<div class="content"></div><table class="chart-data"><tr><th></th><th>Q1</th><th>Q2</th><th>Q3</th></tr><tr><th>A</th><td>1</td><td>2</td><td></td></tr><tr><th>B</th><td>3</td><td>4</td><td>5</td></tr></table></div>'
+        '<div class="box fragment pop-in" id="dot" data-shape="ellipse" style="left: 1000px; top: 400px; width: 80px; height: 80px;"><div class="content"></div></div></section>')
+    _, one, _ = gs("slides", str(deck_p), "2")
+    want = '#ch [line chart: 2 series × 3 categories] {fade-in by element-series; then spin angle=90 start=after} · #dot (ellipse) {pop-in} · from the layout: #gL-1 (ellipse), #gL-2 "Lab meeting"'
+    check("slides --outline and slides N show a chart (kind, series × categories), each box's builds and the objects the slide gets from its layout",
+          code == 0 and want in out and want in one and one.index(want) < one.index("<section"), (out, err, one[:500]))
+    gs("put", str(deck_p), "--delete", "2")
     out = outline
     check("slides --outline is a line or two per slide: number, layout, title, each box's id and first words, lines counted",
           code == 0 and out.splitlines()[0].startswith("2 slides") and re.search(r"^2  blank\n   #r1 \"r1\" · #r2 \"r2\" · #r3 \"r3\" · 1 line$", out, re.M), out)
