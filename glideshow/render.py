@@ -116,7 +116,7 @@ CHECK_JS = r"""([i, ids, authored]) => {
   }
   for (const b of sec.querySelectorAll('.box[data-from], .box[data-to]'))
     for (const ref of [b.dataset.from, b.dataset.to]) {
-      if (!ref) continue;
+      if (!ref || /^-?[\d.]+,\s*-?[\d.]+$/.test(ref)) continue;   // a Move's end (data-to="x,y"), not an attachment
       const [id, side] = ref.split(':');
       if (!'t r b l'.split(' ').includes(side)) say(b, 'connector', `${name(b)} is attached to "${ref}": the side after the colon must be t, r, b or l`);
       else if (!sec.querySelector('#' + CSS.escape(id))) say(b, 'connector', `${name(b)} is attached to #${id}, which isn't on this slide`);
