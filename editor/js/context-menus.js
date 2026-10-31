@@ -3,11 +3,12 @@
 const arrangeItem = label => MENUS.Arrange.find(it => typeof it === 'object' && it.label === label);
 const editItem = label => MENUS.Edit.find(it => typeof it === 'object' && it.label === label);
 function objectMenu() {
-  const one = sel.size === 1 ? [...sel][0] : null, text = one && !isLine(one) && !isGroup(one) && !isMedia(one);
+  const one = sel.size === 1 ? [...sel][0] : null, text = one && !isLine(one) && !isGroup(one) && !isMedia(one) && !isChart(one);
   return [
     editItem('Cut'), editItem('Copy'), editItem('Paste'), editItem('Paste without formatting'), editItem('Delete'),
     '-',
     ...(text ? [{ label: 'Edit text', icon: 'format_shapes', run: () => startEdit(one) }] : []),
+    ...(isChart(one) ? [{ label: 'Edit chart data', icon: 'table_chart', key: '⇧⌘D', run: () => openChartData(one) }] : []),
     { label: 'Alt text', icon: 'accessibility_new', run: openAltText, off: () => sel.size !== 1 },
     ...(codeOf(one) ? [{ label: 'Code language', icon: 'code', items: () => codeLangItems(setCodeLang, v => codeOf(one).classList.contains('language-' + v)) }] : []),
     ...(one?.dataset.shape && !isPath(one) && !isLine(one) && !/^(wordart|icon)$/.test(one.dataset.shape) ? [{ label: 'Make editable', icon: 'polyline', run: () => makeEditable(one) }] : []),

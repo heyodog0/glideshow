@@ -126,6 +126,7 @@ const MENUS = {
     { label: 'Word art', icon: 'format_shapes', run: addWordArt },
     { label: 'Icon', icon: 'emoji_symbols', run: () => showIcons(true) },
     { label: 'Table', icon: 'table_chart', items: () => [{ el: tableGrid }] },
+    { label: 'Chart', icon: 'insert_chart', items: chartTypeItems },
     { label: 'Code block', icon: 'code', items: () => codeLangItems(addCode) },
     { label: 'Equation', icon: 'function', run: addEquation },
     { label: 'Note for AI', icon: 'sticky_note_2', run: () => { const b = addNote(cur, W - 620, 60, ''); sel = new Set([b]); startEdit(b); } },

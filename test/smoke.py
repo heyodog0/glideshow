@@ -622,6 +622,7 @@ def checks(pg, deck: Path, errors):
     figure_checks(pg, deck.parent)
     layout_checks(pg, deck)
     stroke_checks(pg)
+    chart_checks(pg, deck)
     pg.fill("#ed-f-rot", "90"); pg.press("#ed-f-rot", "Enter")
     # map the local shadow offset through the box's actual rendered matrix (flip · rotate) and expect "straight down"
     sh = pg.evaluate("""(() => { const b = [...document.querySelectorAll('#ed-canvas .box[data-shape]')].pop();
@@ -1930,6 +1931,54 @@ def stroke_checks(pg):
     check("line endpoints and brush strokes as k15: the dash menu's five brushes (Speckled, Rounded, Tapered, Rough, Swelled ends: Keynote shows only pictures, so named by their look); Tapered draws a filled outline pointed at both ends; Rough frays it with a filter; three more ends (Barbed arrow, Reverse arrow, Bar)",
           dash_labels[-5:] == ["Speckled", "Rounded", "Tapered", "Rough", "Swelled ends"] and end_labels[-3:] == ["Barbed arrow", "Reverse arrow", "Bar"]
           and out[:5] == ["tapered", "bar", True, True, True] and 8 <= out[5] <= 14 and out[6] and out[7], f"{dash_labels} {end_labels} {out}")
+
+
+def chart_checks(pg, deck_file: Path):
+    """Charts (D4): Insert → Chart → type; Format options → Chart; the Chart data editor (⇧⌘D); the saved deck keeps only
+    the table; the slideshow draws it without the editor; PowerPoint export makes a PowerPoint chart."""
+    pg.evaluate("(() => { window.__chWas = [cur, [...sel].map(b => b.id)]; const s = blankSlide(); slides.push(s); go(slides.length - 1); sel.clear(); render(); })()")
+    pg.click("#ed-menubar [data-menu=Insert]"); pg.hover(".menu-item:has(.menu-label:text-is('Chart'))"); pg.wait_for_timeout(100)
+    types = pg.evaluate("[...document.querySelectorAll('.menu')].pop() && [...[...document.querySelectorAll('.menu')].pop().querySelectorAll('.menu-item .menu-label')].map(e => e.textContent)")
+    t0 = pg.evaluate("performance.now()"); pg.click(".menu-item:has(.menu-label:text-is('Column'))")
+    ms = pg.evaluate(f"performance.now() - {t0}")
+    made = pg.evaluate("""(() => { const b = slides[cur].querySelector('.box.chart'), svg = b?.querySelector('svg.chart');
+      return [b?.dataset.chart, svg?.querySelectorAll('.series').length, svg?.querySelectorAll('.el.bar').length, svg?.querySelectorAll('.legend text').length, sel.has(b)]; })()""")
+    check(f"Insert → Chart lists Keynote's six 2D kinds kept (D4) and adds a column chart drawn from its data table: 2 series, 8 bars, a legend ({ms:.0f} ms)",
+          types == ["Column", "Bar", "Line", "Area", "Pie", "Scatter"] and made == ["column", 2, 8, 2, True] and ms < 300, f"{types} {made}")
+    pg.evaluate("setPanel(true); document.querySelector('#ed-fmt .chart-f').open = true"); pg.wait_for_timeout(100)
+    pg.select_option("#ed-f-ctype", "pie"); pg.check("#ed-f-clabels"); pg.uncheck("#ed-f-clegend"); pg.fill("#ed-f-ctitle", "Share"); pg.press("#ed-f-ctitle", "Enter")
+    pg.click("#ed-f-cpal button >> nth=1")
+    fm = pg.evaluate("""(() => { const b = slides[cur].querySelector('.box.chart'), svg = b.querySelector('svg.chart');
+      return [b.dataset.chart, svg.querySelectorAll('.wedge').length, svg.querySelectorAll('.value').length, !svg.querySelector('.legend'), svg.querySelector('.title')?.textContent, b.dataset.palette, svg.querySelector('.series').style.fill]; })()""")
+    check("Format options → Chart: type (pie: a wedge per series), value labels, legend off, title, the second colour set",
+          fm[:6] == ["pie", 2, 2, True, "Share", "1"] and fm[6] in ("rgb(101, 173, 255)", "#65adff"), str(fm))
+    pg.select_option("#ed-f-ctype", "column")
+    pg.evaluate("document.activeElement.blur(); sel = new Set([slides[cur].querySelector('.box.chart')]); drawOverlay()"); pg.keyboard.press("Meta+Shift+D"); pg.wait_for_timeout(150)
+    opened = pg.evaluate("!document.querySelector('#ed-chart-ed').hidden && document.querySelectorAll('#ed-chart-ed .ced-grid input').length")
+    pg.click("#ed-chart-ed input[data-r='3'][data-c='0']"); pg.keyboard.type("Series 3"); pg.keyboard.press("Tab"); pg.keyboard.type("40")
+    grown = pg.evaluate("(() => { const svg = slides[cur].querySelector('svg.chart'); return [svg.querySelectorAll('.series').length, document.querySelectorAll('#ed-chart-ed .ced-grid tr').length]; })()")
+    pg.click("#ed-chart-ed .ced-plot button[data-plot=columns]")
+    cols = pg.evaluate("(() => { const b = slides[cur].querySelector('.box.chart'); return [b.dataset.plot, chartData(b).series.length, chartData(b).cats.length]; })()")
+    pg.click("#ed-chart-ed .ced-plot button[data-plot=rows]")
+    pg.click("#ed-chart-ed .ced-bar.row >> nth=0"); pg.click(".menu-item:has(.menu-label:text-is('Delete row'))")
+    dele = pg.evaluate("chartData(slides[cur].querySelector('.box.chart')).series.map(s => s.name)")
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(100)
+    closed = pg.evaluate("document.querySelector('#ed-chart-ed').hidden")
+    check("the Chart data editor (⇧⌘D, as Keynote): a 4 × 6 grid with a spare row and column; typing in the spare row adds a series as you type; Plot columns makes the columns the series; a row's bar → Delete row; Esc closes",
+          opened == 24 and grown == [3, 6] and cols == ["columns", 4, 3] and dele == ["Series 2", "Series 3"] and closed, f"{opened} {grown} {cols} {dele} {closed}")
+    pg.evaluate("commit(); saveNow()"); pg.wait_for_function("document.querySelector('#ed-status').innerText.includes('saved')", timeout=20000); pg.wait_for_timeout(300)
+    html = deck_file.read_text(); i = html.rfind('class="box chart'); box = html[i:html.find("</table>", i)]
+    check("the saved chart is plain deck.html: data-chart and the data table, no drawn SVG", 'data-chart="column"' in box and 'class="chart-data"' in box and "<th>Series 3</th>" in box and "svg" not in box, box[:300])
+    v = pg.context.new_page(); v.goto(URL + "deck/deck.html#/" + str(pg.evaluate("cur"))); v.wait_for_function("window.Reveal?.isReady?.()", timeout=20000); v.wait_for_timeout(300)
+    shown = v.evaluate("(() => { const svg = Reveal.getCurrentSlide().querySelector('.box.chart svg.chart'); return svg ? [svg.querySelectorAll('.el.bar').length, getComputedStyle(svg.parentElement.querySelector('table.chart-data')).display] : null; })()")
+    v.close()
+    check("the slideshow draws the chart from its table without the editor (shapes.js), the table hidden", shown == [5, "none"], str(shown))
+    pp = pg.evaluate("""async () => { const r = await fetch('/api/pptx', { headers: { 'X-Glideshow': '1' } }); const b = new Uint8Array(await r.arrayBuffer());
+      let s = ''; for (let i = 0; i < b.length; i += 8192) s += String.fromCharCode(...b.subarray(i, i + 8192)); return [r.status, btoa(s)]; }""")
+    import base64, io, zipfile
+    names = zipfile.ZipFile(io.BytesIO(base64.b64decode(pp[1]))).namelist() if pp[0] == 200 else []
+    check("PowerPoint export writes the chart as a PowerPoint chart", any(n.startswith("ppt/charts/chart") for n in names), f"{pp[0]} {[n for n in names if 'chart' in n]}")
+    pg.evaluate("(() => { const w = window.__chWas; slides.pop(); go(w[0]); sel = new Set(w[1].map(id => document.getElementById(id)).filter(Boolean)); render(); commit(); drawOverlay(); updateToolbar(); })()")
 
 
 def layout_import_checks(pg):

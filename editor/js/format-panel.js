@@ -29,6 +29,10 @@ function updatePanel() {
   const vid = b.querySelector('.content > video'); fmt.classList.toggle('is-video', !!vid);
   const aud = b.querySelector('.content > audio'); fmt.classList.toggle('is-audio', !!aud);
   if (aud) { F('a-auto').checked = aud.hasAttribute('data-autoplay'); F('a-loop').checked = aud.hasAttribute('loop'); F('a-across').checked = aud.hasAttribute('data-ignore'); F('a-hide').checked = 'hideIcon' in b.dataset; }
+  const chart = b.classList.contains('chart'); fmt.classList.toggle('is-chart', chart);
+  if (chart) { F('ctype').value = b.dataset.chart || 'column'; F('ctitle').value = b.dataset.title || ''; F('clegend').checked = b.dataset.legend !== 'off';
+    F('clabels').checked = 'labels' in b.dataset; F('cgrid').checked = b.dataset.grid !== 'off'; F('cgrid').disabled = b.dataset.chart === 'pie';
+    F('cpal').querySelectorAll('button').forEach((x, i) => x.classList.toggle('on', i === (+b.dataset.palette || 0))); }
   const tbl = b.querySelector('.content table'); fmt.classList.toggle('is-table', !!tbl);
   if (tbl) { F('tstyle').value = b.dataset.tableStyle || ''; F('hrows').value = b.dataset.headerRows || '0'; F('hcols').value = b.dataset.headerCols || '0'; F('frows').value = b.dataset.footerRows || '0';
     F('altrows').checked = b.hasAttribute('data-alt-rows'); F('altcolor').value = toHex(b.style.getPropertyValue('--alt-row'), '#f3f3f3'); }
@@ -235,3 +239,17 @@ async function figureInfo(b) {
   const f = (await (await fetch('/api/figures')).json().catch(() => ({ figures: [] }))).figures?.find(x => x.id === b.id);
   if (f && sel.has(b)) info.textContent += (info.textContent ? ' · ' : '') + (f.trusted ? (f.watch.length ? `made again when ${f.watch.join(', ')} change${f.watch.length > 1 ? '' : 's'}` : 'trusted here') : 'not run here yet');
 }
+/* Format options → Chart: type, colours (the two sets of Keynote's chart picker), title, legend, value labels, gridlines. */
+const chartSet = fn => one(b => { fn(b); renderChart(b); });
+F('ctype').onchange = chartSet(b => { b.dataset.chart = F('ctype').value; });
+F('ctitle').onchange = chartSet(b => { const v = F('ctitle').value.trim(); if (v) b.dataset.title = v; else delete b.dataset.title; });
+F('clegend').onchange = chartSet(b => { if (F('clegend').checked) delete b.dataset.legend; else b.dataset.legend = 'off'; });
+F('clabels').onchange = chartSet(b => { if (F('clabels').checked) b.dataset.labels = ''; else delete b.dataset.labels; });
+F('cgrid').onchange = chartSet(b => { if (F('cgrid').checked) delete b.dataset.grid; else b.dataset.grid = 'off'; });
+CHART_COLORS.forEach((set, i) => {
+  const x = document.createElement('button'); x.title = `Chart colors ${i + 1}`;
+  set.slice(0, 4).forEach(c => { const sw = document.createElement('i'); sw.style.background = c; x.append(sw); });
+  x.onclick = chartSet(b => { if (i) b.dataset.palette = String(i); else delete b.dataset.palette; F('cpal').querySelectorAll('button').forEach((y, j) => y.classList.toggle('on', j === i)); });
+  F('cpal').append(x);
+});
+F('cdata').onclick = () => openChartData();

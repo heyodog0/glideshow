@@ -14,7 +14,7 @@ const SHORTCUTS = {
     ['Rotate 15° / 1°', '⌥← ⌥→ / ⇧⌥← ⇧⌥→'], ['Larger horizontally / vertically / both', '⌃⌘B / ⌃⌘I / ⌃⌘K'],
     ['Smaller horizontally / both', '⌃⌘W / ⌃⌘J'], ['Resize from the centre', '⌥ + resize']],
   'Actions': [['Edit text in the selected box', '↵'], ['Finish editing / deselect', 'Esc'], ['Nudge', '← ↑ → ↓'], ['Nudge 10 px', '⇧ + arrows'],
-    ['Group / ungroup', '⌥⌘G / ⇧⌥⌘G'], ['Bring to front', '⇧⌘↑'], ['Send to back', '⇧⌘↓'], ['Constrain a drag', '⇧ + drag'], ['Drag a copy', '⌥ + drag'],
+    ['Group / ungroup', '⌥⌘G / ⇧⌥⌘G'], ['Bring to front', '⇧⌘↑'], ['Send to back', '⇧⌘↓'], ['Chart data editor (a chart selected)', '⇧⌘D'], ['Constrain a drag', '⇧ + drag'], ['Drag a copy', '⌥ + drag'],
     ['Drag without snapping', '⌘ + drag'], ['Rotate in 15° steps', '⇧ + rotate'], ['Resize freely / keep proportions', '⇧ + resize']],
   'Filmstrip (click a slide first)': [['Previous / next slide', '↑ ↓ or PgUp PgDn'], ['First / last slide', 'Home / End'],
     ['Move slides up / down', '⌘↑ or ⌘← / ⌘↓ or ⌘→'], ['Move slides to beginning / end', '⇧⌘↑ or ⇧⌘← / ⇧⌘↓ or ⇧⌘→'],

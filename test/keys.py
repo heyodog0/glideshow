@@ -20,7 +20,7 @@ failures, passed_rows, failed_rows = [], set(), set()
 
 # Runs in the editor before each key: four slides, slide 2 current, holding text box A (#ka) and rectangle B (#kb).
 PREP = """ctx => {
-  if (presenting()) endPresent(); stopEdit(); closeMenu(); showShortcuts(false); closeFind(); if (gridOn) setGrid(false);
+  if (presenting()) endPresent(); stopEdit(); closeMenu(); closeChartData(); showShortcuts(false); closeFind(); if (gridOn) setGrid(false);
   document.body.classList.remove('compact'); setNotesVisible(false); setZoom(null);
   while (slides.length < 4) $('#ed-new-slide').click();
   go(1); boxes().forEach(b => b.remove());
@@ -130,6 +130,7 @@ E = [
   ("Actions", "Group / ungroup", "two", ["js:groupSel()", "Meta+Alt+Shift+g"], "boxes().length === 2 && !slides[cur].querySelector('.group')"),
   ("Actions", "Bring to front", "box", "Meta+Shift+ArrowUp", "boxes().at(-1) === A()"),
   ("Actions", "Send to back", "shape", "Meta+Shift+ArrowDown", "boxes()[0] === B()"),
+  ("Actions", "Chart data editor (a chart selected)", "none", ["js:const c = makeBox({ x: 100, y: 500, w: 600, h: 400, cls: 'chart' }); c.dataset.chart = 'column'; c.append(chartTable(CHART_SAMPLE.other)); slides[cur].append(c); renderChart(c); sel = new Set([c]); drawOverlay()", "Meta+Shift+d"], "!$('#ed-chart-ed').hidden && boxes().length === 3"),
   ("Filmstrip (click a slide first)", "Previous / next slide", "film", "ArrowDown", "cur === 2 && document.activeElement === thumbs"),
   ("Filmstrip (click a slide first)", "Previous / next slide", "film", "ArrowUp", "cur === 0"),
   ("Filmstrip (click a slide first)", "Previous / next slide", "film", "PageDown", "cur === 2"),

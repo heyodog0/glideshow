@@ -257,6 +257,15 @@
       <label>Distance<span class="unit slider"><input type="range" id="ed-f-sh-distance" min="0" max="100" step="1"><input type="number" id="ed-f-sh-distance-n" min="0" max="100" class="short"> px</span></label>
       <label>Blur radius<span class="unit slider"><input type="range" id="ed-f-sh-blur" min="0" max="100" step="1"><input type="number" id="ed-f-sh-blur-n" min="0" max="100" class="short"> px</span></label>
     </details>
+    <details class="chart-f"><summary>Chart</summary>
+      <label>Chart type<select id="ed-f-ctype"><option value="column">Column</option><option value="bar">Bar</option><option value="line">Line</option><option value="area">Area</option><option value="pie">Pie</option><option value="scatter">Scatter</option></select></label>
+      <div class="row between"><span class="lbl">Chart colors</span><span class="cpal" id="ed-f-cpal"></span></div>
+      <label>Title<input id="ed-f-ctitle" placeholder="No title"></label>
+      <label class="chk"><input type="checkbox" id="ed-f-clegend"> Legend</label>
+      <label class="chk"><input type="checkbox" id="ed-f-clabels"> Value labels</label>
+      <label class="chk"><input type="checkbox" id="ed-f-cgrid"> Gridlines</label>
+      <button id="ed-f-cdata" class="tonal">Edit chart data</button>
+    </details>
     <details class="table-f"><summary>Table</summary>
       <label>Style<select id="ed-f-tstyle"><option value="">Default</option><option value="light">Light</option><option value="blue">Blue header</option><option value="dark">Dark header</option><option value="minimal">Minimal</option></select></label>
       <div class="row"><label>Header rows<input type="number" id="ed-f-hrows" min="0" max="5" step="1"></label><label>Header columns<input type="number" id="ed-f-hcols" min="0" max="5" step="1"></label></div>
@@ -495,6 +504,7 @@
 <script src="/editor/js/shortcuts.js"></script>
 <script src="/editor/js/dialogs.js"></script>
 <script src="/editor/js/insert.js"></script>
+<script src="/editor/js/charts.js"></script>
 <script src="/editor/js/menus.js"></script>
 <script src="/editor/js/context-menus.js"></script>
 <script src="/editor/js/guides.js"></script>

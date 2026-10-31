@@ -479,6 +479,105 @@
   }
   window.cropBox = cropBox;
   window.renderShape = renderShape;
+  /* Charts (D4): a .box.chart holds its data as a plain <table class="chart-data"> (first row: the categories; each later
+     row: a series name, then its values) and data-chart = column | bar | line | area | pie | scatter. Drawn here as
+     svg.chart, never saved. data-plot="columns" plots the columns as series; a pie's wedges are the series (their first
+     value); a scatter's categories are its x values. data-palette, data-title, data-legend="off", data-labels,
+     data-grid="off". Each series is a g.series[data-s], each mark an .el[data-i], for chart builds. */
+  const CHART_COLORS = [['#4884ff', '#49dc00', '#edbe00', '#f83410', '#b93a7f', '#545454'], ['#65adff', '#4884ff', '#325db7', '#213a79', '#19255b', '#0e1232']];
+  function chartData(b) {
+    const t = b.querySelector(':scope > table.chart-data'), rows = t ? [...t.rows].map(r => [...r.cells].map(c => c.textContent.trim())) : [];
+    const num = s => { const v = parseFloat(String(s).replace(/[,\s$%€£]/g, '')); return isFinite(v) ? v : null; };
+    let cats = (rows[0] || []).slice(1), series = rows.slice(1).map(r => ({ name: r[0] || '', vals: cats.map((_, i) => num(r[i + 1])) }));
+    if (b.dataset.plot === 'columns') {
+      const names = rows.slice(1).map(r => r[0] || '');
+      series = cats.map((name, j) => ({ name, vals: rows.slice(1).map(r => num(r[j + 1])) })); cats = names;
+    }
+    return { cats, series: series.filter(s => s.name || s.vals.some(v => v !== null)) };
+  }
+  function niceTicks(lo, hi, n = 5) {
+    if (lo === hi) { hi = lo + 1; if (lo > 0) lo = 0; }
+    const raw = (hi - lo) / n, mag = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || raw;
+    const a = Math.floor(lo / step + 1e-9) * step, z = Math.ceil(hi / step - 1e-9) * step, out = [];
+    for (let v = a; v <= z + step / 2; v += step) out.push(Math.round(v / step) * step);
+    return out;
+  }
+  const fmtNum = v => (Math.round(v * 100) / 100).toLocaleString('en-US');
+  function renderChart(b) {
+    const kind = b.dataset.chart;
+    let svg = b.querySelector(':scope > svg.chart');
+    if (!kind || !b.classList.contains('chart')) { svg?.remove(); return; }
+    if (!svg) { svg = el('svg', {}, 'chart'); b.prepend(svg); }
+    const w = parseFloat(b.style.width) || 0, h = parseFloat(b.style.height) || 0;
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.replaceChildren();
+    const { cats, series } = chartData(b), pal = CHART_COLORS[+b.dataset.palette || 0] || CHART_COLORS[0], color = i => pal[i % pal.length];
+    const fs = parseFloat(b.style.getPropertyValue('--chart-fs')) || Math.max(14, Math.min(32, Math.min(w, h) * 0.055)), tw = s => String(s).length * fs * 0.56;
+    const text = (x, y, s, anchor = 'middle', cls = 'ct') => { const e = el('text', { x, y, 'text-anchor': anchor, 'dominant-baseline': 'middle', 'font-size': fs }, cls); e.textContent = s; return e; };
+    const pad = fs * 0.6, labels = 'labels' in b.dataset, grid = b.dataset.grid !== 'off';
+    let top = pad;
+    if (b.dataset.title) { svg.append(text(w / 2, top + fs * 0.6, b.dataset.title, 'middle', 'ct title')); top += fs * 1.8; }
+    const keys = series.map(s => s.name);
+    if (b.dataset.legend !== 'off' && keys.length && (keys.length > 1 || kind === 'pie')) {   // one row, centred
+      const items = keys.map(k => fs * 1.2 + tw(k) + fs), total = items.reduce((a, v) => a + v, 0) - fs;
+      let x = Math.max(pad, (w - total) / 2);
+      const g = el('g', {}, 'legend');
+      keys.forEach((k, i) => { const sw = el('rect', { x, y: top + fs * 0.15, width: fs * 0.8, height: fs * 0.8, rx: fs * 0.12 }); sw.style.fill = color(i); g.append(sw, text(x + fs * 1.2, top + fs * 0.6, k, 'start')); x += items[i]; });
+      svg.append(g); top += fs * 1.8;
+    }
+    const groups = series.map((s, i) => { const g = el('g', { 'data-s': i }, 'series'); g.style.fill = color(i); g.style.stroke = color(i); return g; });
+    const lab = (x, y, v, anchor = 'middle') => labels && v !== null ? text(x, y, fmtNum(v), anchor, 'ct value') : null;
+    if (kind === 'pie') {
+      const vals = series.map(s => Math.max(0, s.vals.find(v => v !== null) ?? 0)), sum = vals.reduce((a, v) => a + v, 0) || 1;
+      const r = Math.max(1, Math.min(w - 2 * pad, h - top - pad) / 2), cx = w / 2, cy = top + (h - top - pad) / 2;
+      let a = -Math.PI / 2;
+      vals.forEach((v, i) => {
+        const da = v / sum * 2 * Math.PI, a1 = a + da, big = da > Math.PI ? 1 : 0, P = t => [cx + r * Math.cos(t), cy + r * Math.sin(t)];
+        const d = da >= 2 * Math.PI - 1e-6 ? `M${cx - r},${cy}a${r},${r} 0 1 1 ${2 * r},0a${r},${r} 0 1 1 ${-2 * r},0Z` : `M${cx},${cy}L${P(a)}A${r},${r} 0 ${big} 1 ${P(a1)}Z`;
+        if (v > 0) { groups[i].append(el('path', { d, 'data-i': 0 }, 'el wedge')); const m = (a + a1) / 2, l = lab(cx + r * 0.65 * Math.cos(m), cy + r * 0.65 * Math.sin(m), v); if (l) groups[i].append(l); }
+        a = a1;
+      });
+      svg.append(...groups); return;
+    }
+    const all = series.flatMap(s => s.vals).filter(v => v !== null), horiz = kind === 'bar', xy = kind === 'scatter';
+    const ticks = niceTicks(Math.min(0, ...all), Math.max(0, ...all) || 1), lo = ticks[0], hi = ticks[ticks.length - 1];
+    const xs = cats.map(c => parseFloat(c)), xf = xs.filter(isFinite), xt = xy ? niceTicks(Math.min(0, ...xf), Math.max(1, ...xf)) : [];
+    const valW = Math.max(...ticks.map(t => tw(fmtNum(t)))), catW = horiz ? Math.max(0, ...cats.map(tw)) : 0;
+    const L = pad + (horiz ? catW : valW) + fs * 0.5, R = w - pad - (horiz ? valW / 2 : 0), T = top + fs * 0.5, B = h - pad - fs * 1.3;
+    const vpos = v => horiz ? L + (v - lo) / (hi - lo) * (R - L) : B - (v - lo) / (hi - lo) * (B - T);
+    const ax = el('g', {}, 'axes');
+    ticks.forEach(t => {
+      const p = vpos(t);
+      if (grid || t === 0) ax.append(el('line', horiz ? { x1: p, x2: p, y1: T, y2: B } : { x1: L, x2: R, y1: p, y2: p }, t === 0 ? 'base' : 'grid'));
+      ax.append(horiz ? text(p, B + fs * 0.8, fmtNum(t)) : text(L - fs * 0.4, p, fmtNum(t), 'end'));
+    });
+    svg.append(ax);
+    if (xy) {   // scatter: a numeric x axis from the categories
+      const xlo = xt[0], xhi = xt[xt.length - 1], xp = x => L + (x - xlo) / (xhi - xlo) * (R - L);
+      xt.forEach(t => { if (grid) ax.append(el('line', { x1: xp(t), x2: xp(t), y1: T, y2: B }, 'grid')); ax.append(text(xp(t), B + fs * 0.8, fmtNum(t))); });
+      series.forEach((s, si) => s.vals.forEach((v, i) => { if (v === null || !isFinite(xs[i])) return;
+        groups[si].append(el('circle', { cx: xp(xs[i]), cy: vpos(v), r: fs * 0.3, 'data-i': i }, 'el dot')); const l = lab(xp(xs[i]), vpos(v) - fs * 0.8, v); if (l) groups[si].append(l); }));
+      svg.append(...groups); return;
+    }
+    const n = Math.max(1, cats.length), band = (horiz ? B - T : R - L) / n, mid = i => (horiz ? T : L) + band * (i + 0.5);
+    cats.forEach((c, i) => ax.append(horiz ? text(L - fs * 0.4, mid(i), c, 'end') : text(mid(i), B + fs * 0.8, c)));
+    const z = vpos(Math.max(lo, Math.min(0, hi)));
+    if (kind === 'column' || kind === 'bar') {
+      const bw = band * 0.75 / Math.max(1, series.length);
+      series.forEach((s, si) => s.vals.forEach((v, i) => { if (v === null) return;
+        const o = mid(i) - band * 0.375 + bw * si, p = vpos(v);
+        groups[si].append(el('rect', horiz ? { x: Math.min(z, p), y: o, width: Math.abs(p - z), height: bw * 0.9, 'data-i': i } : { x: o, y: Math.min(z, p), width: bw * 0.9, height: Math.abs(p - z), 'data-i': i }, 'el bar'));
+        const l = horiz ? lab(p + (v < 0 ? -1 : 1) * fs * 0.3, o + bw * 0.45, v, v < 0 ? 'end' : 'start') : lab(o + bw * 0.45, p + (v < 0 ? 1 : -1) * fs * 0.6, v); if (l) groups[si].append(l); }));
+    } else series.forEach((s, si) => {   // line, area: a point per category
+      const pts = s.vals.map((v, i) => v === null ? null : [mid(i), vpos(v)]).filter(Boolean);
+      if (!pts.length) return;
+      if (kind === 'area') groups[si].append(el('path', { d: `M${pts[0][0]},${z}L${pts.map(p => p.join(',')).join('L')}L${pts[pts.length - 1][0]},${z}Z` }, 'el area'));
+      else groups[si].append(el('path', { d: 'M' + pts.map(p => p.join(',')).join('L') }, 'el stroke'));
+      s.vals.forEach((v, i) => { if (v === null) return; if (kind === 'line') groups[si].append(el('circle', { cx: mid(i), cy: vpos(v), r: fs * 0.22, 'data-i': i }, 'el dot'));
+        const l = lab(mid(i), vpos(v) - fs * 0.7, v); if (l) groups[si].append(l); });
+    });
+    svg.append(...groups);
+  }
+  window.renderChart = renderChart; window.chartData = chartData; window.CHART_COLORS = CHART_COLORS;
   // Page size: <div class="slides" data-size="1920x1440"> (4:3); the default is 1920x1080
   const size = (document.querySelector('.reveal .slides')?.dataset.size || '').match(/^(\d+)x(\d+)$/);
   if (size) {
@@ -560,6 +659,7 @@
   applyLayouts();   // a deck: its layouts' objects onto its slides, before they're drawn (the editor does its own)
   attachConnectors(document);   // a deck; the editor attaches each slide as it loads it
   document.querySelectorAll('.box[data-shape]').forEach(renderShape);
+  document.querySelectorAll('.box.chart').forEach(renderChart);
   document.querySelectorAll('.box[data-shadow]').forEach(shadeBox);
   document.querySelectorAll('.box[data-crop], .box[data-mask]').forEach(cropBox);
   document.querySelectorAll('.box[data-adjust]').forEach(adjustImage);

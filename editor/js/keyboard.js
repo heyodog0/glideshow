@@ -227,6 +227,7 @@ addEventListener('keydown', e => {
     drawOverlay(); commit(); return;
   }
   if (mod && e.altKey && e.code === 'KeyG') { e.preventDefault(); if (e.shiftKey) ungroupSel(); else groupSel(); return; }   // ⌥⌘G / ⇧⌥⌘G
+  if (mod && e.shiftKey && !e.altKey && k === 'd' && sel.size === 1 && isChart([...sel][0])) { e.preventDefault(); openChartData(); return; }   // Keynote: ⇧⌘D, Chart data editor
   if (mod && k === 'd') { e.preventDefault(); if (filmFocused()) $('#ed-dup-slide').click(); else duplicateSelection(); return; }
   if (mod && k === 'a') { e.preventDefault(); sel = new Set(pickable()); drawOverlay(); updateToolbar(); return; }
   if (mod && !e.shiftKey && !e.altKey && 'biu'.includes(k) && k && sel.size) {   // whole selected boxes; while editing the browser does it
@@ -239,7 +240,7 @@ addEventListener('keydown', e => {
   if (cropping && (e.key === 'Escape' || e.key === 'Enter')) { e.preventDefault(); endCrop(); return; }
   if (e.key === 'Escape' && scope && sel.size === 1 && scope.contains([...sel][0])) { e.preventDefault(); sel = new Set([scope]); scope = null; drawOverlay(); updateToolbar(); return; }   // out of the group
   if (e.key === 'Escape') { e.preventDefault(); if (!sel.size) thumbs.focus({ preventScroll: true }); sel.clear(); drawOverlay(); updateToolbar(); return; }   // Esc with nothing selected: to the filmstrip
-  if (e.key === 'Enter' && sel.size === 1) { e.preventDefault(); startEdit([...sel][0]); return; }
+  if (e.key === 'Enter' && sel.size === 1) { e.preventDefault(); if (isChart([...sel][0])) openChartData(); else startEdit([...sel][0]); return; }
   if (e.key === 'Tab') {   // select next / previous object, as Slides
     e.preventDefault();
     const all = boxes(); if (!all.length) return;

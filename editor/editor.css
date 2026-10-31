@@ -523,6 +523,22 @@ body.drawing #ed-stage, body.drawing #ed-stage * { cursor: crosshair !important;
 #ed-fmt:not(.is-audio) .audio-only { display: none; }
 #ed-fmt.is-audio .text-only { display: none; }
 #ed-fmt:not(.is-table) .table-f { display: none; }
+#ed-fmt:not(.is-chart) .chart-f { display: none; } #ed-fmt.is-chart .text-only { display: none; }
+#ed-fmt .cpal { display: flex; gap: 6px; } #ed-fmt .cpal button { display: flex; padding: 3px; border: 2px solid transparent; border-radius: 6px; background: none; cursor: pointer; }
+#ed-fmt .cpal button.on { border-color: var(--accent, #0b57d0); } #ed-fmt .cpal i { width: 10px; height: 18px; }
+#ed-f-cdata { align-self: flex-start; height: 32px; padding: 0 16px; border: 0; border-radius: 16px; background: var(--selected); color: #041e49; cursor: pointer; }
+.chart-ed { z-index: 29; width: auto; max-width: min(720px, calc(100vw - 48px)); }
+.chart-ed header { display: flex; align-items: center; gap: 8px; } .chart-ed h2 { flex: 1; margin: 0; font-size: 16px; font-weight: 500; }
+.chart-ed header button { display: flex; padding: 4px; border: 0; border-radius: 50%; background: none; color: inherit; cursor: pointer; }
+.chart-ed .ced-plot { display: flex; gap: 2px; } .chart-ed .ced-plot button.on { background: var(--selected); color: #041e49; border-radius: 6px; }
+.chart-ed .ced-wrap { overflow: auto; max-height: 50vh; }
+.ced-grid { border-collapse: collapse; font-size: 13px; }
+.ced-grid td { padding: 0; border: 1px solid var(--line, #dadce0); } .ced-grid tr.ced-bars td, .ced-grid td.ced-rowbar { border: 0; }
+.ced-grid input { width: 84px; height: 26px; box-sizing: border-box; padding: 0 6px; border: 0; background: transparent; color: inherit; font: inherit; text-align: right; }
+.ced-grid .ced-head input { font-weight: 600; text-align: left; } .ced-grid tr > td:nth-child(2) input { width: 120px; } .ced-grid .ced-head { background: var(--hover, #f1f3f4); }
+.ced-grid input:focus { outline: 2px solid var(--accent, #0b57d0); outline-offset: -2px; }
+.ced-bar { display: block; width: 100%; height: 8px; padding: 0; border: 0; border-radius: 3px; background: var(--line, #dadce0); cursor: pointer; } .ced-bar.row { width: 8px; height: 26px; }
+.ced-bar:hover, .ced-bar.open { background: var(--accent, #0b57d0); }
 #ed-fmt.is-video .text-only { display: none; }
 /* In the editor a video is its poster with a play badge, as Slides; it plays when presenting. */
 #ed-canvas .box.video video, .thumb-canvas .box.video video { pointer-events: none; }

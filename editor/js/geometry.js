@@ -12,6 +12,7 @@ function setGeo(b, g) {
   b.style.left = r1(g.x) + 'px'; b.style.top = r1(g.y) + 'px';
   b.style.width = r1(g.w) + 'px'; b.style.height = r1(g.h) + 'px';
   if (b.dataset.shape) renderShape(b);
+  if (b.classList.contains('chart')) renderChart(b);
   if (b.dataset.autofit === 'shrink') fitText(b);
 }
 function place(el, g) { Object.assign(el.style, { left: g.x + 'px', top: g.y + 'px', width: g.w + 'px', height: g.h + 'px' }); }

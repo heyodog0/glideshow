@@ -3,7 +3,7 @@
 # dependencies = ["python-pptx"]
 # ///
 """deck.html → .pptx, best effort: slide backgrounds, text boxes (paragraphs, size, bold / italic, colour, alignment),
-pictures, tables, the common shapes with their fill and outline, straight lines, speaker notes, slide transitions
+pictures, tables, charts (as PowerPoint charts), the common shapes with their fill and outline, straight lines, speaker notes, slide transitions
 (PowerPoint's nearest: fade, push, wipe, cover, pull, circle, zoom; Morph as PowerPoint's Morph, shapes named "!!<id>"
 so they pair) and builds (appear, fade, wipe in; fade out; on click, with or after the previous one, with their
 duration and delay; other effects become a fade), a layout's own objects (#deck-layouts) on each of its slides. Videos
@@ -250,6 +250,8 @@ def add_box(slide, box, base, ox, oy):
         return
     if "video" in cls or "embed" in cls:
         return   # PowerPoint can't take these from HTML; left out
+    if "chart" in cls:
+        return add_chart(slide, box, E(x), E(y), E(w), E(h))
     if "table" in cls:
         rows = [r for r in box.find_all(lambda n: n.tag == "tr")]
         cols = max((len([c for c in r.kids if isinstance(c, Node) and c.tag in ("td", "th")]) for r in rows), default=0)
@@ -285,6 +287,43 @@ def add_box(slide, box, base, ox, oy):
         if f: sh.fill.solid(); sh.fill.fore_color.rgb = f
     if content is not None: add_text(sh, content, {"shape": shape_name})
     return [sh]
+
+
+def add_chart(slide, box, x, y, w, h):
+    """A .box.chart (shapes.js renderChart) as a native PowerPoint chart with the same data, type and options."""
+    from pptx.chart.data import CategoryChartData, XyChartData
+    from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+    a = box.attrs
+    rows = [[re.sub(r"\s+", " ", c.text()).strip() for c in r.kids if isinstance(c, Node) and c.tag in ("td", "th")] for r in box.find_all(lambda n: n.tag == "tr")]
+    if not rows: return
+    def num(s):
+        try: return float(re.sub(r"[,\s$%€£]", "", s))
+        except ValueError: return None
+    cats, series = rows[0][1:], [(r[0] if r else "", [num(v) for v in (r[1:] + [""] * len(rows[0]))[:len(rows[0]) - 1]]) for r in rows[1:]]
+    if a.get("data-plot") == "columns":
+        series, cats = [(c, [num((r[1:] + [""] * len(cats))[j]) for r in rows[1:]]) for j, c in enumerate(cats)], [r[0] if r else "" for r in rows[1:]]
+    kind = a.get("data-chart", "column")
+    if kind == "scatter":
+        cd = XyChartData()
+        for name, vals in series:
+            s = cd.add_series(name)
+            for c, v in zip(cats, vals):
+                if num(c) is not None and v is not None: s.add_data_point(num(c), v)
+        xl = XL_CHART_TYPE.XY_SCATTER
+    else:
+        cd = CategoryChartData()
+        if kind == "pie": cd.categories = [n for n, _ in series]; cd.add_series(cats[0] if cats else "", [next((v for v in vals if v is not None), 0) for _, vals in series])
+        else:
+            cd.categories = cats
+            for name, vals in series: cd.add_series(name, vals)
+        xl = {"bar": XL_CHART_TYPE.BAR_CLUSTERED, "line": XL_CHART_TYPE.LINE_MARKERS, "area": XL_CHART_TYPE.AREA, "pie": XL_CHART_TYPE.PIE}.get(kind, XL_CHART_TYPE.COLUMN_CLUSTERED)
+    gf = slide.shapes.add_chart(xl, x, y, w, h, cd); ch = gf.chart
+    ch.has_legend = a.get("data-legend") != "off" and (len(series) > 1 or kind == "pie")
+    if ch.has_legend: ch.legend.position = XL_LEGEND_POSITION.TOP; ch.legend.include_in_layout = False
+    if a.get("data-title"): ch.has_title = True; ch.chart_title.text_frame.text = a["data-title"]
+    else: ch.has_title = False
+    if "data-labels" in a: ch.plots[0].has_data_labels = True
+    return [gf]
 
 
 if __name__ == "__main__":

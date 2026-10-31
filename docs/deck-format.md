@@ -111,6 +111,15 @@ Rules:
   cells (Tab in the last cell adds a row) and right-click inserts or deletes rows and columns. Merged cells are plain `colspan` /
   `rowspan`; a cell's fill is an inline `background-color` on the `<td>`, its borders inline `border-<side>-color / -width / -style`.
   On the table box (Format options → Table): `data-table-style` = `light | blue | dark | minimal`, `data-header-rows` / `data-header-cols` (those cells are `<th>`), `data-footer-rows` (1–3, bold with a heavier rule above), `data-alt-rows` with `--alt-row: #rrggbb` (every second row's fill).
+- Charts: `<div class="box chart" data-chart="column" …><div class="content"></div><table class="chart-data"><tr><th></th><th>Q1</th><th>Q2</th></tr><tr><th>North</th><td>17</td><td>26</td></tr></table></div>`.
+  The table is the data, hidden (base.css): its first row holds the categories, each later row a series' name and then its
+  values (blank cells are gaps). shapes.js draws it as `svg.chart` (never saved), in the editor and the slideshow alike.
+  `data-chart` = `column | bar | line | area | pie | scatter`; `data-plot="columns"` makes the columns the series instead of
+  the rows; a pie's wedges are the series, each its first value; a scatter's categories are the x values (numbers). Options:
+  `data-title="…"`, `data-legend="off"`, `data-labels` (value labels), `data-grid="off"`, `data-palette="1"` (the second colour
+  set; 0 is the default), `--chart-fs` (text size in px; by default from the box's size). Insert → Chart adds one;
+  double-click, ⇧⌘D or Format options → Chart → Edit chart data opens the data editor. Each series is a `g.series[data-s]`,
+  each mark an `.el[data-i]`. PowerPoint export writes a PowerPoint chart.
 - Web embeds: `<div class="box embed" …><div class="content"><iframe src="https://…" allowfullscreen></iframe></div></div>` shows a live page
   (or a YouTube / Vimeo player: Insert → Video → By URL converts the page address). The editor shows it but doesn't pass clicks
   to it; the slideshow does.

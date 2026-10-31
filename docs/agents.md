@@ -220,6 +220,18 @@ A third step pairs with the second's ids (`data-morph="s2-actors"`), and so on. 
 `glideshow render <deck> --morph` lists each step's pairs (what moves, resizes, recolours, fades in or out) and saves a
 picture halfway through each animation.
 
+**A chart from a few numbers** (a column, bar, line, area, pie or scatter chart the user can edit later in the data
+editor): a `.box.chart` with its data as a plain table, first row the categories, each later row a series:
+```html
+<div class="box chart" id="s5-sales" data-chart="column" data-labels style="left: 160px; top: 260px; width: 1600px; height: 720px;"><div class="content"></div><table class="chart-data">
+  <tr><th></th><th>Q1</th><th>Q2</th><th>Q3</th></tr>
+  <tr><th>North</th><td>17</td><td>26</td><td>53</td></tr>
+  <tr><th>South</th><td>55</td><td>43</td><td>70</td></tr>
+</table></div>
+```
+Options are in docs/deck-format.md (Charts). A plot made from data files or many points belongs to a script figure
+(`glideshow figure`), not a chart.
+
 **A table that doesn't fit.** A `.box.table` grows with its rows. Imported tables carry Google's cell padding
 (`padding: 19.2px` on each `<td>`) and font sizes: to make one fit, lower the padding on its cells (a rule in the slide's
 own `<style class="slide-css" media="not all">`, such as `.box.table td { padding: 6px 12px; }`, does every cell at once)

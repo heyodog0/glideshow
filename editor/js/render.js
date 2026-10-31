@@ -12,7 +12,7 @@ function render() {
   paintBg(frame, s);
   ($('#ed-slide-css') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'ed-slide-css' }))).textContent = slideCSS(s) ? `#ed-canvas > section { ${slideCSS(s)} }` : '';
   s.querySelectorAll('img, video').forEach(freshSrc); s.querySelectorAll('video').forEach(stillPoster);
-  s.querySelectorAll('.box').forEach(b => { if (b.dataset.shape) renderShape(b); shadeBox(b); cropBox(b); if (b.dataset.adjust) adjustImage(b); if (((b.dataset.gradient || b.dataset.fillImage) && !b.dataset.shape) || b.dataset.textGradient) gradBox(b); fitText(b); });
+  s.querySelectorAll('.box').forEach(b => { if (b.dataset.shape) renderShape(b); if (b.classList.contains('chart')) renderChart(b); shadeBox(b); cropBox(b); if (b.dataset.adjust) adjustImage(b); if (((b.dataset.gradient || b.dataset.fillImage) && !b.dataset.shape) || b.dataset.textGradient) gradBox(b); fitText(b); });
   requestAnimationFrame(() => s.querySelectorAll('.box').forEach(fitTabs));   // tabs need the laid-out text
   highlightCode(s); renderMath(s);
   s.querySelectorAll('.box[data-placeholder] > .content').forEach(markPlaceholder);

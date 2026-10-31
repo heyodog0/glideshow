@@ -120,7 +120,7 @@ async function load(keep, outside = false) {
 
 function cleanBox(b) {
   const c = b.cloneNode(true);
-  c.querySelectorAll('svg.shape, svg.adj').forEach(e => e.remove());
+  c.querySelectorAll('svg.shape, svg.adj, svg.chart').forEach(e => e.remove());
   c.querySelectorAll('img[style*="#adj-"]').forEach(e => { e.style.filter = ''; if (!e.getAttribute('style')) e.removeAttribute('style'); });   // derived from data-adjust
   unrenderMath(c);   // the deck keeps the equation source
   c.querySelectorAll('[contenteditable], [spellcheck]').forEach(e => { e.removeAttribute('contenteditable'); e.removeAttribute('spellcheck'); });

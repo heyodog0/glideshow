@@ -406,6 +406,7 @@ canvas.addEventListener('dblclick', e => {
   if (b && isPath(b) && !pointEdit) { enterPointEdit(b); return; }   // a drawn path: edit its points
   if (b && b.classList.contains('image')) { enterCrop(b); return; }   // double-click a picture: crop it, as Slides
   if (b && b.classList.contains('live')) { editLive(b); return; }   // a live box: its page
+  if (isChart(b)) { openChartData(b); return; }   // a chart: its data
   if (b && isGroup(b)) {   // enter the group: the member under the pointer gets selected (Esc goes back out)
     scope = b; const m = topBox(e.target);
     if (m && m !== b) { sel = new Set([m]); drawOverlay(); updateToolbar(); }

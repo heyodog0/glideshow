@@ -13,6 +13,7 @@ A new binding needs a row in both.
 
 - [x] ⌘M new slide (next main slide); ⇧⌘M new sub-slide below (reveal vertical stack; not in Slides) — ⌘M and Slides' Mac key ⌃M (verified: Google lists Ctrl+M); ⇧⌘M adds a sub-slide under the current slide
 - [x] ⌘D duplicate (selected objects; selected slide when the filmstrip has focus)
+- [x] ⇧⌘D Chart data editor when a chart is selected (Keynote's key; Slides has none)
 - [x] ⌘Z / ⇧⌘Z undo / redo (⌘Y also redo)
 - [x] ⌘C ⌘X ⌘V copy cut paste; ⇧⌘V paste without formatting (⌘V into text now keeps formatting, cleaned)
 - [x] ⌥⌘C / ⌥⌘V copy / paste formatting (paint format)
