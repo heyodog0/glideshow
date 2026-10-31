@@ -453,8 +453,10 @@
     const go = (el, kf, o) => anims.push(el.animate(kf, { duration: ms, easing: 'ease-in-out', fill: 'both', ...o }));
     if (kind === 'doorway') {
       const l = copy(old, [0, W / 2, 0, 0]), r = copy(old, [0, 0, 0, W / 2]);
-      go(l, [{ transformOrigin: '0 50%', transform: 'perspective(2000px) rotateY(0)', filter: 'brightness(1)' }, { transformOrigin: '0 50%', transform: 'perspective(2000px) rotateY(-100deg)', filter: 'brightness(.4)' }]);
-      go(r, [{ transformOrigin: '100% 50%', transform: 'perspective(2000px) rotateY(0)', filter: 'brightness(1)' }, { transformOrigin: '100% 50%', transform: 'perspective(2000px) rotateY(100deg)', filter: 'brightness(.4)' }]);
+      for (const [d, sgn, o] of [[l, -1, '0 50%'], [r, 1, '100% 50%']]) {   // each door swings open and fades as it goes, so none is left to vanish on the last frame (WebKit drew its back)
+        d.style.backfaceVisibility = 'hidden';
+        go(d, [{ transformOrigin: o, transform: 'perspective(2000px) rotateY(0)', filter: 'brightness(1)', opacity: 1 }, { transformOrigin: o, transform: `perspective(2000px) rotateY(${sgn * 72}deg)`, filter: 'brightness(.55)', opacity: 1, offset: 0.75 }, { transformOrigin: o, transform: `perspective(2000px) rotateY(${sgn * 90}deg)`, filter: 'brightness(.4)', opacity: 0 }]);
+      }
       go(s, [{ transform: 'scale(.55)', filter: 'brightness(.5)' }, { transform: 'none', filter: 'none' }], { fill: 'none', easing: 'ease-out' });
     } else if (kind === 'page-flip') {   // the old page turns over from its right edge, hinged on the left
       const pg = copy(old, [0, 0, 0, 0]); pg.style.backfaceVisibility = 'hidden';
@@ -512,7 +514,8 @@
     box.after(cv);
     const c = /** @type {CanvasRenderingContext2D} */ (cv.getContext('2d')), fill = getComputedStyle(box).getPropertyValue('--fill').trim() || '#4285f4';
     const ms = (+box.dataset.duration || PARTICLES[kind]) * 1000, t0 = performance.now(), rnd = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
-    const N = /^confetti/.test(kind) ? 600 : kind === 'flame-in' ? 160 : 60, P = Array.from({ length: N }, () => ({ x: rnd(), y: rnd(), a: rnd(), b: rnd(), c: rnd() }));
+    const N = kind === 'confetti-out' ? 2600 : /^confetti/.test(kind) ? 600 : kind === 'flame-in' ? 160 : 60, P = Array.from({ length: N }, () => ({ x: rnd(), y: rnd(), a: rnd(), b: rnd(), c: rnd(), col: fill }));
+    if (kind === 'confetti-out') { const R = JSON.parse(box.dataset.cols || '[]'); P.forEach(p => { const r = R.findLast(r => p.x * w >= r[0] && p.x * w <= r[0] + r[2] && p.y * h >= r[1] && p.y * h <= r[1] + r[3]); if (r) p.col = r[4]; }); }   // a flake from a shape takes its fill
     const star = (px, py, r, col, alpha) => { c.globalAlpha = alpha; c.fillStyle = col; c.beginPath(); c.moveTo(px, py - r); c.lineTo(px + r / 4, py); c.lineTo(px, py + r); c.lineTo(px - r / 4, py); c.closePath(); c.fill();
       c.beginPath(); c.moveTo(px - r, py); c.lineTo(px, py + r / 4); c.lineTo(px + r, py); c.lineTo(px, py - r / 4); c.closePath(); c.fill(); };
     const frame = now => {
@@ -529,8 +532,12 @@
         const out = (p.x - 0.5) * 2, px = m + w * (0.5 + out * (0.5 + 0.25 * life)), py = m + h - h * 0.08 - life * h * 0.25 * p.b, r = (0.2 + 0.25 * p.c) * Math.min(w, h) * (0.7 + 0.6 * life);
         if (i % 4) { const gr = c.createRadialGradient(px, py, 0, px, py, r); gr.addColorStop(0, 'rgba(255,255,255,.7)'); gr.addColorStop(0.5, 'rgba(255,255,255,.3)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.globalAlpha = (1 - life) * 0.8; c.fillStyle = gr; c.fillRect(px - r, py - r, 2 * r, 2 * r); }
         else { c.globalAlpha = 1 - life; c.fillStyle = '#fff'; c.fillRect(m + w * p.x, m + h * (1 - p.b * (0.3 + life)), 2, 2); } });
-      else if (kind === 'confetti-out') P.forEach(p => { const k = t * (2 - t), sx = m + w * p.x, sy = m + h * p.y, an = p.a * 7, d = (0.3 + p.b) * Math.max(w, h) * 0.7;   // the old slide shattering outward
-        c.globalAlpha = 1 - t; c.fillStyle = fill; c.fillRect(sx + Math.cos(an) * d * k, sy + Math.sin(an) * d * k, 5, 5); });
+      else if (kind === 'confetti-out') P.forEach(p => {   // the old slide broken at once into flakes of its own colours, tumbling outward over the new one (r08c)
+        const k = 1 - (1 - t) ** 2.2, sx = m + w * p.x, sy = m + h * p.y, an = Math.atan2(sy - m - h / 2, sx - m - w / 2) + (p.a - 0.5) * 1.4, d = (0.12 + 0.45 * p.b) * Math.max(w, h);
+        const turn = Math.cos(p.c * 40 + now / (70 + 110 * p.a)), sz = 18 + 22 * p.c, fx = sx + Math.cos(an) * d * k, fy = sy + Math.sin(an) * d * k, fw = sz * Math.max(0.15, Math.abs(turn));
+        const ra = p.a * 6.3 + t * (p.b - 0.5) * 6; c.setTransform(Math.cos(ra), Math.sin(ra), -Math.sin(ra), Math.cos(ra), fx, fy);   // each at its own tilt, spinning a little
+        c.globalAlpha = t < 0.4 ? 1 : Math.max(0, 1 - (t - 0.4) / 0.6); c.fillStyle = p.col; c.fillRect(-fw / 2, -sz / 2, fw, sz);
+        c.globalAlpha *= 0.7 * (1 - Math.abs(turn)); c.fillStyle = '#000'; c.fillRect(-fw / 2, -sz / 2, fw, sz); c.setTransform(1, 0, 0, 1, 0, 0); });   // darker as it turns edge-on
       else if (kind === 'sparkle-in') P.forEach(p => { const fx = m + w * t - p.a * 60, py = m + h * p.y, life = 1 - Math.abs(p.b - 0.5) * 2; star(fx + p.c * 30, py, 6 + 14 * p.c, '#fff', Math.max(0, life * (t < 1 ? 1 : 0))); });
       else if (kind === 'shimmer-in') P.forEach(p => { const g = Math.min(1, t * 1.6 + p.a * 0.3), r = 4 + g * (10 + 40 * p.c); star(m + w * p.x, m + h * p.y, r, p.b < 0.5 ? '#fff' : fill, (1 - t) * 0.9); });
       else if (kind === 'confetti-in') P.forEach(p => { const k = t * t, sx = cv.width * p.a, sy = cv.height * p.b, tx = m + w * p.x, ty = m + h * p.y;
@@ -587,7 +594,9 @@
     const s = e.currentSlide, k = { sparkle: ['sparkle-in', 1.7], shimmer: ['shimmer-in', 1.5], confetti: ['confetti-out', 1.75] }[s?.dataset.transition]; if (!k) return;
     const src = k[0] === 'confetti-out' ? e.previousSlide : s, g = document.createElement('div'); g.className = k[0];
     Object.assign(g.style, { left: '0px', top: '0px', width: Reveal.getConfig().width + 'px', height: Reveal.getConfig().height + 'px', position: 'absolute', visibility: 'hidden' });
-    g.style.setProperty('--fill', getComputedStyle(src || s).backgroundColor || '#fff'); g.dataset.duration = String(k[1] * ({ fast: 0.5, slow: 1.5 }[s.dataset.transitionSpeed] || 1)); s.append(g); particles(g); g.remove();
+    const from = src || s, bg = getComputedStyle(from).backgroundColor;
+    g.style.setProperty('--fill', from.dataset.backgroundColor || (bg && !/rgba\(.*, 0\)$|transparent/.test(bg) ? bg : '#fff'));   // (a slide's colour is reveal's background layer, not the section's)
+    if (k[0] === 'confetti-out') g.dataset.cols = JSON.stringify([...from.querySelectorAll(':scope > .box')].map(b => [parseFloat(b.style.left), parseFloat(b.style.top), parseFloat(b.style.width), parseFloat(b.style.height), getComputedStyle(b).getPropertyValue('--fill').trim()]).filter(r => r[4] && !/^(transparent|none)$/.test(r[4]) && r.slice(0, 4).every(isFinite))); g.dataset.duration = String(k[1] * ({ fast: 0.5, slow: 1.5 }[s.dataset.transitionSpeed] || 1)); s.append(g); particles(g); g.remove();
   });
   /* Line Draw: its arrowheads ride the stroke's ends while it draws or erases (shapes.js rideLineEnds). */
   const ride = e => e.fragments?.forEach(f => { if (f.matches('.line-draw, .line-erase')) window.rideLineEnds?.(f, ((+f.dataset.duration || 0.5) + (+f.dataset.delay || 0)) * 1000); });
