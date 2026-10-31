@@ -97,8 +97,11 @@ const DELIVERY_TEXT = [['', 'All at once'], ['paragraph', 'By paragraph'], ['gro
 const DELIVERY_TABLE = [['', 'All at once'], ['row', 'By row'], ['column', 'By column'], ['cell', 'By cell'], ['row-content', 'By row content'], ['column-content', 'By column content'],
   ['cell-content', 'By cell content'], ['row-reverse', 'By row reverse'], ['row-content-reverse', 'By row content reverse'], ['column-reverse', 'By column reverse'],
   ['column-content-reverse', 'By column content reverse'], ['cell-reverse', 'By cell reverse'], ['cell-content-reverse', 'By cell content reverse']];
+/* A chart's (k10-chart-build): Keynote's six; a pie offers only All at once and By wedge */
+const DELIVERY_CHART = [['', 'All at once'], ['background', 'Background first'], ['series', 'By series'], ['set', 'By set'], ['element-series', 'By element in series'], ['element-set', 'By element in set']];
+const DELIVERY_PIE = [['', 'All at once'], ['wedge', 'By wedge']];
 const TEXT_ORDERS = [['', 'Forward'], ['backward', 'Backward'], ['center', 'From center'], ['edges', 'From edges'], ['random', 'Random']];
-const deliveries = b => isMedia(b) || isStroke(b) || isGroup(b) ? [] : content(b)?.querySelector('table') ? DELIVERY_TABLE : content(b)?.textContent.trim() ? DELIVERY_TEXT : [];
+const deliveries = b => isChart(b) ? (b.dataset.chart === 'pie' ? DELIVERY_PIE : DELIVERY_CHART) : isMedia(b) || isStroke(b) || isGroup(b) ? [] : content(b)?.querySelector('table') ? DELIVERY_TABLE : content(b)?.textContent.trim() ? DELIVERY_TEXT : [];
 const startOf = b => 'withPrevious' in b.dataset ? 'with' : b.dataset.start || 'click';
 function setStart(b, v) { delete b.dataset.withPrevious; delete b.dataset.start; if (v === 'with') b.dataset.withPrevious = ''; else if (v !== 'click') b.dataset.start = v; }
 function setEffect(b, eff) { b.classList.remove(...EFFECTS.map(e => e[0])); b.classList.add('fragment', eff); if (b.dataset.shape) renderShape(b); if (eff === 'move-to' && !b.dataset.to) b.dataset.to = defaultTo(b); }   // (Line draw measures the stroke)
@@ -198,7 +201,7 @@ function renderAnims() {
     drawExtraRows(r, b);
     const to = /** @type {HTMLSelectElement} */ (r.querySelector('select.tord')), br = /** @type {HTMLElement} */ (r.querySelector('.brange')), [bf, bt] = /** @type {HTMLInputElement[]} */ ([...br.querySelectorAll('input')]);
     to.hidden = !/^(word|character)$/.test(b.dataset.build || ''); to.value = b.dataset.textOrder || '';   // Keynote's text order; Build from … to …
-    br.hidden = !/^(paragraph|group|highlight)$/.test(b.dataset.build || ''); bf.value = b.dataset.buildFrom || ''; bt.value = b.dataset.buildTo || '';
+    br.hidden = !/^(paragraph|group|highlight|series|set|element-series|element-set|wedge)$/.test(b.dataset.build || ''); bf.value = b.dataset.buildFrom || ''; bt.value = b.dataset.buildTo || '';
     to.onchange = () => { each(x => { if (to.value) x.dataset.textOrder = to.value; else delete x.dataset.textOrder; }); commit(); renderAnims(); };
     bf.onchange = bt.onchange = () => { each(x => { for (const [f, k] of /** @type {[HTMLInputElement, string][]} */ ([[bf, 'buildFrom'], [bt, 'buildTo']])) { const v = Math.round(+f.value); if (v >= 1) x.dataset[k] = String(v); else delete x.dataset[k]; } }); commit(); renderAnims(); };
     r.querySelector('.anim-head button').onclick = () => removeAnim(b);

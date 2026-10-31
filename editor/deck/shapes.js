@@ -483,7 +483,8 @@
      row: a series name, then its values) and data-chart = column | bar | line | area | pie | scatter. Drawn here as
      svg.chart, never saved. data-plot="columns" plots the columns as series; a pie's wedges are the series (their first
      value); a scatter's categories are its x values. data-palette, data-title, data-legend="off", data-labels,
-     data-grid="off". Each series is a g.series[data-s], each mark an .el[data-i], for chart builds. */
+     data-grid="off". Each series is a g.series[data-s], each mark (and its value label) [data-i], for chart builds;
+     a line or area comes with its first point. */
   const CHART_COLORS = [['#4884ff', '#49dc00', '#edbe00', '#f83410', '#b93a7f', '#545454'], ['#65adff', '#4884ff', '#325db7', '#213a79', '#19255b', '#0e1232']];
   function chartData(b) {
     const t = b.querySelector(':scope > table.chart-data'), rows = t ? [...t.rows].map(r => [...r.cells].map(c => c.textContent.trim())) : [];
@@ -495,9 +496,10 @@
     }
     return { cats, series: series.filter(s => s.name || s.vals.some(v => v !== null)) };
   }
-  function niceTicks(lo, hi, n = 5) {
+  function niceTicks(lo, hi, n = 4) {   // as Keynote (k10): the larger extent rounded up to 1, 2, 2.5, 5 or 10 × 10^k, in 4 steps (0 … 50 by 12.5)
     if (lo === hi) { hi = lo + 1; if (lo > 0) lo = 0; }
-    const raw = (hi - lo) / n, mag = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || raw;
+    const ext = Math.max(Math.abs(lo), Math.abs(hi)), mag = 10 ** Math.floor(Math.log10(ext)), top = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= ext - 1e-9) || ext;
+    const step = top / n;
     const a = Math.floor(lo / step + 1e-9) * step, z = Math.ceil(hi / step - 1e-9) * step, out = [];
     for (let v = a; v <= z + step / 2; v += step) out.push(Math.round(v / step) * step);
     return out;
@@ -533,7 +535,7 @@
       vals.forEach((v, i) => {
         const da = v / sum * 2 * Math.PI, a1 = a + da, big = da > Math.PI ? 1 : 0, P = t => [cx + r * Math.cos(t), cy + r * Math.sin(t)];
         const d = da >= 2 * Math.PI - 1e-6 ? `M${cx - r},${cy}a${r},${r} 0 1 1 ${2 * r},0a${r},${r} 0 1 1 ${-2 * r},0Z` : `M${cx},${cy}L${P(a)}A${r},${r} 0 ${big} 1 ${P(a1)}Z`;
-        if (v > 0) { groups[i].append(el('path', { d, 'data-i': 0 }, 'el wedge')); const m = (a + a1) / 2, l = lab(cx + r * 0.65 * Math.cos(m), cy + r * 0.65 * Math.sin(m), v); if (l) groups[i].append(l); }
+        if (v > 0) { groups[i].append(el('path', { d, 'data-i': 0 }, 'el wedge')); const m = (a + a1) / 2, l = lab(cx + r * 0.65 * Math.cos(m), cy + r * 0.65 * Math.sin(m), v); if (l) { l.setAttribute('data-i', 0); groups[i].append(l); }; }
         a = a1;
       });
       svg.append(...groups); return;
@@ -555,7 +557,7 @@
       const xlo = xt[0], xhi = xt[xt.length - 1], xp = x => L + (x - xlo) / (xhi - xlo) * (R - L);
       xt.forEach(t => { if (grid) ax.append(el('line', { x1: xp(t), x2: xp(t), y1: T, y2: B }, 'grid')); ax.append(text(xp(t), B + fs * 0.8, fmtNum(t))); });
       series.forEach((s, si) => s.vals.forEach((v, i) => { if (v === null || !isFinite(xs[i])) return;
-        groups[si].append(el('circle', { cx: xp(xs[i]), cy: vpos(v), r: fs * 0.3, 'data-i': i }, 'el dot')); const l = lab(xp(xs[i]), vpos(v) - fs * 0.8, v); if (l) groups[si].append(l); }));
+        groups[si].append(el('circle', { cx: xp(xs[i]), cy: vpos(v), r: fs * 0.3, 'data-i': i }, 'el dot')); const l = lab(xp(xs[i]), vpos(v) - fs * 0.8, v); if (l) { l.setAttribute('data-i', i); groups[si].append(l); }; }));
       svg.append(...groups); return;
     }
     const n = Math.max(1, cats.length), band = (horiz ? B - T : R - L) / n, mid = i => (horiz ? T : L) + band * (i + 0.5);
@@ -566,14 +568,14 @@
       series.forEach((s, si) => s.vals.forEach((v, i) => { if (v === null) return;
         const o = mid(i) - band * 0.375 + bw * si, p = vpos(v);
         groups[si].append(el('rect', horiz ? { x: Math.min(z, p), y: o, width: Math.abs(p - z), height: bw * 0.9, 'data-i': i } : { x: o, y: Math.min(z, p), width: bw * 0.9, height: Math.abs(p - z), 'data-i': i }, 'el bar'));
-        const l = horiz ? lab(p + (v < 0 ? -1 : 1) * fs * 0.3, o + bw * 0.45, v, v < 0 ? 'end' : 'start') : lab(o + bw * 0.45, p + (v < 0 ? 1 : -1) * fs * 0.6, v); if (l) groups[si].append(l); }));
+        const l = horiz ? lab(p + (v < 0 ? -1 : 1) * fs * 0.3, o + bw * 0.45, v, v < 0 ? 'end' : 'start') : lab(o + bw * 0.45, p + (v < 0 ? 1 : -1) * fs * 0.6, v); if (l) { l.setAttribute('data-i', i); groups[si].append(l); }; }));
     } else series.forEach((s, si) => {   // line, area: a point per category
       const pts = s.vals.map((v, i) => v === null ? null : [mid(i), vpos(v)]).filter(Boolean);
       if (!pts.length) return;
-      if (kind === 'area') groups[si].append(el('path', { d: `M${pts[0][0]},${z}L${pts.map(p => p.join(',')).join('L')}L${pts[pts.length - 1][0]},${z}Z` }, 'el area'));
-      else groups[si].append(el('path', { d: 'M' + pts.map(p => p.join(',')).join('L') }, 'el stroke'));
+      if (kind === 'area') groups[si].append(el('path', { d: `M${pts[0][0]},${z}L${pts.map(p => p.join(',')).join('L')}L${pts[pts.length - 1][0]},${z}Z`, 'data-i': s.vals.findIndex(v => v !== null) }, 'el area'));
+      else groups[si].append(el('path', { d: 'M' + pts.map(p => p.join(',')).join('L'), 'data-i': s.vals.findIndex(v => v !== null) }, 'el stroke'));
       s.vals.forEach((v, i) => { if (v === null) return; if (kind === 'line') groups[si].append(el('circle', { cx: mid(i), cy: vpos(v), r: fs * 0.22, 'data-i': i }, 'el dot'));
-        const l = lab(mid(i), vpos(v) - fs * 0.7, v); if (l) groups[si].append(l); });
+        const l = lab(mid(i), vpos(v) - fs * 0.7, v); if (l) { l.setAttribute('data-i', i); groups[si].append(l); }; });
     });
     svg.append(...groups);
   }

@@ -241,7 +241,7 @@ async function figureInfo(b) {
 }
 /* Format options → Chart: type, colours (the two sets of Keynote's chart picker), title, legend, value labels, gridlines. */
 const chartSet = fn => one(b => { fn(b); renderChart(b); });
-F('ctype').onchange = chartSet(b => { b.dataset.chart = F('ctype').value; });
+F('ctype').onchange = chartSet(b => { b.dataset.chart = F('ctype').value; if (b.dataset.build && !deliveries(b).some(([v]) => v === b.dataset.build)) delete b.dataset.build; });   // a pie has its own deliveries
 F('ctitle').onchange = chartSet(b => { const v = F('ctitle').value.trim(); if (v) b.dataset.title = v; else delete b.dataset.title; });
 F('clegend').onchange = chartSet(b => { if (F('clegend').checked) delete b.dataset.legend; else b.dataset.legend = 'off'; });
 F('clabels').onchange = chartSet(b => { if (F('clabels').checked) b.dataset.labels = ''; else delete b.dataset.labels; });

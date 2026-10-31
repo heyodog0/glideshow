@@ -120,6 +120,10 @@ Rules:
   set; 0 is the default), `--chart-fs` (text size in px; by default from the box's size). Insert → Chart adds one;
   double-click, ⇧⌘D or Format options → Chart → Edit chart data opens the data editor. Each series is a `g.series[data-s]`,
   each mark an `.el[data-i]`. PowerPoint export writes a PowerPoint chart.
+  An animated chart's `data-build` (Keynote's Delivery for charts): `background` (Background first: axes, gridlines,
+  legend and title on one click, the data on the next), `series`, `set` (a category across the series), `element-series`,
+  `element-set`; a pie's `wedge`. Each starts with a click for the axes, then one per piece (a pie's legend and title come
+  with its first wedge); `data-build-from` / `data-build-to` take the pieces as for text.
 - Web embeds: `<div class="box embed" …><div class="content"><iframe src="https://…" allowfullscreen></iframe></div></div>` shows a live page
   (or a YouTube / Vimeo player: Insert → Video → By URL converts the page address). The editor shows it but doesn't pass clicks
   to it; the slideshow does.

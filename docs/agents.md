@@ -229,7 +229,8 @@ editor): a `.box.chart` with its data as a plain table, first row the categories
   <tr><th>South</th><td>55</td><td>43</td><td>70</td></tr>
 </table></div>
 ```
-Options are in docs/deck-format.md (Charts). A plot made from data files or many points belongs to a script figure
+Options are in docs/deck-format.md (Charts); to build it a series at a time, add `fragment fade-in` to its classes and
+`data-build="series"` (or `set`, `element-series`, `element-set`, `background`; a pie's `wedge`). A plot made from data files or many points belongs to a script figure
 (`glideshow figure`), not a chart.
 
 **A table that doesn't fit.** A `.box.table` grows with its rows. Imported tables carry Google's cell padding

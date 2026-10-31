@@ -7,7 +7,7 @@ const CHART_TYPES = [['column', 'Column', 'bar_chart'], ['bar', 'Bar', 'align_ho
 const CHART_SAMPLE = {
   pie: [['', '2026'], ['Series 1', '35'], ['Series 2', '25'], ['Series 3', '22'], ['Series 4', '18']],
   scatter: [['', '1', '2', '3', '4', '5', '6'], ['Series 1', '12', '19', '27', '31', '42', '48'], ['Series 2', '20', '15', '30', '26', '38', '33']],
-  other: [['', 'Q1', 'Q2', 'Q3', 'Q4'], ['Series 1', '17', '26', '53', '96'], ['Series 2', '55', '43', '70', '58']],
+  other: [['', 'April', 'May', 'June', 'July'], ['Region 1', '17', '26', '53', '96'], ['Region 2', '55', '43', '70', '58']],   // Keynote's (k10-chart-data)
 };
 const isChart = b => !!b?.classList.contains('chart');
 /** @param {string[][]} rows */
@@ -20,7 +20,7 @@ const chartRows = b => { const t = b.querySelector(':scope > table.chart-data');
 function setChartRows(b, rows) { const t = b.querySelector(':scope > table.chart-data'), n = chartTable(rows); if (t) t.replaceWith(n); else b.append(n); renderChart(b); }
 function addChart(kind) {
   const w = 1200, h = 720, b = makeBox({ x: (W - w) / 2, y: (H - h) / 2, w, h, cls: 'chart' });
-  b.dataset.chart = kind; content(b).style.padding = '0';
+  b.dataset.chart = kind; content(b).style.padding = '0'; if (kind !== 'pie') b.dataset.legend = 'off';   // Keynote's new chart has no legend or title
   b.append(chartTable(CHART_SAMPLE[kind] || CHART_SAMPLE.other));
   insert(b); renderChart(b);
 }
@@ -47,12 +47,13 @@ const trimRows = rows => {   // drop empty trailing rows and columns (the editor
 };
 function drawChartData() {
   const rows = trimRows(chartRows(cedBox)), nr = rows.length + 1, nc = Math.max(...rows.map(r => r.length)) + 1;
+  const cols = cedBox.dataset.plot === 'columns', pal = CHART_COLORS[+cedBox.dataset.palette || 0] || CHART_COLORS[0];   // the series' bars carry their colour, as Keynote's
   ced.querySelectorAll('.ced-plot button').forEach(x => x.classList.toggle('on', (/** @type {HTMLElement} */ (x).dataset.plot === 'columns') === (cedBox.dataset.plot === 'columns')));
   cedGrid.replaceChildren();
   const bars = cedGrid.insertRow(); bars.className = 'ced-bars'; bars.insertCell();
-  for (let j = 0; j < nc; j++) { const c = bars.insertCell(); if (j < nc - 1 && j > 0) c.append(cedBar('col', j)); }
+  for (let j = 0; j < nc; j++) { const c = bars.insertCell(); if (j < nc - 1 && j > 0) c.append(cedBar('col', j, cols ? pal[(j - 1) % pal.length] : '')); }
   for (let i = 0; i < nr; i++) {
-    const tr = cedGrid.insertRow(), bar = tr.insertCell(); bar.className = 'ced-rowbar'; if (i > 0 && i < nr - 1) bar.append(cedBar('row', i));
+    const tr = cedGrid.insertRow(), bar = tr.insertCell(); bar.className = 'ced-rowbar'; if (i > 0 && i < nr - 1) bar.append(cedBar('row', i, cols ? '' : pal[(i - 1) % pal.length]));
     for (let j = 0; j < nc; j++) {
       const td = tr.insertCell(), inp = document.createElement('input');
       inp.value = rows[i]?.[j] ?? ''; inp.dataset.r = String(i); inp.dataset.c = String(j);
@@ -62,8 +63,8 @@ function drawChartData() {
     }
   }
 }
-function cedBar(kind, k) {
-  const x = document.createElement('button'); x.className = 'ced-bar ' + kind; x.title = kind === 'row' ? 'Row' : 'Column';
+function cedBar(kind, k, color) {
+  const x = document.createElement('button'); x.className = 'ced-bar ' + kind; x.title = kind === 'row' ? 'Row' : 'Column'; if (color) x.style.background = color;
   x.onclick = () => openMenu(x, [{ label: kind === 'row' ? 'Delete row' : 'Delete column', icon: 'delete', run: () => {
     const rows = chartRows(cedBox); if (kind === 'row') rows.splice(k, 1); else rows.forEach(r => r.splice(k, 1));
     setChartRows(cedBox, trimRows(rows)); drawChartData(); commit(); } }]);

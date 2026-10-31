@@ -115,6 +115,8 @@
         /* a table by row / column / cell, each also "-content" (the grid stays, the cells' contents build) and "-reverse"
            (last first): Keynote's 13; text by paragraph (each bullet, sub-bullets too), "group" (a bullet with its
            sub-bullets) or "highlight", from paragraph data-build-from to data-build-to (the rest come with the first / last) */
+        const chart = box.querySelector(':scope > svg.chart');
+        if (chart && /^(background|series|set|element-series|element-set|wedge)$/.test(mode || '')) { chartBuild(sl, box, chart, mode, cls); changed = true; return; }
         const table = box.querySelector(':scope > .content table'), cells = table ? [...table.querySelectorAll('td, th')] : [];
         const base = (mode || '').replace(/-content|-reverse/g, ''), inner = /-content/.test(mode || ''), back = /-reverse/.test(mode || '');
         const cellPart = c => { if (!inner) return c; const w = document.createElement('div'); w.className = 'gs-cc'; w.append(...c.childNodes); c.append(w); return w; };
@@ -137,6 +139,31 @@
         changed = true;
       });
     });
+    /* A chart's delivery (shapes.js renderChart), Keynote's for charts: "background" (Background First: axes, legend and
+       title, then the data), "series", "set" (a category across the series), "element-series" (each mark, series by
+       series), "element-set" (each mark, category by category), a pie's "wedge". As Keynote (r09): the first click brings
+       the axes, gridlines, legend and title, then a click per piece; a pie has no such step (its title and legend come
+       with the first wedge). data-build-from / -to pick the pieces as for text. */
+    function chartBuild(sl, box, svg, mode, cls) {
+      const series = [...svg.querySelectorAll('g.series')], back = [...svg.children].filter(e => !e.matches('g.series'));
+      const els = s => [...s.children], nI = Math.max(0, ...[...svg.querySelectorAll('[data-i]')].map(e => +e.getAttribute('data-i') + 1));
+      const marks = (s, i) => els(s).filter(e => +e.getAttribute('data-i') === i);
+      let groups = mode === 'background' ? [back, series] : mode === 'series' || mode === 'wedge' ? series.map(s => [s])
+        : mode === 'set' ? Array.from({ length: nI }, (_, i) => series.flatMap(s => marks(s, i)))
+        : mode === 'element-series' ? series.flatMap(s => Array.from({ length: nI }, (_, i) => marks(s, i)))
+        : Array.from({ length: nI }, (_, i) => series.map(s => marks(s, i))).flat();
+      groups = groups.filter(g => g.length);
+      if (mode !== 'background' && groups.length > 1) {   // Build from … to …
+        const from = Math.min(groups.length, Math.max(1, +box.dataset.buildFrom || 1)), to = Math.min(groups.length, Math.max(from, +box.dataset.buildTo || groups.length));
+        groups = to > from ? [groups.slice(0, from).flat(), ...groups.slice(from, to - 1), groups.slice(to - 1).flat()] : [groups.flat()];
+      }
+      if (mode === 'wedge') groups[0]?.push(...back); else if (mode !== 'background') groups.unshift(back);
+      const at = +box.dataset.fragmentIndex || 0;
+      sl.querySelectorAll('.fragment').forEach(f => { if (f !== box && +f.dataset.fragmentIndex > at) f.dataset.fragmentIndex = String(+f.dataset.fragmentIndex + groups.length - 1); });
+      box.classList.remove('fragment', ...cls); delete box.dataset.fragmentIndex;
+      groups.forEach((g, i) => g.forEach(el => { el.classList.add('fragment', ...cls); el.dataset.fragmentIndex = String(at + i);
+        for (const k of i ? ['duration', 'ease', 'angle'] : ['duration', 'ease', 'angle', 'delay', 'start']) if (box.dataset[k]) el.dataset[k] = box.dataset[k]; }));
+    }
     // a slide's own style (<style class="slide-css" media="not all"> in the slide): applied to that slide only
     let n = 0;
     all.forEach(sl => sl.querySelectorAll(':scope > style').forEach(st => {
